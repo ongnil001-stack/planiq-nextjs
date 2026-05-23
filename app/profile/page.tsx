@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
+import { uploadAvatar } from '@/lib/avatar';
 import BottomNav from '@/components/layout/BottomNav';
 import { THEME_META, THEME_IDS, ThemeId, getSavedTheme, saveTheme, applyThemeToBody } from '@/lib/theme';
 
@@ -20,13 +22,32 @@ const ACHIEVEMENTS = [
   { label: '500 Tasks',    earned: false },
 ];
 
+const DESIGNATION_SUGGESTIONS = [
+  'Finance Officer', 'AP Specialist', 'AR Specialist', 'CFO',
+  'Project Planner', 'Operations Manager', 'Team Lead',
+  'Software Engineer', 'Product Manager', 'Data Analyst',
+  'HR Manager', 'Marketing Lead', 'Business Analyst',
+];
+
 export default function ProfilePage() {
-  const router = useRouter();
+  const router  = useRouter();
   const supabase = createClient();
-  const [user, setUser]         = useState<any>(null);
-  const [profile, setProfile]   = useState<any>(null);
-  const [loading, setLoading]   = useState(true);
+  const fileRef  = useRef<HTMLInputElement>(null);
+
+  const [user,        setUser]        = useState<any>(null);
+  const [profile,     setProfile]     = useState<any>(null);
+  const [loading,     setLoading]     = useState(true);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('focused');
+
+  // ── Edit mode state ──────────────────────────────────────────────
+  const [editing,     setEditing]     = useState(false);
+  const [saving,      setSaving]      = useState(false);
+
+  const [editName,    setEditName]    = useState('');
+  const [editDesig,   setEditDesig]   = useState('');
+  const [editAvatar,  setEditAvatar]  = useState<File | null>(null);
+  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+  const [showSugg,    setShowSugg]    = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -41,6 +62,77 @@ export default function ProfilePage() {
     setActiveTheme(getSavedTheme());
   }, []);
 
+  // ── Open edit mode ───────────────────────────────────────────────
+  function openEdit() {
+    setEditName(profile?.full_name  ?? '');
+    setEditDesig(profile?.designation ?? '');
+    setPreviewUrl(null);
+    setEditAvatar(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setShowSugg(false);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setEditAvatar(null);
+  }
+
+  // ── Avatar file pick ─────────────────────────────────────────────
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file.'); return; }
+    if (file.size > 5 * 1024 * 1024)    { toast.error('Image must be under 5 MB.');    return; }
+    setEditAvatar(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────
+  async function handleSave() {
+    if (!user) return;
+    if (!editName.trim()) { toast.error('Name cannot be empty.'); return; }
+
+    setSaving(true);
+    try {
+      let avatarUrl = profile?.avatar_url ?? null;
+
+      if (editAvatar) {
+        avatarUrl = await uploadAvatar(user.id, editAvatar);
+      }
+
+      const updates: Record<string, any> = {
+        full_name:   editName.trim(),
+        designation: editDesig.trim() || null,
+        avatar_url:  avatarUrl,
+        updated_at:  new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Refresh local profile state
+      setProfile((p: any) => ({ ...p, ...updates }));
+      setEditing(false);
+      setShowSugg(false);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      setEditAvatar(null);
+      toast.success('Profile updated!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Theme ────────────────────────────────────────────────────────
   function handleApplyTheme(id: ThemeId) {
     setActiveTheme(id);
     saveTheme(id);
@@ -54,7 +146,9 @@ export default function ProfilePage() {
     toast.success('Signed out.');
   }
 
-  const initials = profile?.full_name
+  // ── Derived display values ───────────────────────────────────────
+  const avatarSrc = previewUrl || profile?.avatar_url || null;
+  const initials  = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
 
@@ -63,36 +157,123 @@ export default function ProfilePage() {
   return (
     <div className="prof-wrap">
 
-      {/* ── Header ── */}
+      {/* ── Header ────────────────────────────────────────────────── */}
       <div className="prof-hdr">
-        <div className="prof-av">{initials}</div>
-        <div className="prof-name">{profile?.full_name || 'User'}</div>
-        <div className="prof-email">{user?.email}</div>
+
+        {/* Avatar */}
+        <div className="prof-av-wrap">
+          {avatarSrc ? (
+            <div className="prof-av-img">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={avatarSrc} alt="Avatar" className="av-img" />
+            </div>
+          ) : (
+            <div className="prof-av">{initials}</div>
+          )}
+
+          {/* Camera overlay when editing */}
+          {editing && (
+            <button className="av-edit-btn" onClick={() => fileRef.current?.click()} title="Change photo">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M23 19C23 20.1 22.1 21 21 21H3C1.9 21 1 20.1 1 19V8C1 6.9 1.9 6 3 6H7L9 3H15L17 6H21C22.1 6 23 6.9 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        <input
+          ref={fileRef} type="file" accept="image/*"
+          style={{ display:'none' }}
+          onChange={handleFilePick}
+        />
+
+        {/* Name + designation (view or edit) */}
+        {editing ? (
+          <div className="edit-fields">
+            <input
+              className="edit-input edit-name"
+              placeholder="Full name"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              maxLength={60}
+            />
+            <div className="desig-wrap">
+              <input
+                className="edit-input edit-desig"
+                placeholder="Designation / Job title"
+                value={editDesig}
+                onChange={e => { setEditDesig(e.target.value); setShowSugg(true); }}
+                onFocus={() => setShowSugg(true)}
+                onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+                maxLength={60}
+              />
+              {showSugg && (
+                <div className="desig-sugg">
+                  {DESIGNATION_SUGGESTIONS
+                    .filter(s => s.toLowerCase().includes(editDesig.toLowerCase()))
+                    .slice(0, 5)
+                    .map(s => (
+                      <button
+                        key={s} className="sugg-item"
+                        onMouseDown={() => { setEditDesig(s); setShowSugg(false); }}
+                      >{s}</button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Save / Cancel */}
+            <div className="edit-actions">
+              <button className="btn-cancel" onClick={cancelEdit} disabled={saving}>Cancel</button>
+              <button className="btn-save"   onClick={handleSave}  disabled={saving}>
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="prof-name">{profile?.full_name || 'User'}</div>
+            {profile?.designation && (
+              <div className="prof-desig">{profile.designation}</div>
+            )}
+            <div className="prof-email">{user?.email}</div>
+            <button className="edit-profile-btn" onClick={openEdit}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M11 4H4C3.5 4 3 4.5 3 5V20C3 20.5 3.5 21 4 21H19C19.5 21 20 20.5 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M18.5 2.5L21.5 5.5L12 15L9 15L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+              </svg>
+              Edit Profile
+            </button>
+          </>
+        )}
 
         {/* Stats row */}
-        <div className="prof-stats">
-          <div className="ps">
-            <div className="ps-v">
-              <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                <path d="M7.5 13.5C6.5 13.5 5.5 12.5 5.5 11C5.5 9.5 7.5 8.5 7.5 7C7.5 7 9.5 9 9.5 11C9.5 12.5 8.5 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-              </svg>
-              <span>8</span>
+        {!editing && (
+          <div className="prof-stats">
+            <div className="ps">
+              <div className="ps-v">
+                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                  <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                  <path d="M7.5 13.5C6.5 13.5 5.5 12.5 5.5 11C5.5 9.5 7.5 8.5 7.5 7C7.5 7 9.5 9 9.5 11C9.5 12.5 8.5 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                </svg>
+                <span>8</span>
+              </div>
+              <div className="ps-l">Streak</div>
             </div>
-            <div className="ps-l">Streak</div>
+            <div className="ps">
+              <div className="ps-v">142</div>
+              <div className="ps-l">Tasks Done</div>
+            </div>
+            <div className="ps">
+              <div className="ps-v">78%</div>
+              <div className="ps-l">Avg Score</div>
+            </div>
           </div>
-          <div className="ps">
-            <div className="ps-v">142</div>
-            <div className="ps-l">Tasks Done</div>
-          </div>
-          <div className="ps">
-            <div className="ps-v">78%</div>
-            <div className="ps-l">Avg Score</div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Scrollable body ── */}
+      {/* ── Scrollable body ──────────────────────────────────────── */}
       <div className="prof-body">
 
         {/* APPEARANCE */}
@@ -153,6 +334,12 @@ export default function ProfilePage() {
             <span className="info-key">Email</span>
             <span className="info-val">{user?.email}</span>
           </div>
+          {profile?.designation && (
+            <div className="info-row">
+              <span className="info-key">Designation</span>
+              <span className="info-val">{profile.designation}</span>
+            </div>
+          )}
           <div className="info-row">
             <span className="info-key">Member since</span>
             <span className="info-val">
@@ -174,12 +361,11 @@ export default function ProfilePage() {
       <BottomNav />
 
       <style jsx>{`
-        /* ── Wrapper — uses CSS vars so all themes apply ── */
+        /* ── Wrapper ── */
         .prof-wrap {
           min-height: 100vh;
           background: var(--bg);
-          display: flex;
-          flex-direction: column;
+          display: flex; flex-direction: column;
           font-family: inherit;
           color: var(--dark);
         }
@@ -192,17 +378,122 @@ export default function ProfilePage() {
           flex-shrink: 0;
           border-bottom: 1px solid var(--border);
         }
+
+        /* Avatar container */
+        .prof-av-wrap {
+          position: relative;
+          width: 82px; height: 82px;
+          margin: 0 auto 14px;
+        }
         .prof-av {
-          width: 74px; height: 74px;
+          width: 82px; height: 82px;
           background: var(--gradient);
-          border-radius: 22px;
+          border-radius: 24px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 30px; font-weight: 700; color: #fff;
-          margin: 0 auto 12px;
+          font-size: 32px; font-weight: 700; color: #fff;
           box-shadow: 0 8px 24px rgba(0,0,0,.25);
         }
+        .prof-av-img {
+          width: 82px; height: 82px;
+          border-radius: 24px; overflow: hidden;
+          box-shadow: 0 8px 24px rgba(0,0,0,.25);
+          border: 2px solid var(--border);
+        }
+        .av-img {
+          width: 100%; height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        /* Camera button overlay */
+        .av-edit-btn {
+          position: absolute; bottom: -6px; right: -6px;
+          width: 30px; height: 30px;
+          background: var(--purple);
+          border: 2px solid var(--surf);
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          color: #fff; cursor: pointer; padding: 0;
+          box-shadow: 0 2px 8px rgba(0,0,0,.3);
+          transition: opacity .15s;
+        }
+        .av-edit-btn:active { opacity: .8; }
+
+        /* View mode name/desig */
         .prof-name  { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
+        .prof-desig { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 2px; letter-spacing: .2px; }
         .prof-email { font-size: 12px; color: var(--mid); margin-top: 3px; }
+
+        /* Edit profile button */
+        .edit-profile-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-top: 10px; padding: 7px 14px;
+          background: var(--surf2);
+          border: 1px solid var(--border2, var(--border));
+          border-radius: 20px;
+          color: var(--mid); font-size: 12px; font-weight: 600;
+          font-family: inherit; cursor: pointer;
+          transition: border-color .15s, color .15s;
+        }
+        .edit-profile-btn:hover { border-color: var(--purple); color: var(--purple); }
+        .edit-profile-btn:active { opacity: .8; }
+
+        /* ── Edit mode fields ── */
+        .edit-fields {
+          display: flex; flex-direction: column; align-items: stretch;
+          gap: 10px; margin-top: 2px; text-align: left;
+        }
+        .edit-input {
+          width: 100%; padding: 11px 14px;
+          background: var(--surf2); border: 1.5px solid var(--border);
+          border-radius: 12px; color: var(--dark);
+          font-size: 15px; font-family: inherit;
+          outline: none; transition: border-color .15s;
+          box-sizing: border-box;
+        }
+        .edit-input::placeholder { color: var(--mid); }
+        .edit-input:focus { border-color: var(--purple); }
+        .edit-name  { font-size: 16px; font-weight: 700; }
+        .edit-desig { font-size: 14px; }
+
+        /* Designation suggestion dropdown */
+        .desig-wrap { position: relative; }
+        .desig-sugg {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+          background: var(--surf); border: 1px solid var(--border);
+          border-radius: 12px; overflow: hidden;
+          box-shadow: 0 8px 24px rgba(0,0,0,.2);
+        }
+        .sugg-item {
+          display: block; width: 100%; padding: 11px 14px;
+          text-align: left; background: transparent;
+          border: none; border-bottom: 1px solid var(--border);
+          color: var(--dark); font-size: 13px; font-family: inherit;
+          cursor: pointer; transition: background .1s;
+        }
+        .sugg-item:last-child { border-bottom: none; }
+        .sugg-item:hover { background: var(--surf2); }
+
+        /* Save / Cancel row */
+        .edit-actions {
+          display: flex; gap: 10px; margin-top: 4px;
+        }
+        .btn-cancel {
+          flex: 1; padding: 12px;
+          background: var(--surf2); border: 1.5px solid var(--border);
+          border-radius: 12px; color: var(--mid);
+          font-size: 14px; font-weight: 700; font-family: inherit;
+          cursor: pointer; transition: opacity .15s;
+        }
+        .btn-cancel:disabled { opacity: .5; }
+        .btn-save {
+          flex: 2; padding: 12px;
+          background: var(--purple); border: none;
+          border-radius: 12px; color: #fff;
+          font-size: 14px; font-weight: 700; font-family: inherit;
+          cursor: pointer; transition: opacity .15s;
+        }
+        .btn-save:disabled { opacity: .6; cursor: not-allowed; }
+        .btn-save:not(:disabled):active { opacity: .85; }
 
         /* Stats */
         .prof-stats {
@@ -237,19 +528,16 @@ export default function ProfilePage() {
         /* Theme grid */
         .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .th-card {
-          background: var(--surf);
-          border: 1.5px solid var(--border);
-          border-radius: var(--rmd);
-          padding: 12px;
+          background: var(--surf); border: 1.5px solid var(--border);
+          border-radius: var(--rmd); padding: 12px;
           cursor: pointer; text-align: left;
           display: flex; flex-direction: column; gap: 8px;
           transition: border-color .18s, box-shadow .18s, background .18s;
-          font-family: inherit;
-          color: var(--dark);
+          font-family: inherit; color: var(--dark);
         }
-        .th-card:hover    { border-color: var(--border2); background: var(--surf2); }
-        .th-card.active   { border-color: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
-        .th-card:active   { opacity: .88; }
+        .th-card:hover  { border-color: var(--border2); background: var(--surf2); }
+        .th-card.active { border-color: var(--purple); box-shadow: 0 0 0 1px var(--purple); }
+        .th-card:active { opacity: .88; }
         .th-preview {
           height: 36px; border-radius: 8px; overflow: hidden;
           display: grid; grid-template-columns: 2fr 1fr 1fr;
@@ -267,7 +555,6 @@ export default function ProfilePage() {
           text-align: center; padding: 12px 4px;
           background: var(--surf); border-radius: var(--rsm);
           border: 1px solid var(--border);
-          transition: background .2s, border-color .2s;
         }
         .badge-ico  { font-size: 20px; margin-bottom: 5px; }
         .badge-lbl  { font-size: 9px; color: var(--mid); font-weight: 600; letter-spacing: .3px; }
@@ -286,8 +573,7 @@ export default function ProfilePage() {
         }
         .info-row {
           display: flex; justify-content: space-between; align-items: center;
-          padding: 11px 0;
-          border-bottom: 1px solid var(--border);
+          padding: 11px 0; border-bottom: 1px solid var(--border);
         }
         .info-key { font-size: 14px; color: var(--mid); font-weight: 500; }
         .info-val {

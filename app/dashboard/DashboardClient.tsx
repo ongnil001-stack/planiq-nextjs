@@ -118,10 +118,17 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
       <div className="hdr">
         <div className="hdr-info">
           <h2>{GREETING()}, {firstName}</h2>
-          <p className="hdr-role">{profile?.role_title ?? 'Civil Engineer · Entrepreneur'}</p>
+          {(profile?.designation || profile?.role_title) && (
+            <p className="hdr-role">{profile?.designation || profile?.role_title}</p>
+          )}
         </div>
         <Link href="/profile" className="av">
-          {profile?.full_name?.[0]?.toUpperCase() ?? '?'}
+          {profile?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profile.avatar_url} alt="avatar" className="av-img" />
+          ) : (
+            profile?.full_name?.[0]?.toUpperCase() ?? '?'
+          )}
         </Link>
       </div>
 
@@ -401,6 +408,11 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
           cursor: pointer; box-shadow: var(--card-sh2);
           position: relative; z-index: 1;
           text-decoration: none; flex-shrink: 0;
+          overflow: hidden;
+        }
+        .av-img {
+          width: 100%; height: 100%;
+          object-fit: cover; display: block;
         }
 
         /* ── Scroll area ── */
