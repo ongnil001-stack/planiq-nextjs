@@ -38,6 +38,10 @@ export default function ProfilePage() {
   const [profile,     setProfile]     = useState<any>(null);
   const [loading,     setLoading]     = useState(true);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('focused');
+  const [emailVisible, setEmailVisible] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('planiq_email_visible') === 'true';
+  });
 
   // ── Edit mode state ──────────────────────────────────────────────
   const [editing,     setEditing]     = useState(false);
@@ -146,11 +150,30 @@ export default function ProfilePage() {
     toast.success('Signed out.');
   }
 
+  // ── Email masking ────────────────────────────────────────────────
+  function maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain) return email;
+    const visible = local[0];
+    const dots = '•'.repeat(Math.min(local.length - 1, 8));
+    const domainParts = domain.split('.');
+    const tld = domainParts.pop();
+    const domainName = domainParts.join('.')[0] + '•••';
+    return `${visible}${dots}@${domainName}.${tld}`;
+  }
+
+  function toggleEmail() {
+    const next = !emailVisible;
+    setEmailVisible(next);
+    localStorage.setItem('planiq_email_visible', String(next));
+  }
+
   // ── Derived display values ───────────────────────────────────────
   const avatarSrc = previewUrl || profile?.avatar_url || null;
   const initials  = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
+  const displayEmail = emailVisible ? (user?.email ?? '') : maskEmail(user?.email ?? '');
 
   if (loading) return <div style={{ minHeight:'100vh', background:'var(--bg,#0F0E17)' }} />;
 
@@ -237,7 +260,21 @@ export default function ProfilePage() {
             {profile?.designation && (
               <div className="prof-desig">{profile.designation}</div>
             )}
-            <div className="prof-email">{user?.email}</div>
+            <div className="prof-email-row">
+              <span className="prof-email">{displayEmail}</span>
+              <button className="eye-btn" onClick={toggleEmail} title={emailVisible ? 'Hide email' : 'Show email'}>
+                {emailVisible ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                  </svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M17.94 17.94C16.23 19.24 14.17 20 12 20C5 20 1 12 1 12C2.24 9.82 3.96 7.95 6 6.54M9.9 4.24C10.59 4.08 11.29 4 12 4C19 4 23 12 23 12C22.45 12.94 21.8 13.82 21.07 14.61M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                )}
+              </button>
+            </div>
             <button className="edit-profile-btn" onClick={openEdit}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M11 4H4C3.5 4 3 4.5 3 5V20C3 20.5 3.5 21 4 21H19C19.5 21 20 20.5 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -332,7 +369,21 @@ export default function ProfilePage() {
         <div className="info-card">
           <div className="info-row">
             <span className="info-key">Email</span>
-            <span className="info-val">{user?.email}</span>
+            <div className="info-email-row">
+              <span className="info-val">{displayEmail}</span>
+              <button className="eye-btn-sm" onClick={toggleEmail} title={emailVisible ? 'Hide email' : 'Show email'}>
+                {emailVisible ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M17.94 17.94C16.23 19.24 14.17 20 12 20C5 20 1 12 1 12C2.24 9.82 3.96 7.95 6 6.54M9.9 4.24C10.59 4.08 11.29 4 12 4C19 4 23 12 23 12C22.45 12.94 21.8 13.82 21.07 14.61M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
           {profile?.designation && (
             <div className="info-row">
@@ -421,7 +472,34 @@ export default function ProfilePage() {
         /* View mode name/desig */
         .prof-name  { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
         .prof-desig { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 2px; letter-spacing: .2px; }
-        .prof-email { font-size: 12px; color: var(--mid); margin-top: 3px; }
+        .prof-email { font-size: 12px; color: var(--mid); }
+        .prof-email-row {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-top: 3px;
+        }
+        .eye-btn {
+          background: none; border: none; padding: 3px;
+          color: var(--mid); cursor: pointer; display: flex;
+          align-items: center; justify-content: center;
+          border-radius: 6px; transition: color .15s, background .15s;
+          line-height: 0;
+        }
+        .eye-btn:hover { color: var(--dark); background: var(--surf2); }
+        .eye-btn:active { opacity: .7; }
+        /* Info card eye button */
+        .info-email-row {
+          display: flex; align-items: center; gap: 8px;
+          max-width: 60%;
+        }
+        .info-email-row .info-val { max-width: unset; }
+        .eye-btn-sm {
+          background: none; border: none; padding: 2px;
+          color: var(--mid); cursor: pointer; display: flex;
+          align-items: center; justify-content: center;
+          border-radius: 4px; transition: color .15s;
+          line-height: 0; flex-shrink: 0;
+        }
+        .eye-btn-sm:hover { color: var(--dark); }
 
         /* Edit profile button */
         .edit-profile-btn {
