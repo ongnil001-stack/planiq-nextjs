@@ -37,7 +37,7 @@
   box-shadow: 0 8px 24px rgba(0,0,0,.25);
   border: 2px solid var(--border);
 }
-.avImg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avImg { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 .avEditBtn {
   position: absolute; bottom: -6px; right: -6px;
   width: 30px; height: 30px;
@@ -480,6 +480,7 @@
   width: 56px; height: 56px;
   border-radius: 16px;
   object-fit: cover;
+  object-position: center;
   display: block;
   border: 2px solid var(--border2);
 }

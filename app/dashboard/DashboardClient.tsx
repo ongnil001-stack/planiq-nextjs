@@ -132,7 +132,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
           <div className="av-inner">
             {profile?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="avatar" className="av-img" width={40} height={40} />
+              <img src={profile.avatar_url} alt="avatar" className="av-img" />
             ) : (
               profile?.full_name?.[0]?.toUpperCase() ?? '?'
             )}
@@ -409,25 +409,24 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         .hdr-info { position: relative; z-index: 1; }
         .hdr-info h2 { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
         .hdr-role { font-size: 12px; color: var(--mid); margin-top: 3px; font-weight: 500; }
-        /* Avatar ring wrapper */
+        /* Avatar ring wrapper — gradient ring via padding trick using box-sizing */
         .av {
           width: 44px; height: 44px;
-          min-width: 44px; max-width: 44px;
-          min-height: 44px; max-height: 44px;
+          min-width: 44px; flex-shrink: 0;
           border-radius: 50%;
-          padding: 2px;
           background: var(--gradient);
           display: flex; align-items: center; justify-content: center;
           cursor: pointer;
           position: relative; z-index: 1;
-          text-decoration: none; flex-shrink: 0;
+          text-decoration: none;
           box-shadow: 0 0 12px rgba(139,124,246,0.35);
           transition: box-shadow .2s;
         }
         .av:active { box-shadow: 0 0 18px rgba(139,124,246,0.55); opacity: .9; }
-        /* Inner circle */
+        /* Inner circle — fixed 40×40 so the 2px gradient ring always shows */
         .av-inner {
-          width: 100%; height: 100%;
+          width: 40px; height: 40px;
+          min-width: 40px; min-height: 40px;
           border-radius: 50%;
           background: var(--gradient);
           display: flex; align-items: center; justify-content: center;
@@ -435,13 +434,13 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
           overflow: hidden;
           flex-shrink: 0;
         }
+        /* Uploaded avatar image — fills inner circle perfectly */
         .av-img {
-          width: 40px; height: 40px;
-          min-width: 40px; max-width: 40px;
-          min-height: 40px; max-height: 40px;
-          object-fit: cover; display: block;
+          width: 100%; height: 100%;
+          object-fit: cover;
+          object-position: center;
+          display: block;
           border-radius: 50%;
-          flex-shrink: 0;
         }
 
         /* ── Scroll area ── */
