@@ -14,11 +14,20 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'PlanIQ',
   },
-  icons: { apple: '/icons/icon-180.png' },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/icon-180.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0F0E17',
+  themeColor: '#8B7CF6',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -32,10 +41,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* No-flash theme script — runs synchronously before paint */}
+        <meta name="apple-mobile-web-app-title" content="PlanIQ" />
+        <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+        <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.png" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128.png" />
+        <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
+        {/* No-flash theme script — runs synchronously before first paint */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('planiq_theme');var valid=['focused','soft','dark','colorful','minimal','pixel','lady'];if(t&&valid.indexOf(t)>-1){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','focused');}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('planiq_theme');var valid=['focused','soft','dark','colorful','minimal','pixel','lady'];if(t&&valid.indexOf(t)>-1){document.documentElement.setAttribute('data-theme',t);document.body&&document.body.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','focused');}}catch(e){}})();`,
           }}
         />
       </head>
@@ -56,22 +71,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             },
           }}
         />
-        {/* Version label */}
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '4px',
-            right: '8px',
-            fontSize: '9px',
-            fontFamily: 'Sora, sans-serif',
-            fontWeight: 600,
-            letterSpacing: '1.5px',
-            textTransform: 'uppercase',
-            color: 'rgba(124,106,240,0.3)',
-            pointerEvents: 'none',
-            zIndex: 9999,
-          }}
-        >
+        <div style={{
+          position: 'fixed', bottom: '4px', right: '8px',
+          fontSize: '9px', fontFamily: 'Sora, sans-serif',
+          fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase',
+          color: 'rgba(124,106,240,0.3)', pointerEvents: 'none', zIndex: 9999,
+        }}>
           PlanIQ {APP_VERSION}
         </div>
       </body>
