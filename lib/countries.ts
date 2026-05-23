@@ -4,6 +4,63 @@ export interface Country {
   flag: string;
 }
 
+/**
+ * Maps ISO 3166-1 alpha-2 country codes to their primary IANA timezone string.
+ * Countries with multiple zones use the most-populated or capital-city zone.
+ */
+export const COUNTRY_TIMEZONES: Record<string, string> = {
+  PH: 'Asia/Manila',
+  US: 'America/New_York',
+  GB: 'Europe/London',
+  AU: 'Australia/Sydney',
+  CA: 'America/Toronto',
+  SG: 'Asia/Singapore',
+  JP: 'Asia/Tokyo',
+  KR: 'Asia/Seoul',
+  IN: 'Asia/Kolkata',
+  AE: 'Asia/Dubai',
+  DE: 'Europe/Berlin',
+  FR: 'Europe/Paris',
+  IT: 'Europe/Rome',
+  ES: 'Europe/Madrid',
+  NL: 'Europe/Amsterdam',
+  PT: 'Europe/Lisbon',
+  CH: 'Europe/Zurich',
+  SE: 'Europe/Stockholm',
+  NO: 'Europe/Oslo',
+  DK: 'Europe/Copenhagen',
+  FI: 'Europe/Helsinki',
+  PL: 'Europe/Warsaw',
+  AT: 'Europe/Vienna',
+  BE: 'Europe/Brussels',
+  IE: 'Europe/Dublin',
+  NZ: 'Pacific/Auckland',
+  ZA: 'Africa/Johannesburg',
+  BR: 'America/Sao_Paulo',
+  MX: 'America/Mexico_City',
+  AR: 'America/Argentina/Buenos_Aires',
+  CL: 'America/Santiago',
+  CO: 'America/Bogota',
+  CN: 'Asia/Shanghai',
+  HK: 'Asia/Hong_Kong',
+  TW: 'Asia/Taipei',
+  TH: 'Asia/Bangkok',
+  MY: 'Asia/Kuala_Lumpur',
+  ID: 'Asia/Jakarta',
+  VN: 'Asia/Ho_Chi_Minh',
+  NG: 'Africa/Lagos',
+  KE: 'Africa/Nairobi',
+  GH: 'Africa/Accra',
+  EG: 'Africa/Cairo',
+  SA: 'Asia/Riyadh',
+  RU: 'Europe/Moscow',
+  UA: 'Europe/Kiev',
+  GR: 'Europe/Athens',
+  CZ: 'Europe/Prague',
+  RO: 'Europe/Bucharest',
+  HU: 'Europe/Budapest',
+};
+
 // Nager.Date supported countries — most common first, then alphabetical
 export const COUNTRIES: Country[] = [
   { code: 'PH', name: 'Philippines',        flag: '🇵🇭' },

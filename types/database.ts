@@ -52,6 +52,9 @@ export interface Database {
           all_day: boolean;
           color: string | null;
           location: string | null;
+          recurrence_rule: string | null;
+          recurrence_end: string | null;
+          timezone: string | null;
           is_completed: boolean;
           created_at: string;
           updated_at: string;
@@ -68,6 +71,9 @@ export interface Database {
           all_day?: boolean;
           color?: string | null;
           location?: string | null;
+          recurrence_rule?: string | null;
+          recurrence_end?: string | null;
+          timezone?: string | null;
           is_completed?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -82,6 +88,9 @@ export interface Database {
           all_day?: boolean;
           color?: string | null;
           location?: string | null;
+          recurrence_rule?: string | null;
+          recurrence_end?: string | null;
+          timezone?: string | null;
           is_completed?: boolean;
           updated_at?: string;
         };
@@ -128,3 +137,4 @@ export type AiAnalysis = Database['public']['Tables']['ai_analyses']['Row'];
 export type NewSchedule = Database['public']['Tables']['schedules']['Insert'];
 export type ScheduleType = 'task' | 'event' | 'reminder' | 'block';
 export type Priority = 'high' | 'medium' | 'low' | 'critical';
+export type RecurrenceRule = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
