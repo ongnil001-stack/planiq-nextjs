@@ -151,8 +151,8 @@
 
 /* Theme grid — 2 columns */
 .themeGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -161,10 +161,17 @@
   border: 1.5px solid var(--border);
   border-radius: 14px;
   padding: 12px;
-  cursor: pointer; text-align: left;
-  display: flex; flex-direction: column; gap: 8px;
-  font-family: inherit; color: var(--dark);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: var(--dark);
   transition: border-color .18s, background .18s;
+  user-select: none;
 }
 .thCard:hover  { border-color: var(--purple); background: var(--surf2); }
 .thCardActive  { border-color: var(--purple) !important; box-shadow: 0 0 0 1px var(--purple); }
@@ -181,15 +188,19 @@
 
 /* Achievements — 4 columns */
 .badgesGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
   gap: 8px;
   margin-bottom: 20px;
 }
 .badgeItem {
-  text-align: center; padding: 12px 4px;
-  background: var(--surf); border-radius: 10px;
+  text-align: center;
+  padding: 12px 4px;
+  background: var(--surf);
+  border-radius: 10px;
   border: 1px solid var(--border);
+  display: block;
+  box-sizing: border-box;
 }
 .badgeIco { font-size: 20px; margin-bottom: 5px; }
 .badgeLbl { font-size: 9px; color: var(--mid); font-weight: 600; letter-spacing: .3px; }

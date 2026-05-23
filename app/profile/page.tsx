@@ -202,8 +202,8 @@ export default function ProfilePage() {
                     .filter(sg => sg.toLowerCase().includes(editDesig.toLowerCase()))
                     .slice(0, 5)
                     .map(sg => (
-                      <button key={sg} className={s.suggItem}
-                        onMouseDown={() => { setEditDesig(sg); setShowSugg(false); }}>{sg}</button>
+                      <div key={sg} role="button" tabIndex={0} className={s.suggItem}
+                        onMouseDown={() => { setEditDesig(sg); setShowSugg(false); }}>{sg}</div>
                     ))}
                 </div>
               )}
@@ -286,9 +286,10 @@ export default function ProfilePage() {
 
         <div className={s.themeGrid}>
           {THEMES.map(t => (
-            <button key={t.id}
+            <div key={t.id} role="button" tabIndex={0}
               className={`${s.thCard}${activeTheme === t.id ? ` ${s.thCardActive}` : ''}`}
-              onClick={() => handleApplyTheme(t.id as ThemeId)}>
+              onClick={() => handleApplyTheme(t.id as ThemeId)}
+              onKeyDown={e => e.key==='Enter' && handleApplyTheme(t.id as ThemeId)}>
               <div className={s.thPreview}>
                 <div className={s.thPBg}  style={{ background: t.bg  }} />
                 <div className={s.thPPri} style={{ background: t.pri }} />
@@ -306,7 +307,7 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
