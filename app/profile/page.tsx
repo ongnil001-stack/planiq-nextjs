@@ -119,7 +119,7 @@ export default function ProfilePage() {
     setActiveTheme(id); saveTheme(id); applyThemeToBody(id);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     setThemeFlash(THEME_META[id].name);
-    flashTimer.current = setTimeout(() => setThemeFlash(null), 1800);
+    flashTimer.current = setTimeout(() => setThemeFlash(null), 2200);
   }
 
   async function handleSignOut() {
@@ -470,76 +470,61 @@ export default function ProfilePage() {
 
       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFilePick} />
 
-      {/* Digital theme chip */}
+      {/* Glass theme confirmation — top popup */}
       {themeFlash && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(var(--nav, 64px) + 16px)',
+          top: '52px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 9999,
           pointerEvents: 'none',
-          animation: 'digitalChip 2s steps(1, end) forwards',
+          animation: 'glassPopup 2.2s ease forwards',
         }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px 8px 12px',
-            background: 'var(--surf2)',
-            border: '1px solid var(--border2)',
-            borderRadius: '10px',
-            boxShadow: '0 0 0 1px var(--purple), 0 6px 24px rgba(0,0,0,.30)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            gap: '10px',
+            padding: '11px 20px 11px 14px',
+            background: 'var(--glass-bg, rgba(30,28,48,0.72))',
+            border: '1px solid var(--glass-border2, rgba(255,255,255,0.14))',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,.32), 0 1px 0 rgba(255,255,255,.08) inset',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
             color: 'var(--dark)',
-            fontSize: '12px',
-            fontWeight: 700,
-            fontFamily: '"Courier New", Courier, monospace',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase' as const,
+            fontSize: '13px',
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            letterSpacing: '0.01em',
             whiteSpace: 'nowrap' as const,
           }}>
+            {/* Accent dot */}
             <span style={{
-              width: 7, height: 7,
-              borderRadius: '2px',
+              width: 8, height: 8,
+              borderRadius: '50%',
               background: 'var(--purple)',
               flexShrink: 0,
-              animation: 'cursorBlink 0.35s steps(1) infinite',
               boxShadow: '0 0 8px var(--purple)',
             }} />
-            <span style={{ animation: 'digitalText 2s steps(1,end) forwards' }}>
-              {themeFlash}
-            </span>
+            {/* Label */}
+            <span style={{ color: 'var(--mid)', fontWeight: 500, fontSize: '12px' }}>Theme applied</span>
+            <span style={{
+              width: '1px', height: '14px',
+              background: 'var(--border2)',
+              flexShrink: 0,
+            }} />
+            <span style={{ color: 'var(--dark)', fontWeight: 700 }}>{themeFlash}</span>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes digitalChip {
-          0%   { opacity: 0; filter: blur(4px) brightness(2); }
-          5%   { opacity: 0.4; filter: blur(2px) brightness(1.6); }
-          10%  { opacity: 0.7; filter: blur(1px) brightness(1.3); }
-          15%  { opacity: 1;   filter: blur(0)   brightness(1); }
-          70%  { opacity: 1;   filter: blur(0)   brightness(1); }
-          80%  { opacity: 0.7; filter: blur(1px) brightness(1.3); }
-          90%  { opacity: 0.4; filter: blur(2px) brightness(1.6); }
-          95%  { opacity: 0.1; filter: blur(4px) brightness(2); }
-          100% { opacity: 0;   filter: blur(6px) brightness(3); }
-        }
-        @keyframes digitalText {
-          0%   { clip-path: inset(0 100% 0 0); }
-          15%  { clip-path: inset(0 60% 0 0); }
-          25%  { clip-path: inset(0 30% 0 0); }
-          35%  { clip-path: inset(0 0% 0 0); }
-          70%  { clip-path: inset(0 0% 0 0); }
-          80%  { clip-path: inset(0 30% 0 0); }
-          90%  { clip-path: inset(0 70% 0 0); }
-          100% { clip-path: inset(0 100% 0 0); }
-        }
-        @keyframes cursorBlink {
-          0%, 49% { opacity: 1; }
-          50%, 100% { opacity: 0; }
+        @keyframes glassPopup {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(-10px); filter: blur(6px); }
+          12%  { opacity: 1; transform: translateX(-50%) translateY(0px);  filter: blur(0); }
+          72%  { opacity: 1; transform: translateX(-50%) translateY(0px);  filter: blur(0); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-6px); filter: blur(4px); }
         }
       `}</style>
 
