@@ -9,13 +9,13 @@ export type ThemeId = typeof THEME_IDS[number];
 export const THEME_META: Record<ThemeId, {
   name: string; desc: string; tag: string; bg: string; pri: string; acc: string;
 }> = {
-  focused:  { name: 'Focused & Clean',     desc: 'Violet & teal',       tag: 'DEFAULT', bg: '#0F0E17', pri: '#8B7CF6', acc: '#2DD4BF' },
-  soft:     { name: 'Soft Professional',   desc: 'Calm & elegant',      tag: 'LIGHT',   bg: '#F5F7FF', pri: '#6C5CE7', acc: '#A78BFA' },
-  dark:     { name: 'Dark & Serious',      desc: 'Deep & focused',      tag: 'DARK',    bg: '#060610', pri: '#7B6CF6', acc: '#5AABF0' },
-  colorful: { name: 'Colorful Pro',        desc: 'Vibrant & energetic', tag: 'BRIGHT',  bg: '#EEF0FF', pri: '#E8445A', acc: '#FF8C42' },
-  minimal:  { name: 'Minimal Executive',   desc: 'Premium & refined',   tag: 'GOLD',    bg: '#F8F8FA', pri: '#1A1A2E', acc: '#C9A96E' },
-  pixel:    { name: 'Playful Pixel',       desc: 'Fun & organized',     tag: 'PIXEL',   bg: '#1A2432', pri: '#56C26A', acc: '#F0C040' },
-  lady:     { name: 'Lady Professional',   desc: 'Stylish & modern',    tag: 'ROSE',    bg: '#FDF5F8', pri: '#D4608A', acc: '#9B72CF' },
+  focused:  { name: 'Ocean Focus',          desc: 'Deep navy & cyan',    tag: 'DEFAULT', bg: '#080E1A', pri: '#00C6FF', acc: '#0066FF' },
+  soft:     { name: 'Soft Professional',    desc: 'Sapphire & ivory',    tag: 'LIGHT',   bg: '#F4F6FB', pri: '#4A40D4', acc: '#7B6FFF' },
+  dark:     { name: 'Dark & Serious',       desc: 'Midnight & violet',   tag: 'DARK',    bg: '#05050F', pri: '#9B8BFF', acc: '#5B8FFF' },
+  colorful: { name: 'Colorful Pro',         desc: 'Coral & amber fire',  tag: 'BRIGHT',  bg: '#FFFAF7', pri: '#FF4560', acc: '#FF8C00' },
+  minimal:  { name: 'Minimal Executive',    desc: 'Cream & real gold',   tag: 'GOLD',    bg: '#FAFAF7', pri: '#1C1C28', acc: '#B8962E' },
+  pixel:    { name: 'Playful Pixel',        desc: 'Terminal green',      tag: 'PIXEL',   bg: '#0E1A14', pri: '#00E878', acc: '#C8F020' },
+  lady:     { name: 'Lady Professional',    desc: 'Berry & ivory',       tag: 'ROSE',    bg: '#FDF7F9', pri: '#A0306A', acc: '#C86898' },
 };
 
 export const LS_KEY = 'planiq_theme';
