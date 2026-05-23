@@ -411,18 +411,46 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
 
           {/* Time pickers */}
           {!allDay && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div style={fieldWrap}>
-                <label style={labelStyle}>Start Time</label>
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={inputStyle} />
-              </div>
-              <div style={fieldWrap}>
-                <label style={labelStyle}>
-                  End Time <span style={{ fontWeight:400, opacity:.5, textTransform:'none', letterSpacing:0, fontSize:9 }}>auto +30 min</span>
-                </label>
-                <input type="time" value={endTime}
-                  onChange={e => { setEndTime(e.target.value); setEndTouched(true); }}
-                  style={inputStyle} />
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Time</label>
+              <div style={{
+                display:'grid', gridTemplateColumns:'1fr auto 1fr',
+                alignItems:'center', gap:0,
+                background:'var(--glass-bg2, rgba(255,255,255,.05))',
+                border:'1.5px solid var(--glass-border, rgba(255,255,255,.09))',
+                borderRadius:14, overflow:'hidden',
+              }}>
+                {/* Start */}
+                <div style={{ padding:'10px 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:9, fontWeight:700, color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.6px' }}>Start</span>
+                  <input type="time" value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    style={{ ...timeInputStyle }} />
+                </div>
+                {/* Divider arrow */}
+                <div style={{
+                  width:1, alignSelf:'stretch',
+                  background:'var(--glass-border, rgba(255,255,255,.09))',
+                  position:'relative', display:'flex', alignItems:'center', justifyContent:'center',
+                }}>
+                  <div style={{
+                    width:24, height:24, borderRadius:'50%',
+                    background:'var(--glass-bg, rgba(14,13,24,.9))',
+                    border:'1px solid var(--glass-border, rgba(255,255,255,.09))',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:11, color:'var(--mid)', flexShrink:0, zIndex:1,
+                    position:'absolute',
+                  }}>→</div>
+                </div>
+                {/* End */}
+                <div style={{ padding:'10px 14px', display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:9, fontWeight:700, color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.6px' }}>
+                    End <span style={{ fontSize:8, fontWeight:400, opacity:.55, textTransform:'none', letterSpacing:0 }}>auto</span>
+                  </span>
+                  <input type="time" value={endTime}
+                    onChange={e => { setEndTime(e.target.value); setEndTouched(true); }}
+                    style={{ ...timeInputStyle }} />
+                </div>
               </div>
             </div>
           )}
@@ -430,17 +458,20 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
           {/* Recurrence */}
           <div style={fieldWrap}>
             <label style={labelStyle}>Repeat</label>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
               {RECURRENCE_OPTIONS.map(r => (
                 <button key={r.value} type="button" onClick={() => setRecurrence(r.value)} style={{
-                  padding:'7px 11px', borderRadius:10,
+                  padding:'10px 6px',
+                  borderRadius:12,
                   background: recurrence === r.value ? 'var(--pur-lt, rgba(124,106,240,.15))' : 'var(--glass-bg2, rgba(255,255,255,.04))',
                   border:`1.5px solid ${recurrence === r.value ? 'var(--purple)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
                   color: recurrence === r.value ? 'var(--purple)' : 'var(--mid)',
                   fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                  display:'flex', alignItems:'center', gap:5, transition:'all .14s',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:5,
+                  transition:'all .14s',
                 }}>
-                  <span>{r.icon}</span>{r.label}
+                  <span style={{ fontSize:17 }}>{r.icon}</span>
+                  <span>{r.label}</span>
                 </button>
               ))}
             </div>
@@ -674,6 +705,20 @@ const toggleThumb = (on: boolean): React.CSSProperties => ({
   width:21, height:21, background:'#fff', borderRadius:'50%',
   transition:'left .2s', boxShadow:'0 1px 4px rgba(0,0,0,.30)',
 });
+
+const timeInputStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  outline: 'none',
+  color: 'var(--dark)',
+  fontSize: 18,
+  fontWeight: 700,
+  fontFamily: 'inherit',
+  width: '100%',
+  padding: 0,
+  colorScheme: 'dark' as const,
+  letterSpacing: '-.3px',
+};
 
 const aiBtn: React.CSSProperties = {
   display:'flex', alignItems:'center', justifyContent:'center', gap:8,
