@@ -31,9 +31,10 @@ export function isToday(dateStr: string): boolean {
 }
 
 export const PRIORITY_COLORS: Record<string, string> = {
-  high: '#FF6B8A',
-  medium: '#FDCB6E',
-  low: '#00CEC9',
+  critical: '#FF3B30',
+  high:     '#FF6B8A',
+  medium:   '#FDCB6E',
+  low:      '#00CEC9',
 };
 
 export const TYPE_ICONS: Record<string, string> = {

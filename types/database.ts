@@ -46,11 +46,12 @@ export interface Database {
           title: string;
           description: string | null;
           type: 'task' | 'event' | 'reminder' | 'block';
-          priority: 'high' | 'medium' | 'low';
+          priority: 'high' | 'medium' | 'low' | 'critical';
           start_time: string;
           end_time: string | null;
           all_day: boolean;
           color: string | null;
+          location: string | null;
           is_completed: boolean;
           created_at: string;
           updated_at: string;
@@ -61,11 +62,12 @@ export interface Database {
           title: string;
           description?: string | null;
           type?: 'task' | 'event' | 'reminder' | 'block';
-          priority?: 'high' | 'medium' | 'low';
+          priority?: 'high' | 'medium' | 'low' | 'critical';
           start_time: string;
           end_time?: string | null;
           all_day?: boolean;
           color?: string | null;
+          location?: string | null;
           is_completed?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -74,11 +76,12 @@ export interface Database {
           title?: string;
           description?: string | null;
           type?: 'task' | 'event' | 'reminder' | 'block';
-          priority?: 'high' | 'medium' | 'low';
+          priority?: 'high' | 'medium' | 'low' | 'critical';
           start_time?: string;
           end_time?: string | null;
           all_day?: boolean;
           color?: string | null;
+          location?: string | null;
           is_completed?: boolean;
           updated_at?: string;
         };
@@ -113,7 +116,7 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: {
       schedule_type: 'task' | 'event' | 'reminder' | 'block';
-      priority_level: 'high' | 'medium' | 'low';
+      priority_level: 'high' | 'medium' | 'low' | 'critical';
     };
   };
 }
@@ -124,4 +127,4 @@ export type Schedule = Database['public']['Tables']['schedules']['Row'];
 export type AiAnalysis = Database['public']['Tables']['ai_analyses']['Row'];
 export type NewSchedule = Database['public']['Tables']['schedules']['Insert'];
 export type ScheduleType = 'task' | 'event' | 'reminder' | 'block';
-export type Priority = 'high' | 'medium' | 'low';
+export type Priority = 'high' | 'medium' | 'low' | 'critical';
