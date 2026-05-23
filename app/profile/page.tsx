@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { uploadAvatar } from '@/lib/avatar';
 import BottomNav from '@/components/layout/BottomNav';
 import { THEME_META, THEME_IDS, ThemeId, getSavedTheme, saveTheme, applyThemeToBody } from '@/lib/theme';
+import { COUNTRIES } from '@/lib/countries';
 
 const THEMES = THEME_IDS.map(id => ({ id, ...THEME_META[id] }));
 
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const [saving,      setSaving]      = useState(false);
 
   const [editName,    setEditName]    = useState('');
+  const [editCountry, setEditCountry] = useState('');
   const [editDesig,   setEditDesig]   = useState('');
   const [editAvatar,  setEditAvatar]  = useState<File | null>(null);
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
@@ -70,6 +72,7 @@ export default function ProfilePage() {
   function openEdit() {
     setEditName(profile?.full_name  ?? '');
     setEditDesig(profile?.designation ?? '');
+    setEditCountry(profile?.country_code ?? '');
     setPreviewUrl(null);
     setEditAvatar(null);
     setEditing(true);
@@ -111,7 +114,8 @@ export default function ProfilePage() {
         full_name:   editName.trim(),
         designation: editDesig.trim() || null,
         avatar_url:  avatarUrl,
-        updated_at:  new Date().toISOString(),
+        country_code: editCountry || null,
+          updated_at:  new Date().toISOString(),
       };
 
       const { error } = await supabase
@@ -244,6 +248,20 @@ export default function ProfilePage() {
                     ))}
                 </div>
               )}
+            </div>
+
+            {/* Country / Location */}
+            <div className="country-field">
+              <select
+                className="edit-input edit-country"
+                value={editCountry}
+                onChange={e => setEditCountry(e.target.value)}
+              >
+                <option value="">🌍 Select your country (for holidays)</option>
+                {COUNTRIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Save / Cancel */}
@@ -391,6 +409,15 @@ export default function ProfilePage() {
               <span className="info-val">{profile.designation}</span>
             </div>
           )}
+          {profile?.country_code && (() => {
+            const c = COUNTRIES.find(x => x.code === profile.country_code);
+            return c ? (
+              <div className="info-row">
+                <span className="info-key">Location</span>
+                <span className="info-val">{c.flag} {c.name}</span>
+              </div>
+            ) : null;
+          })()}
           <div className="info-row">
             <span className="info-key">Member since</span>
             <span className="info-val">
@@ -532,6 +559,16 @@ export default function ProfilePage() {
         .edit-input:focus { border-color: var(--purple); }
         .edit-name  { font-size: 16px; font-weight: 700; }
         .edit-desig { font-size: 14px; }
+        .country-field { width: 100%; }
+        .edit-country {
+          appearance: none; -webkit-appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B8FAD' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+          padding-right: 36px;
+          cursor: pointer;
+        }
+        .edit-country option { background: var(--surf); color: var(--dark); }
 
         /* Designation suggestion dropdown */
         .desig-wrap { position: relative; }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
+import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import type { ScheduleType, Priority } from '@/types/database';
 import BottomNav from '@/components/layout/BottomNav';
 
@@ -31,8 +32,39 @@ export default function AddSchedulePage() {
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime]     = useState('');
-  const [allDay, setAllDay]       = useState(false);
-  const [saving, setSaving]       = useState(false);
+  const [allDay, setAllDay]         = useState(false);
+
+  const [saving, setSaving]         = useState(false);
+  const [holidayWarning, setHolidayWarning] = useState<Holiday | null>(null);
+  const [countryCode, setCountryCode]       = useState('');
+  const [holidays, setHolidays]             = useState<Holiday[]>([]);
+
+  // Load user's country on mount
+  useEffect(() => {
+    async function loadCountry() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('country_code').eq('id', user.id).single();
+      setCountryCode(data?.country_code || '');
+    }
+    loadCountry();
+  }, []);
+
+  // Check holiday when date or country changes
+  useEffect(() => {
+    async function checkHoliday() {
+      if (!startDate || !countryCode) { setHolidayWarning(null); return; }
+      const year = parseInt(startDate.split('-')[0]);
+      let hols = holidays;
+      if (hols.length === 0 || (hols[0] && hols[0].countryCode?.toUpperCase() !== countryCode.toUpperCase())) {
+        hols = await getHolidays(year, countryCode);
+        setHolidays(hols);
+      }
+      const h = findHoliday(startDate, hols);
+      setHolidayWarning(h);
+    }
+    checkHoliday();
+  }, [startDate, countryCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -142,6 +174,17 @@ export default function AddSchedulePage() {
             required
           />
         </div>
+
+        {/* Holiday warning */}
+        {holidayWarning && (
+          <div className="holiday-warn">
+            <span className="hw-icon">🎌</span>
+            <div className="hw-text">
+              <div className="hw-title">{holidayWarning.localName} — Public Holiday</div>
+              <div className="hw-sub">You can still schedule. Just a heads-up!</div>
+            </div>
+          </div>
+        )}
 
         {/* All day toggle */}
         <div className="field toggle-row">

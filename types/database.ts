@@ -17,6 +17,7 @@ export interface Database {
           avatar_url: string | null;
           role_title: string | null;
           designation: string | null;
+          country_code: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -26,6 +27,7 @@ export interface Database {
           full_name?: string | null;
           avatar_url?: string | null;
           designation?: string | null;
+          country_code?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -33,6 +35,7 @@ export interface Database {
           full_name?: string | null;
           avatar_url?: string | null;
           designation?: string | null;
+          country_code?: string | null;
           updated_at?: string;
         };
       };
