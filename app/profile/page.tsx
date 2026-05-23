@@ -48,6 +48,8 @@ export default function ProfilePage() {
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
   const [showSugg,    setShowSugg]    = useState(false);
   const [emailVisible,setEmailVisible]= useState(false);
+  const [themeFlash,  setThemeFlash]  = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -115,7 +117,10 @@ export default function ProfilePage() {
 
   function handleApplyTheme(id: ThemeId) {
     setActiveTheme(id); saveTheme(id); applyThemeToBody(id);
-    toast.success(`Theme: ${THEME_META[id].name}`);
+    // Clear any existing flash timer before showing new one
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    setThemeFlash(THEME_META[id].name);
+    flashTimer.current = setTimeout(() => setThemeFlash(null), 1800);
   }
 
   async function handleSignOut() {
@@ -361,6 +366,56 @@ export default function ProfilePage() {
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
         <div style={{ height: 32 }} />
       </div>
+
+      {/* Subtle theme-applied chip — fades in/out, sits above nav */}
+      {themeFlash && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(var(--nav, 64px) + 16px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          pointerEvents: 'none',
+          animation: 'themeChipFade 1.8s ease forwards',
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '7px',
+            padding: '9px 18px',
+            background: 'var(--surf2)',
+            border: '1px solid var(--border2)',
+            borderRadius: '999px',
+            boxShadow: '0 4px 20px rgba(0,0,0,.25), 0 1px 4px rgba(0,0,0,.15)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            color: 'var(--dark)',
+            fontSize: '13px',
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            letterSpacing: '0.1px',
+            whiteSpace: 'nowrap',
+          }}>
+            <span style={{
+              width: 8, height: 8,
+              borderRadius: '50%',
+              background: 'var(--gradient)',
+              flexShrink: 0,
+              boxShadow: '0 0 6px var(--purple)',
+            }} />
+            {themeFlash}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes themeChipFade {
+          0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+          12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+          70%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+          100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+        }
+      `}</style>
 
       <BottomNav />
     </div>
