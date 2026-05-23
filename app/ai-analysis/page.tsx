@@ -237,52 +237,45 @@ export default function AIAnalysisPage() {
       <BottomNav />
 
       <style jsx>{`
-        .page { min-height: 100vh; background: #0B0D1A; display: flex; flex-direction: column; font-family: 'Sora', sans-serif; color: #fff; }
-        .pg-header { padding: 52px 20px 16px; display: flex; align-items: center; gap: 12px; background: #161829; border-bottom: 1px solid rgba(255,255,255,0.07); }
-        .pg-title { font-size: 22px; font-weight: 800; color: #fff; flex: 1; }
-        .beta-badge { padding: 4px 10px; background: rgba(124,106,240,0.18); color: #A78BFA; border-radius: 100px; font-size: 11px; font-weight: 700; }
-        .content { flex: 1; padding: 16px; overflow-y: auto; padding-bottom: 90px; display: flex; flex-direction: column; gap: 12px; }
-        .trigger-card { background: #161829; border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.07); }
-        .trigger-top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-        .ai-orb { width: 48px; height: 48px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; flex-shrink: 0; }
-        .trigger-title { font-size: 16px; font-weight: 700; color: #fff; }
-        .trigger-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 2px; }
-        .analyze-btn {
-          width: 100%; padding: 15px; font-size: 15px; font-weight: 700;
-          background: linear-gradient(135deg,#6C5CE7,#A78BFA); border: none; border-radius: 14px;
-          color: #fff; font-family: inherit; cursor: pointer;
-          box-shadow: 0 8px 24px rgba(108,92,231,0.4); transition: transform .15s;
+        .page { min-height:100vh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); }
+        .pg-header { padding:52px 20px 14px; background:var(--surf); border-bottom:1px solid var(--border); }
+        .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
+        .pg-sub { font-size:13px; color:var(--mid); margin-top:3px; }
+        .body { flex:1; overflow-y:auto; padding:16px 18px 100px; }
+        .score-ring-wrap { display:flex; flex-direction:column; align-items:center; padding:20px 0 16px; }
+        .score-ring { position:relative; display:flex; align-items:center; justify-content:center; }
+        .score-ring-svg { display:block; }
+        .score-num { position:absolute; font-size:28px; font-weight:800; color:var(--dark); }
+        .score-label { font-size:13px; color:var(--mid); margin-top:8px; font-weight:600; }
+        .analysis-card { background:var(--surf); border-radius:var(--rmd); padding:16px; margin-bottom:12px; border:1px solid var(--border); }
+        .card-title { font-size:13px; font-weight:700; color:var(--dark); margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+        .summary-text { font-size:14px; color:var(--dark); line-height:1.6; font-weight:400; }
+        .issue-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+        .issue-row:last-child { margin-bottom:0; }
+        .issue-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+        .issue-text { font-size:13px; color:var(--dark); line-height:1.5; flex:1; }
+        .sev-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .sev-bar-label { font-size:12px; color:var(--mid); width:80px; flex-shrink:0; font-weight:600; }
+        .sev-bar-track { flex:1; height:6px; background:var(--border2); border-radius:3px; overflow:hidden; }
+        .sev-bar-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+        .sev-pct { font-size:11px; color:var(--mid); width:32px; text-align:right; font-weight:700; }
+        .reco-item { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+        .reco-item:last-child { border-bottom:none; }
+        .reco-num { width:22px; height:22px; border-radius:50%; background:var(--pur-lt); color:var(--purple); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .reco-text { font-size:13px; color:var(--dark); line-height:1.5; flex:1; font-weight:500; }
+        .run-btn {
+          width:100%; padding:15px; margin-top:4px;
+          background:var(--gradient); border:none; border-radius:var(--rmd);
+          color:#fff; font-size:15px; font-weight:700;
+          font-family:inherit; cursor:pointer; transition:opacity .18s;
+          box-shadow:var(--card-sh);
         }
-        .analyze-btn:disabled { opacity: 0.6; }
-        .btn-inner { display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .spin-icon { display: inline-block; animation: spin .8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-state { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; gap: 14px; }
-        .ai-spinner { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg,#6C5CE7,#A78BFA); display: flex; align-items: center; justify-content: center; font-size: 32px; color: #fff; animation: spin 1.8s linear infinite; box-shadow: 0 10px 30px rgba(108,92,231,.35); }
-        .load-title { font-size: 17px; font-weight: 700; color: #fff; }
-        .load-sub { font-size: 13px; color: rgba(255,255,255,0.4); }
-        .stale-note { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; }
-        .score-card { background: #161829; border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; }
-        .score-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
-        .score-val { font-size: 42px; font-weight: 800; line-height: 1; }
-        .score-unit { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.25); }
-        .score-status { font-size: 14px; font-weight: 700; margin-top: 4px; }
-        .summary-card { background: rgba(124,106,240,0.12); border-radius: 16px; padding: 16px; border: 1px solid rgba(124,106,240,0.25); }
-        .ai-badge { background: #7C6AF0; color: #fff; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 700; display: inline-block; margin-bottom: 10px; }
-        .summary-text { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.65; font-style: italic; }
-        .section-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: .8px; margin-top: 4px; }
-        .issue-card { background: #161829; border-radius: 14px; padding: 14px 14px 14px 10px; display: flex; gap: 10px; border: 1px solid rgba(255,255,255,0.07); }
-        .issue-bar { width: 4px; border-radius: 4px; align-self: stretch; min-height: 30px; flex-shrink: 0; }
-        .issue-title { font-size: 14px; font-weight: 700; color: #fff; }
-        .issue-detail { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 3px; line-height: 1.5; }
-        .rec-card { background: #161829; border-radius: 14px; padding: 14px; display: flex; gap: 12px; border: 1px solid rgba(255,255,255,0.07); }
-        .rec-icon { font-size: 24px; flex-shrink: 0; }
-        .rec-title { font-size: 14px; font-weight: 700; color: #fff; }
-        .rec-detail { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 3px; line-height: 1.5; }
-        .empty-ai { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; gap: 12px; text-align: center; }
-        .empty-orb { width: 80px; height: 80px; background: rgba(124,106,240,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; color: #7C6AF0; border: 1px solid rgba(124,106,240,0.25); }
-        .empty-title { font-size: 18px; font-weight: 700; color: #fff; }
-        .empty-sub { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.6; max-width: 280px; }
+        .run-btn:active { opacity:.85; }
+        .run-btn:disabled { opacity:.5; cursor:not-allowed; }
+        .loading-wrap { display:flex; flex-direction:column; align-items:center; padding:48px 0; gap:14px; }
+        .spin { width:36px; height:36px; border:3px solid var(--border2); border-top-color:var(--purple); border-radius:50%; animation:spin .8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .loading-txt { font-size:14px; color:var(--mid); font-weight:600; }
       `}</style>
     </div>
   );

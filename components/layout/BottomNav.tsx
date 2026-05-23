@@ -52,39 +52,39 @@ export default function BottomNav() {
           position: fixed;
           bottom: 0; left: 0; right: 0;
           height: 72px;
-          background: rgba(15,14,23,.88);
+          background: var(--nav-bg, rgba(15,14,23,.88));
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(255,255,255,.06);
+          border-top: 1px solid var(--border, rgba(255,255,255,.06));
           display: flex;
           align-items: center;
           justify-content: space-around;
           padding: 0 6px 10px;
           z-index: 100;
-          box-shadow: 0 -1px 0 rgba(255,255,255,.06);
         }
         .ni {
           display: flex; flex-direction: column; align-items: center;
           gap: 4px; padding: 8px 12px;
           border-radius: 12px; transition: all .18s; min-width: 52px;
-          color: rgba(255,255,255,.25); text-decoration: none;
+          color: var(--lite, rgba(255,255,255,.25));
+          text-decoration: none;
         }
-        .ni:active { background: rgba(124,106,240,.12); }
-        .ni.on { color: #7C6AF0; }
+        .ni:active { background: var(--pur-lt, rgba(124,106,240,.12)); }
+        .ni.on { color: var(--purple); }
         .ni-lbl { font-size: 10px; font-weight: 600; letter-spacing: .3px; }
         .ni-add {
           width: 54px; height: 54px;
-          background: linear-gradient(135deg, #7B6CF6 0%, #5AABF0 100%);
+          background: var(--gradient);
           border-radius: 18px;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; font-size: 28px; color: #fff; line-height: 1; font-weight: 300;
-          box-shadow: 0 8px 24px rgba(139,124,246,.5), 0 0 0 1px rgba(255,255,255,.1);
+          box-shadow: 0 8px 24px rgba(0,0,0,.25);
           margin-top: -12px;
           transition: transform .15s, box-shadow .15s;
           text-decoration: none;
           flex-shrink: 0;
         }
-        .ni-add:active { transform: scale(.93); box-shadow: 0 4px 12px rgba(139,124,246,.4); }
+        .ni-add:active { transform: scale(.93); }
       `}</style>
     </nav>
   );

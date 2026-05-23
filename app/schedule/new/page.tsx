@@ -189,69 +189,51 @@ export default function AddSchedulePage() {
       <BottomNav />
 
       <style jsx>{`
-        .page { min-height: 100vh; background: #0B0D1A; font-family: 'Sora', sans-serif; color: #fff; }
-        .pg-header {
-          padding: 52px 20px 16px;
-          display: flex; align-items: center; justify-content: space-between;
-          background: #161829; border-bottom: 1px solid rgba(255,255,255,0.07);
+        .page { min-height:100vh; background:var(--bg); font-family:inherit; color:var(--dark); }
+        .pg-header { padding:52px 20px 14px; display:flex; align-items:center; gap:12px; background:var(--surf); border-bottom:1px solid var(--border); }
+        .back-btn { background:none; border:none; color:var(--mid); font-size:24px; cursor:pointer; padding:4px; line-height:1; }
+        .pg-title { font-size:20px; font-weight:800; color:var(--dark); }
+        .form-body { padding:18px 18px 100px; display:flex; flex-direction:column; gap:16px; }
+        .field { display:flex; flex-direction:column; gap:6px; }
+        .label { font-size:12px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.6px; }
+        input, textarea, select {
+          background:var(--surf); border:1.5px solid var(--border2);
+          border-radius:var(--rsm); padding:13px 14px;
+          font-size:15px; color:var(--dark); font-family:inherit;
+          transition:border-color .18s; width:100%; color-scheme:dark;
+          outline:none;
         }
-        .back-btn { background: rgba(255,255,255,0.07); border: none; font-size: 20px; color: #fff; cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: inherit; }
-        .pg-title { font-size: 18px; font-weight: 800; color: #fff; }
-        .form { padding: 20px 18px 100px; display: flex; flex-direction: column; gap: 18px; max-width: 480px; margin: 0 auto; }
-        .field { display: flex; flex-direction: column; gap: 7px; }
-        .flabel { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: .8px; }
-        .finput {
-          padding: 13px 14px;
-          background: #161829; border: 1.5px solid rgba(255,255,255,0.1);
-          border-radius: 12px; color: #fff; font-size: 15px;
-          font-family: inherit; outline: none; transition: border-color .18s; width: 100%;
-          color-scheme: dark;
-        }
-        .finput::placeholder { color: rgba(255,255,255,0.25); }
-        .finput:focus { border-color: #7C6AF0; }
-        .type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        input::placeholder, textarea::placeholder { color:var(--lite); }
+        input:focus, textarea:focus, select { border-color:var(--purple); }
+        select option { background:var(--surf2); color:var(--dark); }
+        textarea { resize:vertical; min-height:80px; }
+        .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .type-grid { display:flex; flex-wrap:wrap; gap:8px; }
         .type-btn {
-          background: #161829; border: 1.5px solid rgba(255,255,255,0.1);
-          border-radius: 12px; padding: 12px 4px;
-          display: flex; flex-direction: column; align-items: center; gap: 4px;
-          cursor: pointer; transition: all .18s; font-family: inherit;
+          padding:8px 14px; border-radius:var(--rxs);
+          border:1.5px solid var(--border2); background:var(--surf);
+          color:var(--mid); font-size:13px; font-weight:600;
+          cursor:pointer; font-family:inherit; transition:all .15s;
         }
-        .type-btn.on { background: rgba(124,106,240,0.18); border-color: #7C6AF0; }
-        .type-icon { font-size: 20px; }
-        .type-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); }
-        .type-btn.on .type-label { color: #A78BFA; }
-        .pri-row { display: flex; gap: 8px; }
+        .type-btn.on { background:var(--pur-lt); border-color:var(--purple); color:var(--purple); }
+        .pri-row { display:flex; gap:8px; }
         .pri-btn {
-          flex: 1; padding: 11px; border-radius: 10px;
-          border: 1.5px solid rgba(255,255,255,0.1); background: #161829;
-          text-align: center; cursor: pointer; font-size: 13px; font-weight: 700;
-          color: rgba(255,255,255,0.4); transition: all .18s; font-family: inherit;
+          flex:1; padding:10px 6px; border-radius:var(--rxs);
+          border:1.5px solid var(--border2); background:var(--surf);
+          font-size:12px; font-weight:700; cursor:pointer;
+          font-family:inherit; transition:all .15s; text-align:center;
         }
-        .toggle-row { flex-direction: row; align-items: center; justify-content: space-between; }
-        .toggle {
-          width: 48px; height: 28px; border-radius: 100px;
-          background: rgba(255,255,255,0.12); border: none; cursor: pointer;
-          position: relative; transition: background .2s;
-          display: flex; align-items: center; padding: 3px;
-        }
-        .toggle.on { background: #7C6AF0; }
-        .toggle-knob {
-          width: 22px; height: 22px; border-radius: 50%; background: #fff;
-          box-shadow: 0 1px 4px rgba(0,0,0,.3);
-          transition: transform .2s; display: block;
-        }
-        .toggle.on .toggle-knob { transform: translateX(20px); }
-        .time-row { display: flex; gap: 12px; }
+        .pri-btn.high.on   { background:var(--coral-lt); border-color:var(--coral); color:var(--coral); }
+        .pri-btn.medium.on { background:var(--amber-lt); border-color:var(--amber); color:var(--amber); }
+        .pri-btn.low.on    { background:var(--mint-lt); border-color:var(--mint); color:var(--mint); }
         .submit-btn {
-          width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
-          background: linear-gradient(135deg, #6C5CE7, #A78BFA);
-          border: none; border-radius: 14px; color: #fff;
-          font-family: inherit; cursor: pointer;
-          box-shadow: 0 8px 24px rgba(108,92,231,0.45);
-          transition: transform .15s; margin-top: 4px;
+          padding:16px; background:var(--gradient); border:none;
+          border-radius:var(--rmd); color:#fff; font-size:16px; font-weight:700;
+          font-family:inherit; cursor:pointer; transition:opacity .18s;
+          box-shadow:var(--card-sh);
         }
-        .submit-btn:active { transform: scale(0.97); }
-        .submit-btn:disabled { opacity: 0.6; }
+        .submit-btn:active { opacity:.85; }
+        .submit-btn:disabled { opacity:.5; cursor:not-allowed; }
       `}</style>
     </div>
   );
