@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -108,7 +108,7 @@ function startBeams(container: HTMLDivElement): () => void {
   };
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
@@ -360,5 +360,13 @@ export default function LoginPage() {
         .footer { text-align: center; font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 16px; }
       `}</style>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
