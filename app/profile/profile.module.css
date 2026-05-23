@@ -1,0 +1,242 @@
+.profWrap {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+  color: var(--dark);
+}
+
+/* Header */
+.profHdr {
+  background: var(--surf);
+  padding: 52px 22px 18px;
+  text-align: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.profAvWrap {
+  position: relative;
+  width: 82px; height: 82px;
+  margin: 0 auto 14px;
+}
+.profAv {
+  width: 82px; height: 82px;
+  background: var(--gradient);
+  border-radius: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 700; color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.profAvImg {
+  width: 82px; height: 82px;
+  border-radius: 24px; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  border: 2px solid var(--border);
+}
+.avImg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avEditBtn {
+  position: absolute; bottom: -6px; right: -6px;
+  width: 30px; height: 30px;
+  background: var(--purple); border: 2px solid var(--surf);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; cursor: pointer; padding: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.profName  { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
+.profDesig { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 2px; }
+.profEmailRow {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 3px;
+}
+.profEmail { font-size: 12px; color: var(--mid); }
+.eyeBtn {
+  background: none; border: none; padding: 3px;
+  color: var(--mid); cursor: pointer;
+  display: flex; align-items: center;
+  border-radius: 6px; line-height: 0;
+}
+.eyeBtn:hover { color: var(--dark); }
+.editProfileBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 7px 14px;
+  background: var(--surf2); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--mid);
+  font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.editProfileBtn:hover { border-color: var(--purple); color: var(--purple); }
+
+/* Stats */
+.profStats {
+  display: flex;
+  background: var(--surf2);
+  border-radius: 14px; overflow: hidden;
+  margin-top: 14px; border: 1px solid var(--border);
+}
+.ps { flex: 1; padding: 12px 6px; text-align: center; border-right: 1px solid var(--border); }
+.ps:last-child { border-right: none; }
+.psV {
+  font-size: 17px; font-weight: 700; color: var(--dark);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.psL { font-size: 10px; color: var(--mid); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+
+/* Edit fields */
+.editFields {
+  display: flex; flex-direction: column;
+  align-items: stretch; gap: 10px;
+  margin-top: 2px; text-align: left;
+}
+.editInput {
+  width: 100%; padding: 11px 14px;
+  background: var(--surf2); border: 1.5px solid var(--border);
+  border-radius: 12px; color: var(--dark);
+  font-size: 15px; font-family: inherit;
+  outline: none; box-sizing: border-box;
+  transition: border-color .15s;
+}
+.editInput::placeholder { color: var(--mid); }
+.editInput:focus { border-color: var(--purple); }
+.editName  { font-size: 16px !important; font-weight: 700 !important; }
+.editDesig { font-size: 14px !important; }
+.desigWrap { position: relative; }
+.desigSugg {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+.suggItem {
+  display: block; width: 100%; padding: 11px 14px;
+  text-align: left; background: transparent;
+  border: none; border-bottom: 1px solid var(--border);
+  color: var(--dark); font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.suggItem:last-child { border-bottom: none; }
+.suggItem:hover { background: var(--surf2); }
+.countryField { width: 100%; }
+.editCountry {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B8FAD' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px !important; cursor: pointer;
+}
+.editActions { display: flex; gap: 10px; margin-top: 4px; }
+.btnCancel {
+  flex: 1; padding: 12px;
+  background: var(--surf2); border: 1.5px solid var(--border);
+  border-radius: 12px; color: var(--mid);
+  font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.btnCancel:disabled { opacity: .5; }
+.btnSave {
+  flex: 2; padding: 12px;
+  background: var(--purple); border: none;
+  border-radius: 12px; color: #fff;
+  font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.btnSave:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Body */
+.profBody { flex: 1; overflow-y: auto; padding: 14px 18px 90px; }
+.sh { margin-bottom: 10px; margin-top: 16px; }
+.shT {
+  font-size: 12px; font-weight: 700; color: var(--mid);
+  text-transform: uppercase; letter-spacing: 1px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Theme grid — 2 columns */
+.themeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.thCard {
+  background: var(--surf);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 8px;
+  font-family: inherit; color: var(--dark);
+  transition: border-color .18s, background .18s;
+}
+.thCard:hover  { border-color: var(--purple); background: var(--surf2); }
+.thCardActive  { border-color: var(--purple) !important; box-shadow: 0 0 0 1px var(--purple); }
+.thPreview {
+  height: 36px; border-radius: 8px; overflow: hidden;
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+}
+.thPBg, .thPPri, .thPAcc { height: 100%; }
+.thName { font-size: 12px; font-weight: 800; color: var(--dark); }
+.thDesc { font-size: 10px; color: var(--mid); margin-top: 1px; }
+.thCardFoot { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+.thTag   { font-size: 9px; color: var(--mid); font-weight: 600; letter-spacing: .5px; }
+.thCheck { color: var(--purple); display: flex; align-items: center; }
+
+/* Achievements — 4 columns */
+.badgesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.badgeItem {
+  text-align: center; padding: 12px 4px;
+  background: var(--surf); border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.badgeIco { font-size: 20px; margin-bottom: 5px; }
+.badgeLbl { font-size: 9px; color: var(--mid); font-weight: 600; letter-spacing: .3px; }
+.badgeItem.badgeLit {
+  background: rgba(251,191,36,.1);
+  border-color: rgba(251,191,36,.2);
+}
+.badgeLit .badgeLbl { color: rgba(251,191,36,.9); }
+.badgeDim { opacity: .35; }
+
+/* Account card */
+.infoCard {
+  background: var(--surf); border-radius: 16px;
+  padding: 4px 16px; margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+.infoRow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.infoRow:last-child { border-bottom: none; }
+.infoKey { font-size: 14px; color: var(--mid); font-weight: 500; }
+.infoVal {
+  font-size: 13px; color: var(--dark); font-weight: 600;
+  text-align: right; max-width: 55%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.infoEmailRow {
+  display: flex; align-items: center; gap: 8px; max-width: 60%;
+}
+.infoEmailRow .infoVal { max-width: unset; }
+.eyeBtnSm {
+  background: none; border: none; padding: 2px;
+  color: var(--mid); cursor: pointer;
+  display: flex; align-items: center;
+  border-radius: 4px; line-height: 0; flex-shrink: 0;
+}
+.eyeBtnSm:hover { color: var(--dark); }
+
+/* Sign out */
+.signoutBtn {
+  width: 100%; padding: 15px;
+  background: rgba(255,107,138,.10);
+  border: 1.5px solid rgba(255,107,138,.35);
+  border-radius: 14px; color: #FF6B8A;
+  font-size: 15px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: opacity .18s;
+}
+.signoutBtn:active { opacity: .85; }
