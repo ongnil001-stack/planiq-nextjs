@@ -53,6 +53,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{var t=localStorage.getItem('planiq_theme');var valid=['focused','soft','dark','colorful','minimal','pixel','lady'];if(t&&valid.indexOf(t)>-1){document.documentElement.setAttribute('data-theme',t);document.body&&document.body.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','focused');}}catch(e){}})();`,
           }}
         />
+        {/* SW cache-bust v2: unregister stale service workers so updated CSS/JS loads fresh */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var V='2';if('serviceWorker' in navigator){try{var stored=localStorage.getItem('planiq_sw_v');if(stored!==V){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister();});localStorage.setItem('planiq_sw_v',V);if(regs.length>0){window.location.reload();}});}}catch(e){}}})();`,
+          }}
+        />
       </head>
       <body>
         <ThemeProvider />
