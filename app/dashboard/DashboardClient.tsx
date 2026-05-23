@@ -36,7 +36,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
     setCompletingId(schedule.id);
     const { error } = await supabase
       .from('schedules')
-      .update({ is_completed: !schedule.is_completed })
+      .update({ is_completed: !schedule.is_completed } as any)
       .eq('id', schedule.id);
     if (error) toast.error('Could not update task');
     else router.refresh();
