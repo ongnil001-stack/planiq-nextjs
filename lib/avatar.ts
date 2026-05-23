@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-const BUCKET = 'avatars';
+const BUCKET = 'Avatars';
 const MAX_SIZE_MB = 5;
 
 /**
