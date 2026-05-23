@@ -1,3 +1,5 @@
+import { getOfficialHolidays } from './holidays-official';
+
 export interface Holiday {
   date: string;        // "YYYY-MM-DD"
   localName: string;
@@ -39,6 +41,12 @@ function writeCache(year: number, countryCode: string, data: Holiday[]) {
 
 export async function getHolidays(year: number, countryCode: string): Promise<Holiday[]> {
   if (!countryCode) return [];
+
+  // Check official government-sourced overrides first (most accurate)
+  const official = getOfficialHolidays(year, countryCode);
+  if (official) return official;
+
+  // Fall back to Nager.Date API with cache
   const cached = readCache(year, countryCode);
   if (cached) return cached;
 
