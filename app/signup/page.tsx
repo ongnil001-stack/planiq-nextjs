@@ -70,14 +70,49 @@ export default function SignupPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+    if (!fullName.trim()) { toast.error('Please enter your full name.'); return; }
     if (password.length < 8) { toast.error('Password must be at least 8 characters.'); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName } },
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName.trim() } },
     });
-    if (error) { toast.error(error.message); setLoading(false); }
-    else { toast.success('Account created! Check your email to confirm.'); router.push('/dashboard'); router.refresh(); }
+
+    if (error) {
+      // Show a friendly error — never expose raw Supabase messages
+      const msg =
+        error.message.includes('already registered') || error.message.includes('already exists')
+          ? 'An account with this email already exists. Try signing in instead.'
+          : error.message.includes('password')
+          ? 'Password is too weak. Try a longer or more complex password.'
+          : error.message.includes('email')
+          ? 'Please enter a valid email address.'
+          : 'Something went wrong. Please try again.';
+      toast.error(msg);
+      setLoading(false);
+      return;
+    }
+
+    // Option B: email confirmation is OFF in Supabase.
+    // data.session is non-null → user is instantly logged in.
+    if (data.session) {
+      // Upsert profile row (in case trigger didn't fire)
+      await supabase.from('profiles').upsert({
+        id: data.session.user.id,
+        full_name: fullName.trim(),
+        email: email.toLowerCase().trim(),
+      }, { onConflict: 'id' });
+
+      toast.success(`Welcome to PlanIQ, ${fullName.split(' ')[0]}! 🎉`);
+      router.push('/dashboard');
+      router.refresh();
+    } else {
+      // This only happens if email confirmation is ON — guide them gently
+      toast.success('Account created! Check your email to confirm, then sign in.');
+      router.push('/login?verified=1');
+    }
   }
 
   useEffect(() => {

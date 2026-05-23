@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -110,18 +111,36 @@ function startBeams(container: HTMLDivElement): () => void {
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
+  const searchParams = useSearchParams();
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [showVerified, setShowVerified] = useState(false);
   const beamsRef = useRef<HTMLDivElement>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { toast.error(error.message); setLoading(false); }
-    else { toast.success('Welcome back!'); router.push('/dashboard'); router.refresh(); }
+    if (error) {
+      const msg =
+        error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
+          ? 'Incorrect email or password. Please try again.'
+          : error.message.includes('Email not confirmed')
+          ? 'Please confirm your email before signing in.'
+          : 'Sign in failed. Please try again.';
+      toast.error(msg);
+      setLoading(false);
+    } else {
+      toast.success('Welcome back!');
+      router.push('/dashboard');
+      router.refresh();
+    }
   }
+
+  useEffect(() => {
+    if (searchParams.get('verified') === '1') setShowVerified(true);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!beamsRef.current) return;
@@ -150,9 +169,21 @@ export default function LoginPage() {
 
       {/* Glass bottom-sheet card */}
       <div className="sign-card">
+
+        {/* Email verified banner — shown when redirected from signup confirmation */}
+        {showVerified && (
+          <div className="verified-banner">
+            <span className="verified-icon">✓</span>
+            <div>
+              <div className="verified-title">Email verified!</div>
+              <div className="verified-sub">You can now sign in to your account.</div>
+            </div>
+          </div>
+        )}
+
         <div className="sign-card-hd">
-          <div className="sign-card-title">Welcome back</div>
-          <div className="sign-card-sub">Enter your details to access your schedule</div>
+          <div className="sign-card-title">{showVerified ? 'Sign in to continue' : 'Welcome back'}</div>
+          <div className="sign-card-sub">{showVerified ? 'Your account is ready — enter your password below' : 'Enter your details to access your schedule'}</div>
         </div>
 
         <form onSubmit={handleLogin}>

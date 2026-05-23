@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
+import WorkloadSheet from '@/components/WorkloadSheet';
 
 interface Props {
   profile: Profile | null;
@@ -32,6 +33,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
   const [, setCompletingId] = useState<string | null>(null);
   const [todayExpanded, setTodayExpanded] = useState(false);
   const [perfExpanded, setPerfExpanded] = useState(false);
+  const [workloadOpen, setWorkloadOpen] = useState(false);
 
   const completedToday = todaySchedules.filter((s) => s.is_completed).length;
   const totalToday = todaySchedules.length;
@@ -308,10 +310,11 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         {/* ═══ WIDGET 4 · Workload Balance Graph ═══ */}
         <div className="widget">
-          <div className="wl-card">
+          <div className="wl-card" onClick={() => setWorkloadOpen(true)} style={{ cursor:'pointer' }}>
             <div className="wl-hdr">
               <div>
                 <div className="wl-title">Workload Balance</div>
+                <div className="wl-tap-hint">Tap for full breakdown →</div>
                 <div className="wl-subtitle">Week of {weekRange}</div>
               </div>
               <div className="wl-legend">
@@ -350,6 +353,16 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         <div style={{ height: 24 }} />
       </div>
+
+      <WorkloadSheet
+        open={workloadOpen}
+        onClose={() => setWorkloadOpen(false)}
+        weekDays={weekDays}
+        scheduleDayMap={scheduleDayMap}
+        weekWorkload={WEEK_WORKLOAD}
+        weekRange={weekRange}
+        latestAnalysisSummary={latestAnalysis?.summary}
+      />
 
       <BottomNav />
 
@@ -551,7 +564,10 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         .wl-card {
           background: var(--surf); border-radius: var(--rmd); padding: 15px 16px;
           box-shadow: var(--card-sh2); border: 1.5px solid var(--border);
+          transition: background .18s, border-color .18s;
         }
+        .wl-card:active { background: var(--surf2); border-color: var(--purple); }
+        .wl-tap-hint { font-size: 11px; color: var(--purple); font-weight: 600; margin-top: 1px; opacity: .8; }
         .wl-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
         .wl-title { font-size: 14px; font-weight: 800; color: var(--dark); }
         .wl-subtitle { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 2px; }
