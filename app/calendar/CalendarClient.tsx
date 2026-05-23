@@ -185,19 +185,19 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .page { min-height:100vh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); }
 
         /* Header */
-        .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-start; background:var(--surf); border-bottom:1px solid var(--border); }
+        .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-start; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .country-badge { font-size:11px; color:var(--purple); font-weight:600; margin-top:2px; }
         .add-btn { padding:8px 16px; background:var(--gradient); border-radius:10px; color:#fff; font-size:13px; font-weight:700; text-decoration:none; white-space:nowrap; margin-top:4px; }
 
         /* Month nav */
-        .month-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 8px; background:var(--surf); }
+        .month-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 8px; background:var(--glass-bg2, var(--surf)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .month-label { font-size:17px; font-weight:700; color:var(--dark); }
         .nav-arrow { background:none; border:none; color:var(--mid); font-size:22px; cursor:pointer; padding:4px 10px; line-height:1; border-radius:8px; }
         .nav-arrow:active { background:var(--surf2); }
 
         /* Grid */
-        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--surf); }
+        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2, var(--surf)); }
         .header-row { padding-top:8px; }
         .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:4px 0; }
 
@@ -242,7 +242,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         /* Events */
         .event-list { display:flex; flex-direction:column; gap:8px; }
-        .event-item { background:var(--surf); border-radius:var(--rmd); padding:14px 14px 14px 10px; display:flex; align-items:center; gap:10px; border:1px solid var(--border); }
+        .event-item { background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-radius:var(--rmd); padding:14px 14px 14px 10px; display:flex; align-items:center; gap:10px; border:1px solid var(--glass-border, var(--border)); box-shadow:var(--glass-sh2, none); }
         .event-item.done { opacity:.45; }
         .event-bar  { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; }
         .event-body { flex:1; }

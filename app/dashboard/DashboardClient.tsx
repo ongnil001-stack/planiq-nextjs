@@ -449,11 +449,14 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* ── Today Card ── */
         .today-card {
-          background: var(--surf); border-radius: var(--rmd); padding: 15px 16px 12px;
-          box-shadow: var(--card-sh2); cursor: pointer;
-          border: 1.5px solid var(--border); transition: background .18s;
+          background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px 12px;
+          box-shadow: var(--glass-sh2, var(--card-sh2)); cursor: pointer;
+          border: 1px solid var(--glass-border, var(--border));
+          backdrop-filter: var(--glass-blur, blur(18px));
+          -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+          transition: background .18s, border-color .18s;
         }
-        .today-card:active { background: var(--surf2); }
+        .today-card:active { background: var(--glass-bg2, var(--surf2)); }
         .tc-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 11px; }
         .tc-date-lbl { font-size: 20px; font-weight: 900; color: var(--dark); letter-spacing: -.5px; line-height: 1; }
         .tc-day-lbl { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 3px; }
@@ -542,11 +545,13 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* ── Performance Card ── */
         .perf-card {
-          background: var(--surf); border-radius: var(--rmd); padding: 14px 16px;
-          box-shadow: var(--card-sh2); border: 1.5px solid var(--border);
-          cursor: pointer; transition: background .18s;
+          background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px;
+          box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border));
+          backdrop-filter: var(--glass-blur, blur(18px));
+          -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+          cursor: pointer; transition: background .18s, border-color .18s;
         }
-        .perf-card:active { background: var(--surf2); }
+        .perf-card:active { background: var(--glass-bg2, var(--surf2)); }
         .pc-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .pc-left { display: flex; align-items: center; gap: 10px; flex: 1; }
         .pc-ring { width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; }
@@ -567,11 +572,13 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* ── Weekly Widget ── */
         .wk-widget {
-          display: block; background: var(--surf); border-radius: var(--rmd); padding: 14px 16px;
-          box-shadow: var(--card-sh2); border: 1.5px solid var(--border);
-          cursor: pointer; transition: background .18s;
+          display: block; background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px;
+          box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border));
+          backdrop-filter: var(--glass-blur, blur(18px));
+          -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+          cursor: pointer; transition: background .18s, border-color .18s;
         }
-        .wk-widget:active { background: var(--surf2); }
+        .wk-widget:active { background: var(--glass-bg2, var(--surf2)); }
         .wk-w-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
         .wk-w-ttl { font-size: 14px; font-weight: 800; color: var(--dark); }
         .wk-w-meta { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 2px; }
@@ -595,11 +602,13 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* ── Workload Graph ── */
         .wl-card {
-          background: var(--surf); border-radius: var(--rmd); padding: 15px 16px;
-          box-shadow: var(--card-sh2); border: 1.5px solid var(--border);
+          background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px;
+          box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border));
+          backdrop-filter: var(--glass-blur, blur(18px));
+          -webkit-backdrop-filter: var(--glass-blur, blur(18px));
           transition: background .18s, border-color .18s;
         }
-        .wl-card:active { background: var(--surf2); border-color: var(--purple); }
+        .wl-card:active { background: var(--glass-bg2, var(--surf2)); border-color: var(--purple); }
         .wl-tap-hint { font-size: 11px; color: var(--purple); font-weight: 600; margin-top: 1px; opacity: .8; }
         .wl-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
         .wl-title { font-size: 14px; font-weight: 800; color: var(--dark); }

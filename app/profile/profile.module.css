@@ -9,11 +9,14 @@
 
 /* ── Header ── */
 .profHdr {
-  background: var(--surf);
+  background: var(--glass-bg, var(--surf));
+  backdrop-filter: var(--glass-blur, blur(18px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
   padding: 52px 22px 20px;
   text-align: center;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-border, var(--border));
+  box-shadow: 0 4px 24px rgba(0,0,0,.10);
 }
 .profAvWrap {
   position: relative;
@@ -97,9 +100,12 @@
 /* Stats */
 .profStats {
   display: flex;
-  background: var(--surf2);
+  background: var(--glass-bg2, var(--surf2));
+  backdrop-filter: var(--glass-blur, blur(18px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
   border-radius: 14px; overflow: hidden;
-  margin-top: 18px; border: 1px solid var(--border);
+  margin-top: 18px; border: 1px solid var(--glass-border, var(--border));
+  box-shadow: var(--glass-sh2, none);
 }
 .ps { flex: 1; padding: 12px 6px; text-align: center; border-right: 1px solid var(--border); }
 .ps:last-child { border-right: none; }
@@ -183,8 +189,8 @@
   margin-bottom: 20px;
 }
 .thCard {
-  background: var(--surf);
-  border: 1.5px solid var(--border);
+  background: var(--glass-bg, var(--surf));
+  border: 1px solid var(--glass-border, var(--border));
   border-radius: 14px;
   padding: 12px;
   cursor: pointer;
@@ -196,11 +202,14 @@
   box-sizing: border-box;
   font-family: inherit;
   color: var(--dark);
+  backdrop-filter: var(--glass-blur, blur(18px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+  box-shadow: var(--glass-sh2, none);
   transition: border-color .18s, background .18s;
   user-select: none;
 }
-.thCard:hover  { border-color: var(--purple); background: var(--surf2); }
-.thCardActive  { border-color: var(--purple) !important; box-shadow: 0 0 0 1px var(--purple); }
+.thCard:hover  { border-color: var(--glass-border2, var(--purple)); background: var(--glass-bg2, var(--surf2)); }
+.thCardActive  { border-color: var(--purple) !important; box-shadow: 0 0 0 1px var(--purple), var(--glass-sh2, none); }
 .thPreview {
   height: 36px; border-radius: 8px; overflow: hidden;
   display: grid; grid-template-columns: 2fr 1fr 1fr;
@@ -222,9 +231,12 @@
 .badgeItem {
   text-align: center;
   padding: 12px 4px;
-  background: var(--surf);
+  background: var(--glass-bg, var(--surf));
+  backdrop-filter: var(--glass-blur, blur(18px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border, var(--border));
+  box-shadow: var(--glass-sh2, none);
   display: block;
   box-sizing: border-box;
 }
@@ -239,9 +251,12 @@
 
 /* Account card */
 .infoCard {
-  background: var(--surf); border-radius: 16px;
+  background: var(--glass-bg, var(--surf)); border-radius: 16px;
   padding: 4px 16px; margin-bottom: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border, var(--border));
+  backdrop-filter: var(--glass-blur, blur(18px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+  box-shadow: var(--glass-sh2, none);
 }
 .infoRow {
   display: flex; justify-content: space-between; align-items: center;
@@ -301,10 +316,12 @@
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 1001;
-  background: var(--surf);
-  border-top: 1px solid var(--border2);
+  background: var(--glass-bg, var(--surf));
+  backdrop-filter: var(--glass-blur, blur(20px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(20px));
+  border-top: 1px solid var(--glass-border2, var(--border2));
   border-radius: 24px 24px 0 0;
-  box-shadow: 0 -8px 48px rgba(0,0,0,.35);
+  box-shadow: 0 -8px 48px rgba(0,0,0,.35), 0 -1px 0 var(--glass-border, rgba(255,255,255,.08));
   max-height: 92vh;
   display: flex;
   flex-direction: column;

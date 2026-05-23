@@ -238,7 +238,7 @@ export default function AIAnalysisPage() {
 
       <style jsx>{`
         .page { min-height:100vh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); }
-        .pg-header { padding:52px 20px 14px; background:var(--surf); border-bottom:1px solid var(--border); }
+        .pg-header { padding:52px 20px 14px; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .pg-sub { font-size:13px; color:var(--mid); margin-top:3px; }
         .body { flex:1; overflow-y:auto; padding:16px 18px 100px; }
@@ -247,7 +247,7 @@ export default function AIAnalysisPage() {
         .score-ring-svg { display:block; }
         .score-num { position:absolute; font-size:28px; font-weight:800; color:var(--dark); }
         .score-label { font-size:13px; color:var(--mid); margin-top:8px; font-weight:600; }
-        .analysis-card { background:var(--surf); border-radius:var(--rmd); padding:16px; margin-bottom:12px; border:1px solid var(--border); }
+        .analysis-card { background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-radius:var(--rmd); padding:16px; margin-bottom:12px; border:1px solid var(--glass-border, var(--border)); box-shadow:var(--glass-sh2, none); }
         .card-title { font-size:13px; font-weight:700; color:var(--dark); margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
         .summary-text { font-size:14px; color:var(--dark); line-height:1.6; font-weight:400; }
         .issue-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }

@@ -52,15 +52,16 @@ export default function BottomNav() {
           position: fixed;
           bottom: 0; left: 0; right: 0;
           height: 72px;
-          background: var(--nav-bg, rgba(15,14,23,.88));
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid var(--border, rgba(255,255,255,.06));
+          background: var(--nav-glass, var(--nav-bg, rgba(15,14,23,.72)));
+          backdrop-filter: var(--glass-blur, blur(20px));
+          -webkit-backdrop-filter: var(--glass-blur, blur(20px));
+          border-top: 1px solid var(--glass-border, rgba(255,255,255,.08));
           display: flex;
           align-items: center;
           justify-content: space-around;
           padding: 0 6px 10px;
           z-index: 100;
+          box-shadow: 0 -1px 0 var(--glass-border, rgba(255,255,255,.06)), 0 -8px 32px rgba(0,0,0,.18);
         }
         .ni {
           display: flex; flex-direction: column; align-items: center;

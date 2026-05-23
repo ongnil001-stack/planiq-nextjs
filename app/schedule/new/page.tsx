@@ -233,14 +233,15 @@ export default function AddSchedulePage() {
 
       <style jsx>{`
         .page { min-height:100vh; background:var(--bg); font-family:inherit; color:var(--dark); }
-        .pg-header { padding:52px 20px 14px; display:flex; align-items:center; gap:12px; background:var(--surf); border-bottom:1px solid var(--border); }
+        .pg-header { padding:52px 20px 14px; display:flex; align-items:center; gap:12px; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .back-btn { background:none; border:none; color:var(--mid); font-size:24px; cursor:pointer; padding:4px; line-height:1; }
         .pg-title { font-size:20px; font-weight:800; color:var(--dark); }
         .form-body { padding:18px 18px 100px; display:flex; flex-direction:column; gap:16px; }
         .field { display:flex; flex-direction:column; gap:6px; }
         .label { font-size:12px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.6px; }
         input, textarea, select {
-          background:var(--surf); border:1.5px solid var(--border2);
+          background:var(--glass-bg2, var(--surf)); border:1.5px solid var(--glass-border2, var(--border2));
+          backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
           border-radius:var(--rsm); padding:13px 14px;
           font-size:15px; color:var(--dark); font-family:inherit;
           transition:border-color .18s; width:100%; color-scheme:dark;

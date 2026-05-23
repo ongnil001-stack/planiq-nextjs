@@ -53,6 +53,16 @@
   --btn-bg:   var(--gradient);
   --fab-bg:   var(--gradient);
   --nav-bg:   rgba(8,14,26,0.97);
+
+  /* ── Glassmorphism tokens ── */
+  --glass-bg:      rgba(14, 22, 40, 0.55);
+  --glass-bg2:     rgba(21, 32, 54, 0.45);
+  --glass-border:  rgba(0, 198, 255, 0.14);
+  --glass-border2: rgba(0, 198, 255, 0.24);
+  --glass-blur:    blur(18px);
+  --glass-sh:      0 8px 32px rgba(0,0,0,.40), 0 1.5px 0 rgba(0,198,255,.10) inset;
+  --glass-sh2:     0 4px 16px rgba(0,0,0,.28), 0 1px 0 rgba(0,198,255,.08) inset;
+  --nav-glass:     rgba(8,14,26,0.70);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -72,9 +82,15 @@ body[data-theme="focused"] {
   --green:#00E5A0; --green-lt:rgba(0,229,160,.15);
   --dark:#D6F0FF; --mid:#6A90B8; --lite:#2A4060;
   --border:rgba(0,198,255,.10); --border2:rgba(0,198,255,.20);
-  --card-sh:0 4px 28px rgba(0,0,0,.45); --card-sh2:0 2px 14px rgba(0,0,0,.32);
-  --nav-bg:rgba(8,14,26,0.97);
+  --card-sh:0 8px 32px rgba(0,0,0,.45); --card-sh2:0 4px 16px rgba(0,0,0,.30);
+  --nav-bg:rgba(8,14,26,0.70);
   --accent:var(--purple);
+  --glass-bg:rgba(14,22,40,0.52); --glass-bg2:rgba(21,32,54,0.42);
+  --glass-border:rgba(0,198,255,0.14); --glass-border2:rgba(0,198,255,0.24);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.40),0 1px 0 rgba(0,198,255,.12) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.28),0 1px 0 rgba(0,198,255,.08) inset;
+  --nav-glass:rgba(8,14,26,0.68);
   color-scheme: dark;
 }
 
@@ -95,9 +111,15 @@ body[data-theme="dark"] {
   --green:#22DD88; --green-lt:rgba(34,221,136,.15);
   --dark:#E4E0FF; --mid:#5A5880; --lite:#282640;
   --border:rgba(255,255,255,.06); --border2:rgba(155,139,255,.15);
-  --card-sh:0 4px 28px rgba(0,0,0,.60); --card-sh2:0 2px 12px rgba(0,0,0,.45);
-  --nav-bg:rgba(5,5,15,0.98);
+  --card-sh:0 8px 32px rgba(0,0,0,.60); --card-sh2:0 4px 16px rgba(0,0,0,.45);
+  --nav-bg:rgba(5,5,15,0.72);
   --accent:var(--purple);
+  --glass-bg:rgba(10,10,24,0.55); --glass-bg2:rgba(16,16,31,0.45);
+  --glass-border:rgba(155,139,255,0.12); --glass-border2:rgba(155,139,255,0.22);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.55),0 1px 0 rgba(155,139,255,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.40),0 1px 0 rgba(155,139,255,.07) inset;
+  --nav-glass:rgba(5,5,15,0.70);
   color-scheme: dark;
 }
 
@@ -118,9 +140,15 @@ body[data-theme="soft"] {
   --green:#008A60; --green-lt:rgba(0,138,96,.10);
   --dark:#12106A; --mid:#4840A0; --lite:#9090CC;
   --border:rgba(74,64,212,.12); --border2:rgba(74,64,212,.22);
-  --card-sh:0 4px 24px rgba(74,64,212,.12); --card-sh2:0 2px 12px rgba(74,64,212,.08);
-  --nav-bg:rgba(244,246,251,0.97);
+  --card-sh:0 8px 28px rgba(74,64,212,.14); --card-sh2:0 4px 14px rgba(74,64,212,.09);
+  --nav-bg:rgba(244,246,251,0.72);
   --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(240,242,252,0.52);
+  --glass-border:rgba(74,64,212,0.14); --glass-border2:rgba(74,64,212,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(74,64,212,.14),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(74,64,212,.09),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(244,246,251,0.70);
   color-scheme: light;
 }
 
@@ -141,9 +169,15 @@ body[data-theme="colorful"] {
   --green:#00A060; --green-lt:rgba(0,160,96,.10);
   --dark:#1A0A08; --mid:#6A3828; --lite:#C09080;
   --border:rgba(255,69,96,.12); --border2:rgba(255,69,96,.22);
-  --card-sh:0 4px 24px rgba(255,69,96,.10); --card-sh2:0 2px 12px rgba(255,69,96,.07);
-  --nav-bg:rgba(255,250,247,0.97);
+  --card-sh:0 8px 28px rgba(255,69,96,.12); --card-sh2:0 4px 14px rgba(255,69,96,.08);
+  --nav-bg:rgba(255,250,247,0.72);
   --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(255,246,240,0.52);
+  --glass-border:rgba(255,69,96,0.14); --glass-border2:rgba(255,69,96,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(255,69,96,.12),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(255,69,96,.08),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(255,250,247,0.70);
   color-scheme: light;
 }
 
@@ -164,9 +198,16 @@ body[data-theme="minimal"] {
   --green:#2A6840; --green-lt:rgba(42,104,64,.08);
   --dark:#0A0A12; --mid:#505060; --lite:#A8A8B8;
   --border:#E4E2D8; --border2:rgba(28,28,40,.16);
-  --card-sh:0 2px 16px rgba(0,0,0,.08); --card-sh2:0 1px 8px rgba(0,0,0,.05);
-  --nav-bg:rgba(250,250,247,0.98);
+  --card-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(184,150,46,.10) inset;
+  --card-sh2:0 2px 10px rgba(0,0,0,.05);
+  --nav-bg:rgba(250,250,247,0.75);
   --accent:#B8962E;
+  --glass-bg:rgba(255,255,255,0.68); --glass-bg2:rgba(244,243,238,0.56);
+  --glass-border:rgba(184,150,46,0.16); --glass-border2:rgba(184,150,46,0.28);
+  --glass-blur:blur(16px);
+  --glass-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(255,255,255,.90) inset,0 -1px 0 rgba(184,150,46,.08) inset;
+  --glass-sh2:0 2px 10px rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.80) inset;
+  --nav-glass:rgba(250,250,247,0.72);
   color-scheme: light;
 }
 
@@ -187,11 +228,17 @@ body[data-theme="pixel"] {
   --green:#00E878; --green-lt:rgba(0,232,120,.15);
   --dark:#C8F0D0; --mid:#60A070; --lite:#2A4030;
   --border:rgba(0,232,120,.20); --border2:rgba(0,232,120,.38);
-  --card-sh:0 0 0 1px rgba(0,232,120,.25),0 4px 16px rgba(0,0,0,.40);
-  --card-sh2:0 0 0 1px rgba(0,232,120,.18);
+  --card-sh:0 0 0 1px rgba(0,232,120,.28),0 8px 24px rgba(0,0,0,.45);
+  --card-sh2:0 0 0 1px rgba(0,232,120,.18),0 4px 12px rgba(0,0,0,.30);
   --r:4px; --rmd:4px; --rsm:4px; --rxs:2px;
-  --nav-bg:rgba(14,26,20,0.98);
+  --nav-bg:rgba(14,26,20,0.72);
   --accent:var(--purple);
+  --glass-bg:rgba(22,34,16,0.55); --glass-bg2:rgba(30,46,24,0.45);
+  --glass-border:rgba(0,232,120,0.22); --glass-border2:rgba(0,232,120,0.38);
+  --glass-blur:blur(16px);
+  --glass-sh:0 0 0 1px rgba(0,232,120,.28),0 8px 24px rgba(0,0,0,.45),0 1px 0 rgba(0,232,120,.12) inset;
+  --glass-sh2:0 0 0 1px rgba(0,232,120,.18),0 4px 12px rgba(0,0,0,.30);
+  --nav-glass:rgba(14,26,20,0.70);
   font-family:'Courier New',Courier,monospace;
   color-scheme: dark;
 }
@@ -213,9 +260,15 @@ body[data-theme="lady"] {
   --green:#4A8858; --green-lt:rgba(74,136,88,.10);
   --dark:#280818; --mid:#784860; --lite:#C8A0B8;
   --border:#EDD8E4; --border2:rgba(160,48,106,.20);
-  --card-sh:0 4px 24px rgba(160,48,106,.10); --card-sh2:0 2px 12px rgba(160,48,106,.07);
-  --nav-bg:rgba(253,247,249,0.97);
+  --card-sh:0 8px 28px rgba(160,48,106,.12); --card-sh2:0 4px 14px rgba(160,48,106,.08);
+  --nav-bg:rgba(253,247,249,0.72);
   --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(248,238,243,0.52);
+  --glass-border:rgba(160,48,106,0.14); --glass-border2:rgba(160,48,106,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(160,48,106,.12),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(160,48,106,.08),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(253,247,249,0.70);
   color-scheme: light;
 }
 
@@ -251,6 +304,67 @@ body[data-theme="pixel"] {
   outline: 2px solid var(--purple);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLASSMORPHISM UTILITIES
+   Apply .glass or .glass-card to any element
+══════════════════════════════════════════════════════════ */
+
+/* Primary glass panel */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-sh);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Secondary / nested glass panel */
+.glass2 {
+  background: var(--glass-bg2);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-sh2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass card — rounded, use on dashboard cards, info panels */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border2);
+  border-radius: var(--rmd);
+  box-shadow: var(--glass-sh2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass nav bar */
+.glass-nav {
+  background: var(--nav-glass, var(--nav-bg));
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass header */
+.glass-header {
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass input */
+.glass-input {
+  background: var(--glass-bg2);
+  border: 1.5px solid var(--glass-border2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.glass-input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px var(--pur-lt);
 }
 
 /* ══════════════════════════════════════════════════════════
