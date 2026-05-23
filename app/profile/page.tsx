@@ -367,7 +367,7 @@ export default function ProfilePage() {
         <div style={{ height: 32 }} />
       </div>
 
-      {/* Subtle theme-applied chip — fades in/out, sits above nav */}
+      {/* Digital theme chip — pixel dissolve in/out */}
       {themeFlash && (
         <div style={{
           position: 'fixed',
@@ -376,44 +376,74 @@ export default function ProfilePage() {
           transform: 'translateX(-50%)',
           zIndex: 9999,
           pointerEvents: 'none',
-          animation: 'themeChipFade 1.8s ease forwards',
+          animation: 'digitalChip 2s steps(1, end) forwards',
         }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '7px',
-            padding: '9px 18px',
+            gap: '8px',
+            padding: '8px 16px 8px 12px',
             background: 'var(--surf2)',
             border: '1px solid var(--border2)',
-            borderRadius: '999px',
-            boxShadow: '0 4px 20px rgba(0,0,0,.25), 0 1px 4px rgba(0,0,0,.15)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: '10px',
+            boxShadow: '0 0 0 1px var(--purple), 0 6px 24px rgba(0,0,0,.30)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             color: 'var(--dark)',
-            fontSize: '13px',
-            fontWeight: 600,
-            fontFamily: 'inherit',
-            letterSpacing: '0.1px',
+            fontSize: '12px',
+            fontWeight: 700,
+            fontFamily: '"Courier New", Courier, monospace',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
             whiteSpace: 'nowrap',
+            animation: 'digitalText 2s steps(1, end) forwards',
           }}>
+            {/* Blinking cursor dot */}
             <span style={{
-              width: 8, height: 8,
-              borderRadius: '50%',
-              background: 'var(--gradient)',
+              width: 7, height: 7,
+              borderRadius: '2px',
+              background: 'var(--purple)',
               flexShrink: 0,
-              boxShadow: '0 0 6px var(--purple)',
+              animation: 'cursorBlink 0.35s steps(1) infinite',
+              boxShadow: '0 0 8px var(--purple)',
             }} />
-            {themeFlash}
+            <span style={{ animation: 'digitalText 2s steps(1,end) forwards' }}>
+              {themeFlash}
+            </span>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes themeChipFade {
-          0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
-          12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
-          70%  { opacity: 1; transform: translateX(-50%) translateY(0); }
-          100% { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+        /* Outer wrap: dissolves in via opacity steps, then dissolves out */
+        @keyframes digitalChip {
+          0%   { opacity: 0; filter: blur(4px) brightness(2); }
+          5%   { opacity: 0.4; filter: blur(2px) brightness(1.6); }
+          10%  { opacity: 0.7; filter: blur(1px) brightness(1.3); }
+          15%  { opacity: 1;   filter: blur(0)   brightness(1); }
+          70%  { opacity: 1;   filter: blur(0)   brightness(1); }
+          80%  { opacity: 0.7; filter: blur(1px) brightness(1.3); }
+          90%  { opacity: 0.4; filter: blur(2px) brightness(1.6); }
+          95%  { opacity: 0.1; filter: blur(4px) brightness(2); }
+          100% { opacity: 0;   filter: blur(6px) brightness(3); }
+        }
+
+        /* Text: types in character by character feel via clip-path steps */
+        @keyframes digitalText {
+          0%   { clip-path: inset(0 100% 0 0); }
+          15%  { clip-path: inset(0 60% 0 0); }
+          25%  { clip-path: inset(0 30% 0 0); }
+          35%  { clip-path: inset(0 0% 0 0); }
+          70%  { clip-path: inset(0 0% 0 0); }
+          80%  { clip-path: inset(0 30% 0 0); }
+          90%  { clip-path: inset(0 70% 0 0); }
+          100% { clip-path: inset(0 100% 0 0); }
+        }
+
+        /* Cursor blink */
+        @keyframes cursorBlink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
         }
       `}</style>
 
