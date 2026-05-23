@@ -328,42 +328,110 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         {/* ═══ WIDGET 4 · Workload Balance Graph ═══ */}
         <div className="widget">
           <div className="wl-card" onClick={() => setWorkloadOpen(true)} style={{ cursor:'pointer' }}>
-            <div className="wl-hdr">
+
+            {/* Title row */}
+            <div className="wl-title-row">
               <div>
                 <div className="wl-title">Workload Balance</div>
-                <div className="wl-tap-hint">Tap for full breakdown →</div>
                 <div className="wl-subtitle">Week of {weekRange}</div>
               </div>
-              <div className="wl-legend">
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.ok   }}/><span>Light</span></div>
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.mid  }}/><span>OK</span></div>
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.full }}/><span>Full</span></div>
+              <div className="wl-tap-pill">Full view →</div>
+            </div>
+
+            {/* Legend row — separate from title, always readable */}
+            <div className="wl-legend-row">
+              <div className="wl-leg-item">
+                <div className="wl-leg-swatch" style={{ background: ch.ok }}/>
+                <span>Light (&lt;30%)</span>
+              </div>
+              <div className="wl-leg-item">
+                <div className="wl-leg-swatch" style={{ background: ch.mid }}/>
+                <span>OK (30–64%)</span>
+              </div>
+              <div className="wl-leg-item">
+                <div className="wl-leg-swatch" style={{ background: ch.warn }}/>
+                <span>Busy (65–89%)</span>
+              </div>
+              <div className="wl-leg-item">
+                <div className="wl-leg-swatch" style={{ background: ch.full }}/>
+                <span>Full (≥90%)</span>
               </div>
             </div>
-            <div className="wl-chart">
-              {weekDays.map((d, i) => {
-                const load = WEEK_WORKLOAD[i];
-                const isToday = d.toDateString() === today.toDateString();
-                const barColor = load >= 90 ? ch.full : load >= 65 ? ch.mid : load >= 30 ? ch.ok : ch.empty;
-                const barH = Math.max(4, Math.round((load / 100) * 64));
-                return (
-                  <div key={i} className="wl-bw">
-                    <div
-                      className="wl-bar"
-                      style={{ height: barH, background: barColor, opacity: load < 10 ? 0.4 : 1 }}
-                    />
-                    <div className={`wl-dlbl ${isToday ? 'wl-today' : load >= 90 ? 'wl-warn' : ''}`}>
-                      {DAY_LABELS[i].slice(0, 3)}
+
+            {/* Chart area: grid lines + bars + value labels */}
+            <div className="wl-chart-wrap">
+              {/* Horizontal grid lines */}
+              <div className="wl-grid">
+                {[100, 75, 50, 25].map(pct => (
+                  <div key={pct} className="wl-grid-row" style={{ bottom: `${pct}%` }}>
+                    <span className="wl-grid-lbl">{pct}</span>
+                    <div className="wl-grid-line"/>
+                  </div>
+                ))}
+                {/* Baseline */}
+                <div className="wl-baseline"/>
+              </div>
+
+              {/* Bars */}
+              <div className="wl-bars">
+                {weekDays.map((d, i) => {
+                  const load = WEEK_WORKLOAD[i];
+                  const isToday = d.toDateString() === today.toDateString();
+                  const barColor =
+                    load >= 90 ? ch.full
+                    : load >= 65 ? ch.warn
+                    : load >= 30 ? ch.mid
+                    : ch.ok;
+                  const barPct = Math.max(2, load);
+                  return (
+                    <div key={i} className="wl-col">
+                      {/* Value label above bar */}
+                      <div
+                        className="wl-val-lbl"
+                        style={{ color: load >= 65 ? barColor : 'var(--mid)' }}
+                      >
+                        {load > 0 ? `${load}%` : '—'}
+                      </div>
+                      {/* Bar */}
+                      <div className="wl-bar-slot">
+                        <div
+                          className={`wl-bar ${isToday ? 'wl-bar-today' : ''}`}
+                          style={{
+                            height: `${barPct}%`,
+                            background: isToday
+                              ? `linear-gradient(to top, ${barColor}, ${barColor}cc)`
+                              : barColor,
+                            opacity: load < 5 ? 0.35 : 1,
+                          }}
+                        />
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Day labels row — outside chart-wrap so they sit cleanly below */}
+            <div className="wl-bars-labels">
+              {weekDays.map((d, i) => {
+                const isToday = d.toDateString() === today.toDateString();
+                const load = WEEK_WORKLOAD[i];
+                return (
+                  <div key={i} className={`wl-dlbl ${isToday ? 'wl-today' : ''} ${load >= 90 ? 'wl-warn' : ''}`}>
+                    {DAY_LABELS[i].slice(0, 2)}
                   </div>
                 );
               })}
             </div>
+
+            {/* Insight footer */}
             <div className="wl-note">
               <div className="wl-note-dot" style={{ background: ch.full }} />
-              {WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD)) !== todayDow
-                ? `${DAY_LABELS[WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD))]}'s schedule looks heaviest — consider spreading tasks out`
-                : 'Today is your heaviest day — pace yourself'}
+              <span>
+                {WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD)) !== todayDow
+                  ? `${DAY_LABELS[WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD))]}'s schedule looks heaviest — consider spreading tasks`
+                  : 'Today is your heaviest day — pace yourself'}
+              </span>
             </div>
           </div>
         </div>
@@ -609,36 +677,112 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* ── Workload Graph ── */
         .wl-card {
-          background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px;
+          background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px 13px;
           box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border));
           backdrop-filter: var(--glass-blur, blur(18px));
           -webkit-backdrop-filter: var(--glass-blur, blur(18px));
           transition: background .18s, border-color .18s;
         }
         .wl-card:active { background: var(--glass-bg2, var(--surf2)); border-color: var(--purple); }
-        .wl-tap-hint { font-size: 11px; color: var(--purple); font-weight: 600; margin-top: 1px; opacity: .8; }
-        .wl-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+
+        /* Title row */
+        .wl-title-row {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          margin-bottom: 10px;
+        }
         .wl-title { font-size: 14px; font-weight: 800; color: var(--dark); }
-        .wl-subtitle { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 2px; }
-        .wl-legend { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .wl-leg-item { display: flex; align-items: center; gap: 3px; }
-        .wl-leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-        .wl-leg-item span { font-size: 9px; color: var(--mid); font-weight: 600; }
-        .wl-chart {
-          display: flex; gap: 5px; align-items: flex-end;
-          height: 82px; position: relative; padding-bottom: 18px;
+        .wl-subtitle { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 3px; }
+        .wl-tap-pill {
+          font-size: 10px; font-weight: 700; color: var(--purple);
+          background: var(--pur-lt); border-radius: 100px;
+          padding: 4px 9px; white-space: nowrap; flex-shrink: 0;
+          border: 1px solid var(--purple); opacity: .85;
         }
-        .wl-chart::after {
-          content: ''; position: absolute; bottom: 18px; left: 0; right: 0;
-          height: 1px; background: var(--border);
+
+        /* Legend row */
+        .wl-legend-row {
+          display: flex; gap: 10px; flex-wrap: wrap;
+          margin-bottom: 14px; padding-bottom: 10px;
+          border-bottom: 1px solid var(--border);
         }
-        .wl-bw { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
-        .wl-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; transition: height .5s ease; }
-        .wl-dlbl { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 700; color: var(--lite); white-space: nowrap; }
+        .wl-leg-item { display: flex; align-items: center; gap: 5px; }
+        .wl-leg-swatch { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+        .wl-leg-item span { font-size: 10px; color: var(--mid); font-weight: 500; }
+
+        /* Chart wrapper: positions grid behind bars */
+        .wl-chart-wrap {
+          position: relative;
+          height: 148px;           /* grid area height */
+          margin-bottom: 10px;
+        }
+
+        /* Grid lines layer */
+        .wl-grid {
+          position: absolute; inset: 0 0 22px 28px; /* leave space left for labels, bottom for day labels */
+          pointer-events: none;
+        }
+        .wl-grid-row {
+          position: absolute; left: 0; right: 0;
+          display: flex; align-items: center; gap: 6px;
+          transform: translateY(50%);  /* center on the line */
+        }
+        .wl-grid-lbl {
+          font-size: 9px; font-weight: 600; color: var(--lite);
+          min-width: 18px; text-align: right; flex-shrink: 0; line-height: 1;
+        }
+        .wl-grid-line {
+          flex: 1; height: 1px;
+          background: var(--border);
+          opacity: .6;
+        }
+        .wl-baseline {
+          position: absolute; bottom: 0; left: 24px; right: 0;
+          height: 1.5px; background: var(--border2); opacity: .8;
+        }
+
+        /* Bars layer */
+        .wl-bars {
+          position: absolute; inset: 0 0 22px 28px;
+          display: flex; gap: 6px; align-items: flex-end;
+        }
+        .wl-col {
+          flex: 1; display: flex; flex-direction: column;
+          align-items: center; height: 100%;
+        }
+        /* Value label at top */
+        .wl-val-lbl {
+          font-size: 9px; font-weight: 700;
+          line-height: 1; margin-bottom: 3px;
+          min-height: 11px; flex-shrink: 0;
+        }
+        /* Stretchy bar slot — label sits above, bar grows upward */
+        .wl-bar-slot {
+          flex: 1; width: 100%; display: flex; align-items: flex-end;
+        }
+        .wl-bar {
+          width: 100%; border-radius: 5px 5px 0 0;
+          min-height: 4px; transition: height .55s cubic-bezier(.4,0,.2,1);
+        }
+        .wl-bar-today { box-shadow: 0 0 8px rgba(139,124,246,.45); }
+
+        /* Day labels row — below chart wrap */
+        .wl-bars-labels {
+          display: flex; gap: 6px; padding-left: 28px; margin-bottom: 2px;
+        }
+        .wl-dlbl {
+          flex: 1; text-align: center;
+          font-size: 9px; font-weight: 700; color: var(--lite);
+        }
         .wl-today { color: var(--purple); }
-        .wl-warn { color: var(--coral); }
-        .wl-note { display: flex; align-items: center; gap: 6px; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--mid); font-weight: 500; }
-        .wl-note-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .wl-warn  { color: var(--coral); }
+
+        /* Insight footer */
+        .wl-note {
+          display: flex; align-items: flex-start; gap: 7px;
+          padding-top: 10px; border-top: 1px solid var(--border);
+          font-size: 11px; color: var(--mid); font-weight: 500; line-height: 1.4;
+        }
+        .wl-note-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
       `}</style>
     </div>
   );
