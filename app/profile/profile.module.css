@@ -44,36 +44,62 @@
   color: #fff; cursor: pointer; padding: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
 }
-.profName  { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
-.profDesig { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 2px; }
+.profName  { font-size: 22px; font-weight: 700; color: var(--dark); letter-spacing: -.4px; margin-top: 2px; }
+.profDesig { font-size: 13px; color: var(--purple); font-weight: 600; margin-top: 4px; }
+
+/* Email row — own line, centered, with comfortable spacing */
 .profEmailRow {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 18px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
-.profEmail { font-size: 12px; color: var(--mid); }
+.profEmail { font-size: 13px; color: var(--mid); font-weight: 500; }
 .eyeBtn {
   background: none; border: none; padding: 3px;
   color: var(--mid); cursor: pointer;
   display: flex; align-items: center;
   border-radius: 6px; line-height: 0;
+  flex-shrink: 0;
 }
 .eyeBtn:hover { color: var(--dark); }
+
+/* Edit Profile button — full-width pill on its own row */
 .editProfileBtn {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 10px; padding: 7px 14px;
-  background: var(--surf2); border: 1px solid var(--border);
-  border-radius: 20px; color: var(--mid);
-  font-size: 12px; font-weight: 600;
-  font-family: inherit; cursor: pointer;
-  transition: border-color .15s, color .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 11px 20px;
+  width: 100%;
+  background: var(--surf2);
+  border: 1.5px solid var(--border2);
+  border-radius: 14px;
+  color: var(--dark);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
 }
-.editProfileBtn:hover { border-color: var(--purple); color: var(--purple); }
+.editProfileBtn:hover { border-color: var(--purple); background: var(--surf3); }
 
 /* Stats */
 .profStats {
   display: flex;
   background: var(--surf2);
   border-radius: 14px; overflow: hidden;
-  margin-top: 14px; border: 1px solid var(--border);
+  margin-top: 18px; border: 1px solid var(--border);
 }
 .ps { flex: 1; padding: 12px 6px; text-align: center; border-right: 1px solid var(--border); }
 .ps:last-child { border-right: none; }
