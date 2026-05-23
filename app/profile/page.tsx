@@ -35,20 +35,20 @@ export default function ProfilePage() {
   const supabase = createClient();
   const fileRef  = useRef<HTMLInputElement>(null);
 
-  const [user,        setUser]        = useState<any>(null);
-  const [profile,     setProfile]     = useState<any>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [activeTheme, setActiveTheme] = useState<ThemeId>('focused');
-  const [editing,     setEditing]     = useState(false);
-  const [saving,      setSaving]      = useState(false);
-  const [editName,    setEditName]    = useState('');
-  const [editDesig,   setEditDesig]   = useState('');
-  const [editCountry, setEditCountry] = useState('');
-  const [editAvatar,  setEditAvatar]  = useState<File | null>(null);
-  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
-  const [showSugg,    setShowSugg]    = useState(false);
-  const [emailVisible,setEmailVisible]= useState(false);
-  const [themeFlash,  setThemeFlash]  = useState<string | null>(null);
+  const [user,         setUser]         = useState<any>(null);
+  const [profile,      setProfile]      = useState<any>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [activeTheme,  setActiveTheme]  = useState<ThemeId>('focused');
+  const [editing,      setEditing]      = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [editName,     setEditName]     = useState('');
+  const [editDesig,    setEditDesig]    = useState('');
+  const [editCountry,  setEditCountry]  = useState('');
+  const [editAvatar,   setEditAvatar]   = useState<File | null>(null);
+  const [previewUrl,   setPreviewUrl]   = useState<string | null>(null);
+  const [showSugg,     setShowSugg]     = useState(false);
+  const [emailVisible, setEmailVisible] = useState(false);
+  const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -117,7 +117,6 @@ export default function ProfilePage() {
 
   function handleApplyTheme(id: ThemeId) {
     setActiveTheme(id); saveTheme(id); applyThemeToBody(id);
-    // Clear any existing flash timer before showing new one
     if (flashTimer.current) clearTimeout(flashTimer.current);
     setThemeFlash(THEME_META[id].name);
     flashTimer.current = setTimeout(() => setThemeFlash(null), 1800);
@@ -142,14 +141,14 @@ export default function ProfilePage() {
     localStorage.setItem('planiq_email_visible', String(next));
   }
 
-  const avatarSrc    = previewUrl || profile?.avatar_url || null;
-  const initials     = profile?.full_name
+  const avatarSrc   = previewUrl || profile?.avatar_url || null;
+  const initials    = profile?.full_name
     ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0]?.toUpperCase() ?? '?';
   const displayEmail = emailVisible ? (user?.email ?? '') : maskEmail(user?.email ?? '');
   const countryInfo  = COUNTRIES.find(c => c.code === profile?.country_code);
 
-  if (loading) return <div style={{ minHeight: '100vh', background: 'var(--bg,#0F0E17)' }} />;
+  if (loading) return <div style={{ minHeight: '100vh', background: 'var(--bg,#080E1A)' }} />;
 
   const EyeOpen = () => (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -166,8 +165,9 @@ export default function ProfilePage() {
   return (
     <div className={s.profWrap}>
 
-      {/* Header */}
+      {/* ── Static Header — always clean, never collapses ── */}
       <div className={s.profHdr}>
+        {/* Avatar */}
         <div className={s.profAvWrap}>
           {avatarSrc ? (
             <div className={s.profAvImg}>
@@ -177,104 +177,52 @@ export default function ProfilePage() {
           ) : (
             <div className={s.profAv}>{initials}</div>
           )}
-          {editing && (
-            <button className={s.avEditBtn} onClick={() => fileRef.current?.click()} title="Change photo">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M23 19C23 20.1 22.1 21 21 21H3C1.9 21 1 20.1 1 19V8C1 6.9 1.9 6 3 6H7L9 3H15L17 6H21C22.1 6 23 6.9 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-            </button>
-          )}
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFilePick} />
+        {/* Identity */}
+        <div className={s.profName}>{profile?.full_name || 'User'}</div>
+        {profile?.designation && <div className={s.profDesig}>{profile.designation}</div>}
 
-        {editing ? (
-          <div className={s.editFields}>
-            <input className={`${s.editInput} ${s.editName}`} placeholder="Full name"
-              value={editName} onChange={e => setEditName(e.target.value)} maxLength={60} />
+        {/* Email row */}
+        <div className={s.profEmailRow}>
+          <span className={s.profEmail}>{displayEmail}</span>
+          <button className={s.eyeBtn} onClick={toggleEmail} aria-label="Toggle email visibility">
+            {emailVisible ? <EyeOpen /> : <EyeOff />}
+          </button>
+        </div>
 
-            <div className={s.desigWrap}>
-              <input className={`${s.editInput} ${s.editDesig}`} placeholder="Designation / Job title"
-                value={editDesig}
-                onChange={e => { setEditDesig(e.target.value); setShowSugg(true); }}
-                onFocus={() => setShowSugg(true)}
-                onBlur={() => setTimeout(() => setShowSugg(false), 150)}
-                maxLength={60} />
-              {showSugg && (
-                <div className={s.desigSugg}>
-                  {DESIGNATION_SUGGESTIONS
-                    .filter(sg => sg.toLowerCase().includes(editDesig.toLowerCase()))
-                    .slice(0, 5)
-                    .map(sg => (
-                      <div key={sg} role="button" tabIndex={0} className={s.suggItem}
-                        onMouseDown={() => { setEditDesig(sg); setShowSugg(false); }}>{sg}</div>
-                    ))}
-                </div>
-              )}
-            </div>
+        {/* Edit button */}
+        <button className={s.editProfileBtn} onClick={openEdit}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M11 4H4C3.5 4 3 4.5 3 5V20C3 20.5 3.5 21 4 21H19C19.5 21 20 20.5 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M18.5 2.5L21.5 5.5L12 15L9 15L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+          </svg>
+          Edit Profile
+        </button>
 
-            <div className={s.countryField}>
-              <select className={`${s.editInput} ${s.editCountry}`} value={editCountry}
-                onChange={e => setEditCountry(e.target.value)}>
-                <option value="">🌍 Select your country (for holidays)</option>
-                {COUNTRIES.map(c => (
-                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={s.editActions}>
-              <button className={s.btnCancel} onClick={cancelEdit} disabled={saving}>Cancel</button>
-              <button className={s.btnSave} onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className={s.profName}>{profile?.full_name || 'User'}</div>
-            {profile?.designation && <div className={s.profDesig}>{profile.designation}</div>}
-            <div className={s.profEmailRow}>
-              <span className={s.profEmail}>{displayEmail}</span>
-              <button className={s.eyeBtn} onClick={toggleEmail}>
-                {emailVisible ? <EyeOpen /> : <EyeOff />}
-              </button>
-            </div>
-            <button className={s.editProfileBtn} onClick={openEdit}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M11 4H4C3.5 4 3 4.5 3 5V20C3 20.5 3.5 21 4 21H19C19.5 21 20 20.5 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M18.5 2.5L21.5 5.5L12 15L9 15L9 12L18.5 2.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+        {/* Stats row */}
+        <div className={s.profStats}>
+          <div className={s.ps}>
+            <div className={s.psV}>
+              <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
               </svg>
-              Edit Profile
-            </button>
-          </>
-        )}
-
-        {!editing && (
-          <div className={s.profStats}>
-            <div className={s.ps}>
-              <div className={s.psV}>
-                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                  <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                </svg>
-                <span>8</span>
-              </div>
-              <div className={s.psL}>Streak</div>
+              <span>8</span>
             </div>
-            <div className={s.ps}>
-              <div className={s.psV}>142</div>
-              <div className={s.psL}>Tasks Done</div>
-            </div>
-            <div className={s.ps}>
-              <div className={s.psV}>78%</div>
-              <div className={s.psL}>Avg Score</div>
-            </div>
+            <div className={s.psL}>Streak</div>
           </div>
-        )}
+          <div className={s.ps}>
+            <div className={s.psV}>142</div>
+            <div className={s.psL}>Tasks Done</div>
+          </div>
+          <div className={s.ps}>
+            <div className={s.psV}>78%</div>
+            <div className={s.psL}>Avg Score</div>
+          </div>
+        </div>
       </div>
 
-      {/* Body */}
+      {/* ── Scrollable body ── */}
       <div className={s.profBody}>
 
         {/* Appearance */}
@@ -294,7 +242,7 @@ export default function ProfilePage() {
             <div key={t.id} role="button" tabIndex={0}
               className={`${s.thCard}${activeTheme === t.id ? ` ${s.thCardActive}` : ''}`}
               onClick={() => handleApplyTheme(t.id as ThemeId)}
-              onKeyDown={e => e.key==='Enter' && handleApplyTheme(t.id as ThemeId)}>
+              onKeyDown={e => e.key === 'Enter' && handleApplyTheme(t.id as ThemeId)}>
               <div className={s.thPreview}>
                 <div className={s.thPBg}  style={{ background: t.bg  }} />
                 <div className={s.thPPri} style={{ background: t.pri }} />
@@ -327,7 +275,7 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* Account */}
+        {/* Account info */}
         <div className={s.sh} style={{ marginTop: 4 }}><div className={s.shT}>Account</div></div>
         <div className={s.infoCard}>
           <div className={s.infoRow}>
@@ -354,7 +302,7 @@ export default function ProfilePage() {
           <div className={s.infoRow}>
             <span className={s.infoKey}>Member since</span>
             <span className={s.infoVal}>
-              {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}) : '—'}
+              {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—'}
             </span>
           </div>
           <div className={s.infoRow}>
@@ -367,7 +315,162 @@ export default function ProfilePage() {
         <div style={{ height: 32 }} />
       </div>
 
-      {/* Digital theme chip — pixel dissolve in/out */}
+      {/* ── Edit Profile Bottom Sheet ── */}
+      {editing && (
+        <>
+          {/* Backdrop */}
+          <div className={s.sheetBackdrop} onClick={cancelEdit} />
+
+          {/* Sheet */}
+          <div className={s.editSheet}>
+            {/* Drag handle */}
+            <div className={s.sheetHandle} />
+
+            {/* Sheet header */}
+            <div className={s.sheetHdr}>
+              <span className={s.sheetTitle}>Edit Profile</span>
+              <button className={s.sheetClose} onClick={cancelEdit} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Scrollable form body */}
+            <div className={s.sheetBody}>
+
+              {/* Avatar section */}
+              <div className={s.fieldGroup}>
+                <div className={s.fieldLabel}>Profile Photo</div>
+                <div className={s.avatarRow}>
+                  <div className={s.sheetAvWrap}>
+                    {avatarSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarSrc} alt="Avatar" className={s.sheetAvImg} />
+                    ) : (
+                      <div className={s.sheetAvInitials}>{initials}</div>
+                    )}
+                  </div>
+                  <div className={s.avatarMeta}>
+                    <button className={s.changePhotoBtn} onClick={() => fileRef.current?.click()}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M23 19C23 20.1 22.1 21 21 21H3C1.9 21 1 20.1 1 19V8C1 6.9 1.9 6 3 6H7L9 3H15L17 6H21C22.1 6 23 6.9 23 8V19Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                      Change Photo
+                    </button>
+                    <span className={s.avatarHint}>JPG or PNG · Max 5 MB</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={s.sheetDivider} />
+
+              {/* Name field */}
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel} htmlFor="edit-name">Full Name</label>
+                <input
+                  id="edit-name"
+                  className={s.sheetInput}
+                  placeholder="Your full name"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  maxLength={60}
+                  autoComplete="off"
+                />
+              </div>
+
+              {/* Email — read-only display */}
+              <div className={s.fieldGroup}>
+                <div className={s.fieldLabel}>Email Address</div>
+                <div className={s.emailDisplayBox}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                    <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                  <span className={s.emailDisplayText}>{displayEmail}</span>
+                  <button className={s.eyeBtnSheet} onClick={toggleEmail} aria-label="Toggle email visibility">
+                    {emailVisible ? <EyeOpen /> : <EyeOff />}
+                  </button>
+                </div>
+                <span className={s.fieldHint}>Email cannot be changed here. Contact support to update it.</span>
+              </div>
+
+              {/* Designation */}
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel} htmlFor="edit-desig">Designation / Job Title</label>
+                <div className={s.desigWrap}>
+                  <input
+                    id="edit-desig"
+                    className={s.sheetInput}
+                    placeholder="e.g. Finance Officer, Team Lead"
+                    value={editDesig}
+                    onChange={e => { setEditDesig(e.target.value); setShowSugg(true); }}
+                    onFocus={() => setShowSugg(true)}
+                    onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+                    maxLength={60}
+                    autoComplete="off"
+                  />
+                  {showSugg && DESIGNATION_SUGGESTIONS.filter(sg =>
+                    sg.toLowerCase().includes(editDesig.toLowerCase())
+                  ).length > 0 && (
+                    <div className={s.desigSugg}>
+                      {DESIGNATION_SUGGESTIONS
+                        .filter(sg => sg.toLowerCase().includes(editDesig.toLowerCase()))
+                        .slice(0, 5)
+                        .map(sg => (
+                          <div key={sg} role="button" tabIndex={0} className={s.suggItem}
+                            onMouseDown={() => { setEditDesig(sg); setShowSugg(false); }}>
+                            {sg}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Country */}
+              <div className={s.fieldGroup}>
+                <label className={s.fieldLabel} htmlFor="edit-country">Country / Region</label>
+                <div className={s.selectWrap}>
+                  <select
+                    id="edit-country"
+                    className={s.sheetSelect}
+                    value={editCountry}
+                    onChange={e => setEditCountry(e.target.value)}
+                  >
+                    <option value="">🌍 Select your country</option>
+                    {COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                    ))}
+                  </select>
+                  <svg className={s.selectArrow} width="12" height="8" viewBox="0 0 12 8" fill="none">
+                    <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <span className={s.fieldHint}>Used to show local public holidays in your calendar.</span>
+              </div>
+
+              {/* Actions */}
+              <div className={s.sheetActions}>
+                <button className={s.btnCancel} onClick={cancelEdit} disabled={saving}>Cancel</button>
+                <button className={s.btnSave} onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <span className={s.savingDot} />
+                      Saving…
+                    </>
+                  ) : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFilePick} />
+
+      {/* Digital theme chip */}
       {themeFlash && (
         <div style={{
           position: 'fixed',
@@ -394,11 +497,9 @@ export default function ProfilePage() {
             fontWeight: 700,
             fontFamily: '"Courier New", Courier, monospace',
             letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-            animation: 'digitalText 2s steps(1, end) forwards',
+            textTransform: 'uppercase' as const,
+            whiteSpace: 'nowrap' as const,
           }}>
-            {/* Blinking cursor dot */}
             <span style={{
               width: 7, height: 7,
               borderRadius: '2px',
@@ -415,7 +516,6 @@ export default function ProfilePage() {
       )}
 
       <style>{`
-        /* Outer wrap: dissolves in via opacity steps, then dissolves out */
         @keyframes digitalChip {
           0%   { opacity: 0; filter: blur(4px) brightness(2); }
           5%   { opacity: 0.4; filter: blur(2px) brightness(1.6); }
@@ -427,8 +527,6 @@ export default function ProfilePage() {
           95%  { opacity: 0.1; filter: blur(4px) brightness(2); }
           100% { opacity: 0;   filter: blur(6px) brightness(3); }
         }
-
-        /* Text: types in character by character feel via clip-path steps */
         @keyframes digitalText {
           0%   { clip-path: inset(0 100% 0 0); }
           15%  { clip-path: inset(0 60% 0 0); }
@@ -439,8 +537,6 @@ export default function ProfilePage() {
           90%  { clip-path: inset(0 70% 0 0); }
           100% { clip-path: inset(0 100% 0 0); }
         }
-
-        /* Cursor blink */
         @keyframes cursorBlink {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }

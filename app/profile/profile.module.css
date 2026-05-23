@@ -7,10 +7,10 @@
   color: var(--dark);
 }
 
-/* Header */
+/* ── Header ── */
 .profHdr {
   background: var(--surf);
-  padding: 52px 22px 18px;
+  padding: 52px 22px 20px;
   text-align: center;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
@@ -251,3 +251,274 @@
   transition: opacity .18s;
 }
 .signoutBtn:active { opacity: .85; }
+
+/* ════════════════════════════════════════════════
+   EDIT PROFILE BOTTOM SHEET
+════════════════════════════════════════════════ */
+
+/* Backdrop */
+.sheetBackdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 1000;
+  animation: backdropIn .22s ease;
+}
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Sheet panel */
+.editSheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 1001;
+  background: var(--surf);
+  border-top: 1px solid var(--border2);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 48px rgba(0,0,0,.35);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  animation: sheetSlideUp .28s cubic-bezier(.32,1,.3,1);
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Drag handle */
+.sheetHandle {
+  width: 40px; height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+/* Sheet header row */
+.sheetHdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sheetTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--dark);
+  letter-spacing: -.3px;
+}
+.sheetClose {
+  width: 32px; height: 32px;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mid);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.sheetClose:hover { background: var(--surf3); color: var(--dark); }
+
+/* Scrollable form body */
+.sheetBody {
+  overflow-y: auto;
+  padding: 20px 20px 36px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Divider */
+.sheetDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0 20px;
+}
+
+/* Field group */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--mid);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* Sheet input */
+.sheetInput {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--surf2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  color: var(--dark);
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sheetInput::placeholder { color: var(--mid); font-weight: 400; }
+.sheetInput:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px var(--pur-lt);
+}
+
+/* Select wrapper */
+.selectWrap {
+  position: relative;
+}
+.sheetSelect {
+  width: 100%;
+  padding: 13px 40px 13px 16px;
+  background: var(--surf2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  color: var(--dark);
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  appearance: none; -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sheetSelect:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px var(--pur-lt);
+}
+.selectArrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--mid);
+  pointer-events: none;
+}
+
+/* Avatar row in sheet */
+.avatarRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--surf2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+}
+.sheetAvWrap {
+  width: 56px; height: 56px;
+  flex-shrink: 0;
+}
+.sheetAvImg {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  display: block;
+  border: 2px solid var(--border2);
+}
+.sheetAvInitials {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: var(--gradient);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700; color: #fff;
+}
+.avatarMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.changePhotoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--gradient);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  width: fit-content;
+  transition: opacity .15s;
+}
+.changePhotoBtn:active { opacity: .85; }
+.avatarHint {
+  font-size: 11px;
+  color: var(--mid);
+}
+
+/* Email display box in sheet */
+.emailDisplayBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  background: var(--surf2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  color: var(--mid);
+}
+.emailDisplayText {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.eyeBtnSheet {
+  background: none; border: none; padding: 4px;
+  color: var(--mid); cursor: pointer;
+  display: flex; align-items: center;
+  border-radius: 6px; line-height: 0;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.eyeBtnSheet:hover { color: var(--dark); }
+
+/* Sheet action buttons */
+.sheetActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.savingDot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.7);
+  animation: savePulse .8s ease-in-out infinite alternate;
+  flex-shrink: 0;
+}
+@keyframes savePulse {
+  from { opacity: .4; }
+  to   { opacity: 1; }
+}
