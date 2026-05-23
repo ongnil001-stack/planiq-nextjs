@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #F5F7FF;
+  --surf: #FFFFFF;
+  --surf2: #EEF0FF;
+  --surf3: #E6E8F8;
+  --white: #FFFFFF;
+
+  --g-start: #6C5CE7;
+  --g-end: #A78BFA;
+  --gradient: linear-gradient(135deg, #6C5CE7 0%, #A78BFA 100%);
+  --gradient-soft: linear-gradient(135deg, rgba(108,92,231,.15) 0%, rgba(167,139,250,.10) 100%);
+
+  --purple: #6C5CE7;
+  --pur-d: #5549C7;
+  --pur-lt: rgba(108,92,231,.12);
+  --pur-m: #9580F0;
+  --coral: #FF6B8A;
+  --coral-lt: rgba(255,107,138,.12);
+  --mint: #00CEC9;
+  --mint-lt: rgba(0,206,201,.12);
+  --amber: #FDCB6E;
+  --amber-lt: rgba(253,203,110,.12);
+  --sky: #74B9FF;
+  --sky-lt: rgba(116,185,255,.12);
+
+  --dark: #1A1060;
+  --mid: #6860B8;
+  --lite: #B0ABDD;
+
+  --border: rgba(108,92,231,.10);
+  --border2: rgba(108,92,231,.18);
+
+  --card-sh: 0 4px 24px rgba(108,92,231,.10);
+  --card-sh2: 0 2px 12px rgba(108,92,231,.07);
+
+  --r: 22px;
+  --rmd: 16px;
+  --rsm: 12px;
+  --rxs: 8px;
+  --nav: 64px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Sora', 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Gradient button */
+.btn-gradient {
+  background: var(--gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--rmd);
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(139,124,246,.40);
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-gradient:active { transform: scale(.97); }
+
+/* Ghost button */
+.btn-ghost {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rmd);
+  color: var(--dark);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .18s;
+}
+.btn-ghost:active { background: var(--bg); }
+
+/* Card */
+.card {
+  background: var(--surf);
+  border-radius: var(--rmd);
+  box-shadow: var(--card-sh2);
+}
+
+/* Screen slide-in animation */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slideIn .28s cubic-bezier(.4,0,.2,1); }
+
+/* AI spin animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Pulse */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+.pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
