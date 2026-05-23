@@ -71,7 +71,13 @@ export function buildHolidayMap(holidays: Holiday[]): Map<string, Holiday> {
   return new Map(holidays.map(h => [h.date, h]));
 }
 
-/** Format date as YYYY-MM-DD */
+/** Format date as YYYY-MM-DD using LOCAL time (not UTC).
+ *  toISOString() uses UTC which causes off-by-one errors in UTC+ timezones
+ *  (e.g. Philippines UTC+8: local midnight = previous day in UTC).
+ */
 export function toDateStr(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
