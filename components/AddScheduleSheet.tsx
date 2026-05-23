@@ -320,8 +320,9 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
         <div style={{
           flexShrink:0,
           paddingTop:'max(env(safe-area-inset-top, 0px), 52px)',
-          padding:'0 20px 0',
-          paddingTop:'max(env(safe-area-inset-top, 0px), 52px)' as string,
+          paddingLeft:'20px',
+          paddingRight:'20px',
+          paddingBottom:0,
           background:'var(--glass-bg, rgba(14,13,24,.98))',
           backdropFilter:'var(--glass-blur, blur(28px))',
           WebkitBackdropFilter:'var(--glass-blur, blur(28px))',
