@@ -22,7 +22,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   function prevMonth() { setViewDate(new Date(year, month - 1, 1)); setSelectedDay(1); }
   function nextMonth() { setViewDate(new Date(year, month + 1, 1)); setSelectedDay(1); }
 
-  // Build map of day → schedule count
   const dayMap: Record<number, Schedule[]> = {};
   initialSchedules.forEach((s) => {
     const d = new Date(s.start_time);
@@ -42,7 +41,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   return (
     <div className="page">
       <div className="pg-header">
-        <h1 className="pg-title">Calendar</h1>
+        <h1 className="pg-title">Schedule</h1>
         <Link href="/schedule/new" className="add-btn">+ Add</Link>
       </div>
 
@@ -97,7 +96,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {selectedSchedules.length === 0 ? (
           <div className="day-empty">
             <p>Nothing scheduled</p>
-            <Link href="/schedule/new" className="day-add-cta">+ Add</Link>
+            <Link href="/schedule/new" className="day-add-cta">+ Add item</Link>
           </div>
         ) : (
           <div className="event-list">
@@ -122,43 +121,43 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       <BottomNav />
 
       <style jsx>{`
-        .page { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
-        .pg-header { padding: 52px 20px 12px; display: flex; justify-content: space-between; align-items: center; background: var(--surf); border-bottom: 1px solid var(--border); }
-        .pg-title { font-size: 22px; font-weight: 800; color: var(--dark); }
-        .add-btn { padding: 8px 16px; background: var(--gradient); border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
-        .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px; background: var(--surf); }
-        .month-label { font-size: 17px; font-weight: 700; color: var(--dark); }
-        .nav-arrow { background: var(--bg); border: none; font-size: 22px; color: var(--mid); cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0 10px; background: var(--surf); }
+        .page { min-height: 100vh; background: #0B0D1A; display: flex; flex-direction: column; font-family: 'Sora', sans-serif; color: #fff; }
+        .pg-header { padding: 52px 20px 12px; display: flex; justify-content: space-between; align-items: center; background: #161829; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .pg-title { font-size: 22px; font-weight: 800; color: #fff; }
+        .add-btn { padding: 8px 16px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+        .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px; background: #161829; }
+        .month-label { font-size: 17px; font-weight: 700; color: #fff; }
+        .nav-arrow { background: rgba(255,255,255,0.07); border: none; font-size: 22px; color: rgba(255,255,255,0.5); cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0 10px; background: #161829; }
         .header-row { padding-bottom: 4px; }
-        .dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--lite); padding: 6px 0; }
+        .dow { text-align: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.25); padding: 6px 0; }
         .cal-day {
           aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
           border-radius: 10px; background: transparent; border: none; cursor: pointer; gap: 2px; padding: 2px;
-          transition: background .15s;
+          transition: background .15s; font-family: inherit;
         }
-        .cal-day:active { background: var(--pur-lt); }
-        .cal-day.active { background: var(--purple) !important; }
-        .cal-day.today:not(.active) .day-num { color: var(--purple); font-weight: 800; }
-        .day-num { font-size: 14px; font-weight: 600; color: var(--dark); }
+        .cal-day:active { background: rgba(124,106,240,0.15); }
+        .cal-day.active { background: #7C6AF0 !important; }
+        .cal-day.today:not(.active) .day-num { color: #A78BFA; font-weight: 800; }
+        .day-num { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8); }
         .cal-day.active .day-num { color: #fff; }
         .dots { display: flex; gap: 2px; }
         .dot { width: 5px; height: 5px; border-radius: 50%; }
         .cal-day.active .dot { opacity: .7; }
         .day-panel { flex: 1; padding: 16px; overflow-y: auto; padding-bottom: 90px; }
         .day-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .day-panel-title { font-size: 15px; font-weight: 700; color: var(--dark); }
-        .day-count { font-size: 12px; color: var(--mid); font-weight: 600; }
-        .day-empty { text-align: center; padding: 24px; color: var(--lite); font-size: 14px; }
-        .day-add-cta { display: inline-block; margin-top: 10px; padding: 8px 18px; background: var(--gradient); border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+        .day-panel-title { font-size: 15px; font-weight: 700; color: #fff; }
+        .day-count { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 600; }
+        .day-empty { text-align: center; padding: 24px; color: rgba(255,255,255,0.3); font-size: 14px; }
+        .day-add-cta { display: inline-block; margin-top: 10px; padding: 8px 18px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
         .event-list { display: flex; flex-direction: column; gap: 8px; }
-        .event-item { background: var(--surf); border-radius: 14px; padding: 14px 14px 14px 10px; display: flex; align-items: center; gap: 10px; box-shadow: var(--card-sh2); transition: opacity .2s; }
-        .event-item.done { opacity: .5; }
+        .event-item { background: #161829; border-radius: 14px; padding: 14px 14px 14px 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.07); transition: opacity .2s; }
+        .event-item.done { opacity: .45; }
         .event-bar { width: 4px; border-radius: 4px; align-self: stretch; flex-shrink: 0; min-height: 36px; }
         .event-body { flex: 1; min-width: 0; }
-        .event-title { font-size: 14px; font-weight: 600; color: var(--dark); }
-        .event-meta { font-size: 12px; color: var(--mid); margin-top: 2px; }
-        .done-badge { font-size: 14px; color: var(--mint); font-weight: 700; }
+        .event-title { font-size: 14px; font-weight: 600; color: #fff; }
+        .event-meta { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+        .done-badge { font-size: 14px; color: #00D67E; font-weight: 700; }
       `}</style>
     </div>
   );

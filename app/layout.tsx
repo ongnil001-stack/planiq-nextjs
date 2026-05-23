@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#6C5CE7',
+  themeColor: '#0B0D1A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -49,8 +49,9 @@ export default function RootLayout({
               fontSize: '14px',
               fontWeight: '600',
               borderRadius: '12px',
-              background: '#1A1060',
+              background: '#1E2038',
               color: '#fff',
+              border: '1px solid rgba(124,106,240,0.3)',
             },
           }}
         />
@@ -65,7 +66,7 @@ export default function RootLayout({
             fontWeight: 600,
             letterSpacing: '1.5px',
             textTransform: 'uppercase',
-            color: 'rgba(108,92,231,0.35)',
+            color: 'rgba(124,106,240,0.3)',
             pointerEvents: 'none',
             zIndex: 9999,
           }}

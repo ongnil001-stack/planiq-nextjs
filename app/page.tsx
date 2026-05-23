@@ -1,130 +1,309 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function LandingPage() {
+export default function SplashPage() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardStep, setOnboardStep] = useState(0);
+  const router = useRouter();
+
+  // Particle canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const PARTICLE_COUNT = 80;
+    type Particle = { x: number; y: number; r: number; dx: number; dy: number; alpha: number; da: number; color: string };
+    const colors = ['rgba(124,106,240,', 'rgba(167,139,250,', 'rgba(90,171,240,', 'rgba(255,255,255,'];
+    const particles: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 2 + 0.5,
+      dx: (Math.random() - 0.5) * 0.4,
+      dy: (Math.random() - 0.5) * 0.4,
+      alpha: Math.random() * 0.7 + 0.1,
+      da: (Math.random() - 0.5) * 0.005,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        p.x += p.dx;
+        p.y += p.dy;
+        p.alpha += p.da;
+        if (p.alpha <= 0.05 || p.alpha >= 0.9) p.da *= -1;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + p.alpha + ')';
+        ctx.fill();
+
+        // Draw a small sparkle cross on some
+        if (p.r > 1.5) {
+          ctx.beginPath();
+          ctx.moveTo(p.x - p.r * 2, p.y);
+          ctx.lineTo(p.x + p.r * 2, p.y);
+          ctx.moveTo(p.x, p.y - p.r * 2);
+          ctx.lineTo(p.x, p.y + p.r * 2);
+          ctx.strokeStyle = p.color + (p.alpha * 0.6) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+  }, [showOnboarding]);
+
+  const ONBOARD_SLIDES = [
+    {
+      icon: '📅',
+      title: 'Plan Smarter,\nNot Harder',
+      desc: 'PlanIQ organizes your day with intelligent scheduling that adapts to your energy, priorities, and goals.',
+    },
+    {
+      icon: '✦',
+      title: 'AI That\nWorks For You',
+      desc: 'Claude AI analyzes your workload in real-time — spotting overloads, conflicts, and opportunities before they happen.',
+    },
+    {
+      icon: '📊',
+      title: 'Stay Balanced,\nStay On Track',
+      desc: 'Visual workload scores, streak tracking, and weekly insights keep you productive without burning out.',
+    },
+  ];
+
+  if (showOnboarding) {
+    const slide = ONBOARD_SLIDES[onboardStep];
+    return (
+      <div className="onboard-wrap">
+        <canvas ref={canvasRef} className="canvas-bg" />
+        <div className="onboard-card">
+          <div className="onboard-icon-wrap">
+            <span className="onboard-icon">{slide.icon}</span>
+          </div>
+          <h1 className="onboard-title">{slide.title}</h1>
+          <p className="onboard-desc">{slide.desc}</p>
+
+          {/* Dots */}
+          <div className="dots">
+            {ONBOARD_SLIDES.map((_, i) => (
+              <span key={i} className={`dot ${i === onboardStep ? 'active' : ''}`} />
+            ))}
+          </div>
+
+          {onboardStep < ONBOARD_SLIDES.length - 1 ? (
+            <button className="btn-main" onClick={() => setOnboardStep(onboardStep + 1)}>
+              Next →
+            </button>
+          ) : (
+            <button className="btn-main" onClick={() => router.push('/signup')}>
+              Get Started →
+            </button>
+          )}
+
+          <div className="onboard-footer">
+            <button className="skip-btn" onClick={() => router.push('/signup')}>Skip intro</button>
+            <span className="sep">·</span>
+            <button className="skip-btn" onClick={() => router.push('/login')}>Already have an account? Sign in</button>
+          </div>
+        </div>
+
+        <style jsx>{`
+          .onboard-wrap {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 30% 20%, #1A1060 0%, #0B0D1A 60%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0 0 40px;
+          }
+          .canvas-bg {
+            position: fixed; inset: 0;
+            pointer-events: none;
+            z-index: 0;
+          }
+          .onboard-card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            padding: 36px 28px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          .onboard-icon-wrap {
+            width: 80px; height: 80px;
+            background: rgba(124,106,240,0.18);
+            border: 1.5px solid rgba(124,106,240,0.35);
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            margin-bottom: 28px;
+            backdrop-filter: blur(12px);
+          }
+          .onboard-title {
+            font-size: 32px; font-weight: 800; color: #fff;
+            letter-spacing: -0.8px; line-height: 1.15;
+            margin-bottom: 16px; white-space: pre-line;
+          }
+          .onboard-desc {
+            font-size: 15px; color: rgba(255,255,255,0.55);
+            line-height: 1.7; margin-bottom: 36px;
+          }
+          .dots { display: flex; gap: 8px; margin-bottom: 28px; }
+          .dot { width: 8px; height: 8px; border-radius: 100px; background: rgba(255,255,255,0.2); transition: all .3s; }
+          .dot.active { width: 24px; background: #7C6AF0; }
+          .btn-main {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+            border: none; border-radius: 16px;
+            font-size: 16px; font-weight: 700; color: #fff;
+            font-family: inherit; cursor: pointer;
+            box-shadow: 0 8px 28px rgba(108,92,231,0.45);
+            transition: transform .15s;
+            margin-bottom: 20px;
+          }
+          .btn-main:active { transform: scale(0.97); }
+          .onboard-footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+          .skip-btn { background: none; border: none; font-family: inherit; font-size: 13px; color: rgba(255,255,255,0.45); cursor: pointer; }
+          .skip-btn:hover { color: rgba(255,255,255,0.7); }
+          .sep { color: rgba(255,255,255,0.25); font-size: 12px; }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Splash screen
   return (
-    <main className="landing">
-      {/* Nav */}
-      <nav className="nav">
-        <div className="nav-logo">
-          <span className="logo-icon">✦</span>
-          <span className="logo-text">PlanIQ</span>
-        </div>
-        <div className="nav-actions">
-          <Link href="/login" className="nav-link">Sign In</Link>
-          <Link href="/signup" className="nav-cta">Get Started</Link>
-        </div>
-      </nav>
+    <div className="splash-wrap">
+      <canvas ref={canvasRef} className="canvas-bg" />
 
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-badge">✦ Early Access — Free to Try</div>
-        <h1 className="hero-h1">
-          Your AI<br />
-          <span className="gradient-text">Schedule Advisor</span>
-        </h1>
-        <p className="hero-p">
-          Smart scheduling, conflict detection, and AI-powered workload analysis.
-          Plan better. Work smarter.
-        </p>
-        <div className="hero-btns">
-          <Link href="/signup" className="btn-cta">Start Free →</Link>
-          <Link href="/login" className="btn-ghost-dark">Sign In</Link>
+      <div className="splash-content">
+        {/* Logo */}
+        <div className="logo-wrap">
+          <div className="logo-ring outer" />
+          <div className="logo-ring inner" />
+          <div className="logo-icon-box">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <path d="M18 4L22 14H32L24 20L27 30L18 24L9 30L12 20L4 14H14L18 4Z" fill="url(#star-grad)" />
+              <defs>
+                <linearGradient id="star-grad" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#fff" />
+                  <stop offset="1" stopColor="rgba(255,255,255,0.7)" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
         </div>
-        <p className="hero-note">No credit card. No setup. Just planning.</p>
-      </section>
 
-      {/* Features */}
-      <section className="features">
-        <p className="section-tag">Why PlanIQ</p>
-        <h2 className="section-h2">Everything you need to plan your week</h2>
-        <div className="feat-grid">
-          {[
-            { icon: '📅', title: 'Smart Calendar', desc: 'Visual calendar view with daily and monthly scheduling.' },
-            { icon: '✦', title: 'AI Analysis', desc: 'Claude AI analyzes your workload and surfaces issues before they become problems.' },
-            { icon: '🔔', title: 'Reminders', desc: 'Tasks, events, and focus blocks — all in one place.' },
-            { icon: '📊', title: 'Workload Score', desc: 'Know instantly if your week is balanced or overloaded.' },
-            { icon: '🔒', title: 'Private & Secure', desc: 'Your data stays yours. Auth and storage powered by Supabase.' },
-            { icon: '📱', title: 'Installable PWA', desc: 'Add to your home screen and use it like a native app — offline too.' },
-          ].map((f) => (
-            <div key={f.title} className="feat-card">
-              <span className="feat-icon">{f.icon}</span>
-              <h3 className="feat-title">{f.title}</h3>
-              <p className="feat-desc">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <h1 className="splash-title">PlanIQ</h1>
+        <p className="splash-sub">Your AI Schedule Advisor</p>
 
-      {/* CTA */}
-      <section className="cta-section">
-        <h2 className="cta-h2">Ready to plan smarter?</h2>
-        <p className="cta-p">Join PlanIQ Early Access — free forever for early users.</p>
-        <Link href="/signup" className="btn-cta">Create Free Account →</Link>
-      </section>
+        <button className="btn-get-started" onClick={() => setShowOnboarding(true)}>
+          Get Started →
+        </button>
 
-      {/* Footer */}
-      <footer className="footer">
-        <span className="footer-logo">✦ PlanIQ</span>
-        <span className="footer-copy">© 2026 REDCON. All rights reserved.</span>
-        <Link href="/privacy-policy" className="footer-link">Privacy Policy</Link>
-      </footer>
+        <p className="splash-note">No credit card. Early access is free.</p>
+      </div>
+
+      {/* Bottom glow */}
+      <div className="bottom-glow" />
 
       <style jsx>{`
-        .landing { min-height: 100vh; background: #070611; font-family: 'Sora', sans-serif; color: #fff; }
-
-        /* Nav */
-        .nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; max-width: 1100px; margin: 0 auto; }
-        .nav-logo { display: flex; align-items: center; gap: 8px; }
-        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-        .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
-        .nav-actions { display: flex; align-items: center; gap: 12px; }
-        .nav-link { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.6); text-decoration: none; }
-        .nav-link:hover { color: #fff; }
-        .nav-cta { padding: 9px 20px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 10px; font-size: 13px; font-weight: 700; color: #fff; text-decoration: none; }
-
-        /* Hero */
-        .hero { text-align: center; padding: 80px 24px 60px; max-width: 680px; margin: 0 auto; }
-        .hero-badge { display: inline-block; padding: 6px 16px; background: rgba(108,92,231,.2); border: 1px solid rgba(108,92,231,.4); border-radius: 100px; font-size: 13px; font-weight: 600; color: #A78BFA; margin-bottom: 28px; }
-        .hero-h1 { font-size: clamp(42px, 8vw, 68px); font-weight: 800; line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px; }
-        .gradient-text { background: linear-gradient(135deg,#6C5CE7,#A78BFA,#5AABF0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero-p { font-size: 17px; color: rgba(255,255,255,.6); line-height: 1.65; margin-bottom: 36px; }
-        .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
-        .btn-cta { padding: 15px 32px; background: linear-gradient(135deg,#6C5CE7,#A78BFA); border-radius: 14px; font-size: 16px; font-weight: 700; color: #fff; text-decoration: none; box-shadow: 0 8px 28px rgba(108,92,231,.45); transition: transform .15s; display: inline-block; }
-        .btn-cta:active { transform: scale(.97); }
-        .btn-ghost-dark { padding: 14px 28px; background: rgba(255,255,255,.08); border: 1.5px solid rgba(255,255,255,.14); border-radius: 14px; font-size: 15px; font-weight: 600; color: #fff; text-decoration: none; display: inline-block; }
-        .hero-note { font-size: 12px; color: rgba(255,255,255,.3); }
-
-        /* Features */
-        .features { padding: 60px 24px; max-width: 1100px; margin: 0 auto; }
-        .section-tag { text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #A78BFA; margin-bottom: 10px; }
-        .section-h2 { text-align: center; font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -.5px; margin-bottom: 40px; }
-        .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-        .feat-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 24px; transition: border-color .2s; }
-        .feat-card:hover { border-color: rgba(108,92,231,.4); }
-        .feat-icon { font-size: 28px; margin-bottom: 12px; display: block; }
-        .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-        .feat-desc { font-size: 13px; color: rgba(255,255,255,.55); line-height: 1.6; }
-
-        /* CTA section */
-        .cta-section { text-align: center; padding: 60px 24px; background: linear-gradient(135deg, rgba(108,92,231,.15) 0%, rgba(90,171,240,.1) 100%); }
-        .cta-h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -.5px; margin-bottom: 12px; }
-        .cta-p { font-size: 15px; color: rgba(255,255,255,.55); margin-bottom: 28px; }
-
-        /* Footer */
-        .footer { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding: 24px; border-top: 1px solid rgba(255,255,255,.07); font-size: 13px; color: rgba(255,255,255,.35); }
-        .footer-logo { font-weight: 700; color: rgba(255,255,255,.5); }
-        .footer-link { color: rgba(255,255,255,.4); text-decoration: none; }
-        .footer-link:hover { color: rgba(255,255,255,.7); }
-
-        @media (max-width: 480px) {
-          .nav { padding: 16px 18px; }
-          .hero { padding: 60px 18px 40px; }
-          .features, .cta-section { padding: 40px 18px; }
-          .footer { gap: 12px; font-size: 11px; }
+        .splash-wrap {
+          min-height: 100vh;
+          background: radial-gradient(ellipse at 40% 30%, #1A1060 0%, #0B0D1A 65%);
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          overflow: hidden; position: relative;
+        }
+        .canvas-bg {
+          position: absolute; inset: 0;
+          pointer-events: none; z-index: 0;
+        }
+        .splash-content {
+          position: relative; z-index: 1;
+          display: flex; flex-direction: column;
+          align-items: center; text-align: center;
+          padding: 24px;
+        }
+        .logo-wrap {
+          position: relative;
+          width: 100px; height: 100px;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 24px;
+        }
+        .logo-ring {
+          position: absolute; border-radius: 50%;
+          border: 1px solid rgba(124,106,240,0.25);
+          animation: rotate-ring 8s linear infinite;
+        }
+        .logo-ring.outer { width: 100px; height: 100px; }
+        .logo-ring.inner { width: 74px; height: 74px; animation-duration: 5s; animation-direction: reverse; }
+        @keyframes rotate-ring {
+          to { transform: rotate(360deg); }
+        }
+        .logo-icon-box {
+          width: 60px; height: 60px;
+          background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+          border-radius: 20px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 40px rgba(108,92,231,0.6), 0 0 80px rgba(108,92,231,0.2);
+        }
+        .splash-title {
+          font-size: 44px; font-weight: 800;
+          color: #fff; letter-spacing: -1.5px;
+          margin-bottom: 8px;
+        }
+        .splash-sub {
+          font-size: 16px; color: rgba(255,255,255,0.5);
+          font-weight: 500; margin-bottom: 52px;
+          letter-spacing: 0.2px;
+        }
+        .btn-get-started {
+          padding: 16px 48px;
+          background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+          border: none; border-radius: 16px;
+          font-size: 17px; font-weight: 700; color: #fff;
+          font-family: inherit; cursor: pointer;
+          box-shadow: 0 8px 32px rgba(108,92,231,0.5);
+          transition: transform .15s, box-shadow .15s;
+          margin-bottom: 16px;
+        }
+        .btn-get-started:active { transform: scale(0.97); box-shadow: 0 4px 16px rgba(108,92,231,0.4); }
+        .splash-note {
+          font-size: 12px; color: rgba(255,255,255,0.25); font-weight: 500;
+        }
+        .bottom-glow {
+          position: absolute; bottom: -100px; left: 50%;
+          transform: translateX(-50%);
+          width: 300px; height: 300px;
+          background: radial-gradient(circle, rgba(108,92,231,0.25) 0%, transparent 70%);
+          pointer-events: none;
         }
       `}</style>
-    </main>
+    </div>
   );
 }

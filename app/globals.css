@@ -5,39 +5,43 @@
 @tailwind utilities;
 
 :root {
-  --bg: #F5F7FF;
-  --surf: #FFFFFF;
-  --surf2: #EEF0FF;
-  --surf3: #E6E8F8;
+  /* Dark theme */
+  --bg: #0B0D1A;
+  --bg2: #111326;
+  --surf: #161829;
+  --surf2: #1E2038;
+  --surf3: #252744;
   --white: #FFFFFF;
 
   --g-start: #6C5CE7;
   --g-end: #A78BFA;
   --gradient: linear-gradient(135deg, #6C5CE7 0%, #A78BFA 100%);
-  --gradient-soft: linear-gradient(135deg, rgba(108,92,231,.15) 0%, rgba(167,139,250,.10) 100%);
+  --gradient-soft: linear-gradient(135deg, rgba(108,92,231,.18) 0%, rgba(167,139,250,.12) 100%);
 
-  --purple: #6C5CE7;
+  --purple: #7C6AF0;
   --pur-d: #5549C7;
-  --pur-lt: rgba(108,92,231,.12);
+  --pur-lt: rgba(124,106,240,.18);
   --pur-m: #9580F0;
   --coral: #FF6B8A;
-  --coral-lt: rgba(255,107,138,.12);
+  --coral-lt: rgba(255,107,138,.15);
   --mint: #00CEC9;
-  --mint-lt: rgba(0,206,201,.12);
+  --mint-lt: rgba(0,206,201,.15);
   --amber: #FDCB6E;
-  --amber-lt: rgba(253,203,110,.12);
+  --amber-lt: rgba(253,203,110,.15);
   --sky: #74B9FF;
-  --sky-lt: rgba(116,185,255,.12);
+  --sky-lt: rgba(116,185,255,.15);
+  --green: #00D67E;
+  --green-lt: rgba(0,214,126,.15);
 
-  --dark: #1A1060;
-  --mid: #6860B8;
-  --lite: #B0ABDD;
+  --dark: #FFFFFF;
+  --mid: rgba(255,255,255,0.5);
+  --lite: rgba(255,255,255,0.25);
 
-  --border: rgba(108,92,231,.10);
-  --border2: rgba(108,92,231,.18);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
 
-  --card-sh: 0 4px 24px rgba(108,92,231,.10);
-  --card-sh2: 0 2px 12px rgba(108,92,231,.07);
+  --card-sh: 0 4px 24px rgba(0,0,0,.35);
+  --card-sh2: 0 2px 12px rgba(0,0,0,.25);
 
   --r: 22px;
   --rmd: 16px;
@@ -80,15 +84,15 @@ html, body {
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(139,124,246,.40);
+  box-shadow: 0 8px 24px rgba(108,92,231,.45);
   transition: transform .15s, box-shadow .15s;
 }
 .btn-gradient:active { transform: scale(.97); }
 
 /* Ghost button */
 .btn-ghost {
-  background: var(--white);
-  border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid var(--border2);
   border-radius: var(--rmd);
   color: var(--dark);
   font-weight: 600;
@@ -96,13 +100,14 @@ html, body {
   cursor: pointer;
   transition: background .18s;
 }
-.btn-ghost:active { background: var(--bg); }
+.btn-ghost:active { background: rgba(255,255,255,.12); }
 
 /* Card */
 .card {
   background: var(--surf);
   border-radius: var(--rmd);
   box-shadow: var(--card-sh2);
+  border: 1px solid var(--border);
 }
 
 /* Screen slide-in animation */

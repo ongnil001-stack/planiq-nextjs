@@ -17,7 +17,7 @@ const TYPES: { value: ScheduleType; icon: string; label: string }[] = [
 const PRIORITIES: { value: Priority; label: string; color: string }[] = [
   { value: 'high',   label: 'High',   color: '#FF6B8A' },
   { value: 'medium', label: 'Medium', color: '#FDCB6E' },
-  { value: 'low',    label: 'Low',    color: '#00CEC9' },
+  { value: 'low',    label: 'Low',    color: '#00D67E' },
 ];
 
 export default function AddSchedulePage() {
@@ -122,7 +122,7 @@ export default function AddSchedulePage() {
                 key={p.value}
                 type="button"
                 className={`pri-btn ${priority === p.value ? 'on' : ''}`}
-                style={priority === p.value ? { borderColor: p.color, color: p.color, background: p.color + '18' } : {}}
+                style={priority === p.value ? { borderColor: p.color, color: p.color, background: p.color + '22' } : {}}
                 onClick={() => setPriority(p.value)}
               >
                 {p.label}
@@ -181,7 +181,7 @@ export default function AddSchedulePage() {
           />
         </div>
 
-        <button type="submit" className="btn-gradient submit-btn" disabled={saving}>
+        <button type="submit" className="submit-btn" disabled={saving}>
           {saving ? '⟳ Saving…' : '✓ Save Schedule'}
         </button>
       </form>
@@ -189,59 +189,69 @@ export default function AddSchedulePage() {
       <BottomNav />
 
       <style jsx>{`
-        .page { min-height: 100vh; background: var(--bg); }
+        .page { min-height: 100vh; background: #0B0D1A; font-family: 'Sora', sans-serif; color: #fff; }
         .pg-header {
           padding: 52px 20px 16px;
           display: flex; align-items: center; justify-content: space-between;
-          background: var(--surf);
-          border-bottom: 1px solid var(--border);
+          background: #161829; border-bottom: 1px solid rgba(255,255,255,0.07);
         }
-        .back-btn { background: var(--bg); border: none; font-size: 20px; color: var(--dark); cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-        .pg-title { font-size: 18px; font-weight: 800; color: var(--dark); }
+        .back-btn { background: rgba(255,255,255,0.07); border: none; font-size: 20px; color: #fff; cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+        .pg-title { font-size: 18px; font-weight: 800; color: #fff; }
         .form { padding: 20px 18px 100px; display: flex; flex-direction: column; gap: 18px; max-width: 480px; margin: 0 auto; }
         .field { display: flex; flex-direction: column; gap: 7px; }
-        .flabel { font-size: 12px; font-weight: 700; color: var(--mid); text-transform: uppercase; letter-spacing: .8px; }
+        .flabel { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: .8px; }
         .finput {
           padding: 13px 14px;
-          background: var(--surf); border: 1.5px solid var(--border);
-          border-radius: 12px; color: var(--dark); font-size: 15px;
+          background: #161829; border: 1.5px solid rgba(255,255,255,0.1);
+          border-radius: 12px; color: #fff; font-size: 15px;
           font-family: inherit; outline: none; transition: border-color .18s; width: 100%;
+          color-scheme: dark;
         }
-        .finput:focus { border-color: var(--purple); }
+        .finput::placeholder { color: rgba(255,255,255,0.25); }
+        .finput:focus { border-color: #7C6AF0; }
         .type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .type-btn {
-          background: var(--surf); border: 1.5px solid var(--border);
+          background: #161829; border: 1.5px solid rgba(255,255,255,0.1);
           border-radius: 12px; padding: 12px 4px;
           display: flex; flex-direction: column; align-items: center; gap: 4px;
           cursor: pointer; transition: all .18s; font-family: inherit;
         }
-        .type-btn.on { background: var(--pur-lt); border-color: var(--purple); }
+        .type-btn.on { background: rgba(124,106,240,0.18); border-color: #7C6AF0; }
         .type-icon { font-size: 20px; }
-        .type-label { font-size: 11px; font-weight: 600; color: var(--mid); }
-        .type-btn.on .type-label { color: var(--purple); }
+        .type-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); }
+        .type-btn.on .type-label { color: #A78BFA; }
         .pri-row { display: flex; gap: 8px; }
         .pri-btn {
           flex: 1; padding: 11px; border-radius: 10px;
-          border: 1.5px solid var(--border); background: var(--surf);
+          border: 1.5px solid rgba(255,255,255,0.1); background: #161829;
           text-align: center; cursor: pointer; font-size: 13px; font-weight: 700;
-          color: var(--mid); transition: all .18s; font-family: inherit;
+          color: rgba(255,255,255,0.4); transition: all .18s; font-family: inherit;
         }
         .toggle-row { flex-direction: row; align-items: center; justify-content: space-between; }
         .toggle {
           width: 48px; height: 28px; border-radius: 100px;
-          background: var(--surf3); border: none; cursor: pointer;
+          background: rgba(255,255,255,0.12); border: none; cursor: pointer;
           position: relative; transition: background .2s;
           display: flex; align-items: center; padding: 3px;
         }
-        .toggle.on { background: var(--purple); }
+        .toggle.on { background: #7C6AF0; }
         .toggle-knob {
           width: 22px; height: 22px; border-radius: 50%; background: #fff;
-          box-shadow: 0 1px 4px rgba(0,0,0,.2);
+          box-shadow: 0 1px 4px rgba(0,0,0,.3);
           transition: transform .2s; display: block;
         }
         .toggle.on .toggle-knob { transform: translateX(20px); }
         .time-row { display: flex; gap: 12px; }
-        .submit-btn { width: 100%; padding: 16px; font-size: 16px; margin-top: 4px; }
+        .submit-btn {
+          width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+          background: linear-gradient(135deg, #6C5CE7, #A78BFA);
+          border: none; border-radius: 14px; color: #fff;
+          font-family: inherit; cursor: pointer;
+          box-shadow: 0 8px 24px rgba(108,92,231,0.45);
+          transition: transform .15s; margin-top: 4px;
+        }
+        .submit-btn:active { transform: scale(0.97); }
+        .submit-btn:disabled { opacity: 0.6; }
       `}</style>
     </div>
   );
