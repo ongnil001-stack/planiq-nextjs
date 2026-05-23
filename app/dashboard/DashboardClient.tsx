@@ -9,6 +9,7 @@ import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
 import WorkloadSheet from '@/components/WorkloadSheet';
+import { useChartColors } from '@/lib/useChartColors';
 
 interface Props {
   profile: Profile | null;
@@ -30,6 +31,7 @@ const WEEK_WORKLOAD = [65, 80, 45, 100, 70, 57, 8];
 export default function DashboardClient({ profile, todaySchedules, upcomingSchedules, latestAnalysis }: Props) {
   const router = useRouter();
   const supabase = createClient();
+  const ch = useChartColors();
   const [, setCompletingId] = useState<string | null>(null);
   const [todayExpanded, setTodayExpanded] = useState(false);
   const [perfExpanded, setPerfExpanded] = useState(false);
@@ -54,10 +56,10 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
   const workloadScore = latestAnalysis?.workload_score ?? 78;
 
   const workloadStatus =
-    workloadScore >= 85 ? { label: 'Overloaded', color: '#FF6B8A', badgeClass: 'attention' }
-    : workloadScore >= 65 ? { label: 'Attention', color: '#FDCB6E', badgeClass: 'attention' }
-    : workloadScore >= 30 ? { label: 'On Track', color: '#00D67E', badgeClass: 'ok' }
-    : { label: 'Light Day', color: '#74B9FF', badgeClass: 'ok' };
+    workloadScore >= 85 ? { label: 'Overloaded', color: ch.full,  badgeClass: 'attention' }
+    : workloadScore >= 65 ? { label: 'Attention', color: ch.warn,  badgeClass: 'attention' }
+    : workloadScore >= 30 ? { label: 'On Track',  color: ch.ok,    badgeClass: 'ok' }
+    : { label: 'Light Day',  color: ch.mid,   badgeClass: 'ok' };
 
   const scoreLabel =
     workloadScore >= 85 ? 'Overloaded'
@@ -100,16 +102,20 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
   return (
     <div className="page">
-      {/* SVG gradient definition */}
+      {/* SVG gradient definitions — sourced from theme CSS vars via useChartColors */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
           <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#7C6AF0"/>
-            <stop offset="100%" stopColor="#2DD4BF"/>
+            <stop offset="0%" stopColor={ch.c1}/>
+            <stop offset="100%" stopColor={ch.c2}/>
           </linearGradient>
           <linearGradient id="gGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#7B6CF6"/>
-            <stop offset="100%" stopColor="#5AABF0"/>
+            <stop offset="0%" stopColor={ch.c1}/>
+            <stop offset="100%" stopColor={ch.c2}/>
+          </linearGradient>
+          <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={ch.c1} stopOpacity="1"/>
+            <stop offset="100%" stopColor={ch.c2} stopOpacity="0.7"/>
           </linearGradient>
         </defs>
       </svg>
@@ -215,8 +221,10 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
                     <div
                       className="tli-dur"
                       style={{
-                        background: s.priority === 'high' ? 'rgba(255,107,138,.15)' : s.priority === 'medium' ? 'rgba(253,203,110,.15)' : 'rgba(45,212,191,.15)',
-                        color: s.priority === 'high' ? '#FF6B8A' : s.priority === 'medium' ? '#FDCB6E' : '#2DD4BF',
+                        background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28'
+                          : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
+                        color: (s.priority === 'critical' || s.priority === 'high') ? ch.full
+                          : s.priority === 'medium' ? ch.warn : ch.ok,
                       }}
                     >
                       {s.priority.toUpperCase()}
@@ -298,7 +306,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
                 const isToday = d.toDateString() === today.toDateString();
                 const hasItems = !!scheduleDayMap[d.toDateString()];
                 const isHot = (scheduleDayMap[d.toDateString()]?.length ?? 0) >= 4;
-                const dotColor = isHot ? '#FF6B8A' : hasItems ? '#7C6AF0' : undefined;
+                const dotColor = isHot ? ch.full : hasItems ? ch.c1 : undefined;
                 return (
                   <div key={i} className={`wk-wd ${isToday ? 'today' : isHot ? 'hot' : hasItems ? 'has' : ''}`}>
                     <div className="wk-wd-lbl">{DAY_LABELS[i]}</div>
@@ -327,16 +335,16 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
                 <div className="wl-subtitle">Week of {weekRange}</div>
               </div>
               <div className="wl-legend">
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background:'#2DD4BF' }}/><span>Light</span></div>
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background:'#7C6AF0' }}/><span>OK</span></div>
-                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background:'#FF6B8A' }}/><span>Full</span></div>
+                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.ok   }}/><span>Light</span></div>
+                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.mid  }}/><span>OK</span></div>
+                <div className="wl-leg-item"><div className="wl-leg-dot" style={{ background: ch.full }}/><span>Full</span></div>
               </div>
             </div>
             <div className="wl-chart">
               {weekDays.map((d, i) => {
                 const load = WEEK_WORKLOAD[i];
                 const isToday = d.toDateString() === today.toDateString();
-                const barColor = load >= 90 ? '#FF6B8A' : load >= 65 ? '#7C6AF0' : load >= 30 ? '#2DD4BF' : 'rgba(255,255,255,.1)';
+                const barColor = load >= 90 ? ch.full : load >= 65 ? ch.mid : load >= 30 ? ch.ok : ch.empty;
                 const barH = Math.max(4, Math.round((load / 100) * 64));
                 return (
                   <div key={i} className="wl-bw">
@@ -352,7 +360,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
               })}
             </div>
             <div className="wl-note">
-              <div className="wl-note-dot" style={{ background: '#FF6B8A' }} />
+              <div className="wl-note-dot" style={{ background: ch.full }} />
               {WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD)) !== todayDow
                 ? `${DAY_LABELS[WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD))]}'s schedule looks heaviest — consider spreading tasks out`
                 : 'Today is your heaviest day — pace yourself'}

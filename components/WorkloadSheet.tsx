@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Schedule } from '@/types/database';
 import { formatTime, PRIORITY_COLORS } from '@/lib/utils';
+import { useChartColors, type ChartColors } from '@/lib/useChartColors';
 
 interface Props {
   open: boolean;
@@ -19,11 +20,11 @@ type Filter = 'all' | 'overloaded' | 'heavy' | 'balanced' | 'light' | 'conflict'
 const DAY_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const DAY_SHORT = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 
-function getStatus(load: number): { label: string; color: string; bg: string; icon: string; filter: Filter } {
-  if (load >= 90) return { label: 'Overloaded', color: '#FF6B8A', bg: 'rgba(255,107,138,.13)', icon: '🔴', filter: 'overloaded' };
-  if (load >= 70) return { label: 'Heavy Load', color: '#FDCB6E', bg: 'rgba(253,203,110,.13)', icon: '🟡', filter: 'heavy' };
-  if (load >= 40) return { label: 'Balanced',   color: '#2DD4BF', bg: 'rgba(45,212,191,.13)',  icon: '🟢', filter: 'balanced' };
-  if (load >= 10) return { label: 'Light Day',  color: '#74B9FF', bg: 'rgba(116,185,255,.13)', icon: '🔵', filter: 'light' };
+function getStatus(load: number, ch: ChartColors): { label: string; color: string; bg: string; icon: string; filter: Filter } {
+  if (load >= 90) return { label: 'Overloaded', color: ch.full,  bg: ch.full  + '22', icon: '🔴', filter: 'overloaded' };
+  if (load >= 70) return { label: 'Heavy Load', color: ch.warn,  bg: ch.warn  + '22', icon: '🟡', filter: 'heavy' };
+  if (load >= 40) return { label: 'Balanced',   color: ch.ok,    bg: ch.ok    + '22', icon: '🟢', filter: 'balanced' };
+  if (load >= 10) return { label: 'Light Day',  color: ch.mid,   bg: ch.mid   + '22', icon: '🔵', filter: 'light' };
   return             { label: 'Free',          color: '#8B8FAD', bg: 'rgba(139,143,173,.08)', icon: '⚪', filter: 'light' };
 }
 
@@ -85,6 +86,7 @@ export default function WorkloadSheet({
   open, onClose, weekDays, scheduleDayMap, weekWorkload, weekRange, latestAnalysisSummary,
 }: Props) {
   const today = new Date();
+  const ch    = useChartColors();
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
   const [expandedDay, setExpandedDay]   = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -146,10 +148,10 @@ export default function WorkloadSheet({
   if (!open) return null;
 
   const CHIPS: { filter: Filter; label: string; count: number; color: string; bg: string; border: string }[] = [
-    { filter: 'overloaded', label: `🔴 ${overloadCount} Overloaded`, count: overloadCount, color: '#FF6B8A', bg: 'rgba(255,107,138,.12)', border: 'rgba(255,107,138,.30)' },
-    { filter: 'heavy',      label: `🟡 ${heavyCount} Heavy`,         count: heavyCount,    color: '#FDCB6E', bg: 'rgba(253,203,110,.12)', border: 'rgba(253,203,110,.30)' },
-    { filter: 'balanced',   label: `🟢 ${balancedCount} Balanced`,   count: balancedCount, color: '#2DD4BF', bg: 'rgba(45,212,191,.12)',  border: 'rgba(45,212,191,.30)'  },
-    { filter: 'conflict',   label: `⚡ ${conflictCount} Conflict`,   count: conflictCount, color: '#A78BFA', bg: 'rgba(167,139,250,.12)', border: 'rgba(167,139,250,.30)' },
+    { filter: 'overloaded', label: `🔴 ${overloadCount} Overloaded`, count: overloadCount, color: ch.full, bg: ch.full + '1F', border: ch.full + '50' },
+    { filter: 'heavy',      label: `🟡 ${heavyCount} Heavy`,         count: heavyCount,    color: ch.warn, bg: ch.warn + '1F', border: ch.warn + '50' },
+    { filter: 'balanced',   label: `🟢 ${balancedCount} Balanced`,   count: balancedCount, color: ch.ok,   bg: ch.ok   + '1F', border: ch.ok   + '50' },
+    { filter: 'conflict',   label: `⚡ ${conflictCount} Conflict`,   count: conflictCount, color: ch.c3,   bg: ch.c3   + '1F', border: ch.c3   + '50' },
     { filter: 'all',        label: `📋 ${totalTasks} Total`,         count: totalTasks,    color: 'var(--purple)', bg: 'var(--pur-lt)', border: 'rgba(139,124,246,.30)' },
   ];
 
@@ -223,7 +225,7 @@ export default function WorkloadSheet({
             const idx      = weekDays.findIndex(d => d.toDateString() === key);
             const load     = weekWorkload[idx] ?? 0;
             const tasks    = scheduleDayMap[key] || [];
-            const status   = getStatus(load);
+            const status   = getStatus(load, ch);
             const conflict = hasConflict(tasks);
             const isToday  = key === today.toDateString();
             const isPast   = day < today && !isToday;
@@ -253,19 +255,19 @@ export default function WorkloadSheet({
                       <div className="wl-bar-fill" style={{
                         width: `${load}%`,
                         background: load >= 90
-                          ? 'linear-gradient(90deg,#FF6B8A,#FF4060)'
+                          ? `linear-gradient(90deg,${ch.full},${ch.full}CC)`
                           : load >= 70
-                          ? 'linear-gradient(90deg,#FDCB6E,#F9A825)'
+                          ? `linear-gradient(90deg,${ch.warn},${ch.warn}CC)`
                           : load >= 40
-                          ? 'linear-gradient(90deg,var(--g-start,#8B7CF6),var(--g-end,#2DD4BF))'
-                          : 'linear-gradient(90deg,#74B9FF,#5AABF0)',
+                          ? `linear-gradient(90deg,${ch.c1},${ch.ok})`
+                          : `linear-gradient(90deg,${ch.mid},${ch.c2})`,
                       }} />
                     </div>
                     <span className="wl-bar-pct">{load}%</span>
                   </div>
 
                   {/* Status badge */}
-                  <div className="wl-badge" style={{ background: conflict ? 'rgba(167,139,250,.13)' : status.bg, color: conflict ? '#A78BFA' : status.color }}>
+                  <div className="wl-badge" style={{ background: conflict ? ch.c3 + '22' : status.bg, color: conflict ? ch.c3 : status.color }}>
                     {conflict ? '⚡ Conflict' : `${status.icon} ${status.label}`}
                   </div>
 
