@@ -125,7 +125,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         <Link href="/profile" className="av">
           {profile?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={profile.avatar_url} alt="avatar" className="av-img" />
+            <img src={profile.avatar_url} alt="avatar" className="av-img" width={42} height={42} style={{ width:42, height:42, minWidth:42, maxWidth:42, objectFit:'cover', display:'block' }} />
           ) : (
             profile?.full_name?.[0]?.toUpperCase() ?? '?'
           )}
@@ -401,6 +401,8 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         .hdr-role { font-size: 12px; color: var(--mid); margin-top: 3px; font-weight: 500; }
         .av {
           width: 42px; height: 42px;
+          min-width: 42px; min-height: 42px;
+          max-width: 42px; max-height: 42px;
           background: var(--gradient);
           border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
@@ -411,8 +413,11 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
           overflow: hidden;
         }
         .av-img {
-          width: 100%; height: 100%;
+          width: 42px; height: 42px;
+          min-width: 42px; min-height: 42px;
+          max-width: 42px; max-height: 42px;
           object-fit: cover; display: block;
+          flex-shrink: 0;
         }
 
         /* ── Scroll area ── */
