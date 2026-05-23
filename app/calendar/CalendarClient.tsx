@@ -105,10 +105,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             <div className="country-badge">{countryName.flag} {countryName.name} holidays</div>
           )}
         </div>
-        <button
-          className="add-btn"
-          onClick={() => setSheetOpen(true)}
-        >+ Add</button>
       </div>
 
       {/* Month navigator */}
@@ -229,7 +225,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-start; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .country-badge { font-size:11px; color:var(--purple); font-weight:600; margin-top:2px; }
-        .add-btn { padding:9px 18px; background:var(--gradient); border-radius:12px; color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer; white-space:nowrap; margin-top:4px; box-shadow:0 4px 14px rgba(124,106,240,.3); font-family:inherit; }
 
         /* Month nav */
         .month-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 8px; background:var(--glass-bg2, var(--surf)); border-bottom:1px solid var(--glass-border, var(--border)); }

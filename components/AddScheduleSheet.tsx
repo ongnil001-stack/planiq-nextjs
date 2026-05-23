@@ -40,21 +40,33 @@ interface Props {
 export default function AddScheduleSheet({ open, selectedDate, countryCode, onClose, onSaved }: Props) {
   const router   = useRouter();
   const supabase = createClient();
-  const bodyRef  = useRef<HTMLDivElement>(null);
 
   // form state
-  const [title,    setTitle]    = useState('');
-  const [type,     setType]     = useState<ScheduleType>('task');
-  const [priority, setPriority] = useState<Priority>('medium');
+  const [title,     setTitle]     = useState('');
+  const [type,      setType]      = useState<ScheduleType>('task');
+  const [priority,  setPriority]  = useState<Priority>('medium');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime,   setEndTime]   = useState('10:00');
   const [allDay,    setAllDay]    = useState(false);
   const [location,  setLocation]  = useState('');
   const [notes,     setNotes]     = useState('');
   const [saving,    setSaving]    = useState(false);
+  const [holiday,   setHoliday]   = useState<Holiday | null>(null);
 
-  // holiday check
-  const [holiday, setHoliday] = useState<Holiday | null>(null);
+  // Lock body scroll when open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [open]);
 
   // Reset form every time the sheet opens
   useEffect(() => {
@@ -68,16 +80,15 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
   // Holiday check
   useEffect(() => {
     if (!open || !countryCode) { setHoliday(null); return; }
-    const dateStr = toDateStr(selectedDate);
-    const year    = selectedDate.getFullYear();
+    const year = selectedDate.getFullYear();
     getHolidays(year, countryCode).then((hols) => {
-      setHoliday(findHoliday(dateStr, hols));
+      setHoliday(findHoliday(toDateStr(selectedDate), hols));
     });
   }, [open, selectedDate, countryCode]);
 
   function toDateStr(d: Date) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const y  = d.getFullYear();
+    const m  = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
   }
@@ -119,101 +130,123 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
     }
   }
 
-  // Close on backdrop click
-  function handleBackdropClick(e: React.MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
-
   if (!open) return null;
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={handleBackdropClick}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,.55)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 1000,
-          animation: 'sheetBdIn .22s ease',
-        }}
-      />
-
-      {/* Sheet */}
+      {/* Full-screen overlay — covers entire viewport, locks background */}
       <div
         style={{
           position: 'fixed',
-          bottom: 0, left: 0, right: 0,
+          inset: 0,
+          zIndex: 1000,
+          // Subtle dark vignette at bottom to hint scrollable content
+          background: 'rgba(0,0,0,.45)',
+          backdropFilter: 'blur(3px)',
+          WebkitBackdropFilter: 'blur(3px)',
+          animation: 'modalOverlayIn .22s ease',
+          // Prevent touch events reaching the background
+          touchAction: 'none',
+          overscrollBehavior: 'contain',
+        }}
+        onClick={onClose}
+      />
+
+      {/* Modal panel — slides down from top, full width, top-anchored */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          // Leaves a small gap at the bottom so user knows they can dismiss
+          bottom: '48px',
           zIndex: 1001,
-          background: 'var(--glass-bg, rgba(18,17,30,0.88))',
-          backdropFilter: 'var(--glass-blur, blur(24px))',
-          WebkitBackdropFilter: 'var(--glass-blur, blur(24px))',
-          borderTop: '1px solid var(--glass-border2, rgba(255,255,255,.12))',
-          borderRadius: '24px 24px 0 0',
-          boxShadow: '0 -12px 48px rgba(0,0,0,.40), 0 -1px 0 var(--glass-border, rgba(255,255,255,.06))',
-          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'sheetUp .28s cubic-bezier(.32,1,.3,1)',
+          background: 'var(--glass-bg, rgba(14,13,24,0.94))',
+          backdropFilter: 'var(--glass-blur, blur(28px))',
+          WebkitBackdropFilter: 'var(--glass-blur, blur(28px))',
+          borderBottom: '1px solid var(--glass-border2, rgba(255,255,255,.12))',
+          borderRadius: '0 0 24px 24px',
+          boxShadow: '0 12px 60px rgba(0,0,0,.50), 0 1px 0 var(--glass-border, rgba(255,255,255,.06)) inset',
+          animation: 'modalSlideDown .30s cubic-bezier(.22,.8,.32,1)',
+          overflow: 'hidden',
         }}
       >
-        {/* Drag handle */}
-        <div style={{ width: 40, height: 4, background: 'var(--border2)', borderRadius: 2, margin: '12px auto 0', flexShrink: 0 }} />
-
-        {/* Sheet header */}
+        {/* ── Pinned header ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px 14px', flexShrink: 0,
+          flexShrink: 0,
+          padding: 'env(safe-area-inset-top, 52px) 20px 0',
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 52px)',
+          background: 'var(--glass-bg, rgba(14,13,24,.96))',
+          backdropFilter: 'var(--glass-blur, blur(28px))',
+          WebkitBackdropFilter: 'var(--glass-blur, blur(28px))',
           borderBottom: '1px solid var(--glass-border, rgba(255,255,255,.07))',
+          zIndex: 2,
         }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', letterSpacing: '-.3px' }}>Add Schedule</div>
-            <div style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 600, marginTop: 2 }}>{dateLabel}</div>
+          {/* Title row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            paddingBottom: 14,
+          }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)', letterSpacing: '-.3px', lineHeight: 1 }}>
+                Add Schedule
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--purple)', fontWeight: 600, marginTop: 3 }}>
+                📆 {dateLabel}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 34, height: 34,
+                background: 'var(--glass-bg2, rgba(255,255,255,.07))',
+                border: '1px solid var(--glass-border, rgba(255,255,255,.10))',
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--mid)', cursor: 'pointer',
+                fontSize: 20, lineHeight: 1, flexShrink: 0,
+                fontFamily: 'inherit',
+              }}
+            >×</button>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 32, height: 32,
-              background: 'var(--glass-bg2, rgba(255,255,255,.06))',
-              border: '1px solid var(--glass-border, rgba(255,255,255,.10))',
-              borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--mid)', cursor: 'pointer', fontSize: 18, lineHeight: 1,
-              flexShrink: 0,
-            }}
-          >×</button>
-        </div>
 
-        {/* Scrollable body */}
-        <div
-          ref={bodyRef}
-          style={{
-            flex: 1, overflowY: 'auto', padding: '18px 20px 32px',
-            display: 'flex', flexDirection: 'column', gap: 20,
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-
-          {/* Holiday banner */}
+          {/* Holiday banner — inside header so it's always visible */}
           {holiday && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              background: 'rgba(255,107,107,.10)', border: '1px solid rgba(255,107,107,.25)',
-              borderRadius: 12, padding: '10px 14px',
+              background: 'rgba(255,107,107,.10)',
+              border: '1px solid rgba(255,107,107,.25)',
+              borderRadius: 10, padding: '8px 12px', marginBottom: 14,
             }}>
-              <span style={{ fontSize: 18 }}>🎌</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#FF6B8A' }}>{holiday.localName}</div>
-                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>Public holiday — you can still schedule!</div>
+              <span style={{ fontSize: 16 }}>🎌</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#FF6B8A' }}>{holiday.localName}</div>
+                <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 1 }}>Public holiday — you can still schedule!</div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── Scrollable form body — ONLY this scrolls ── */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch' as never,
+            padding: '20px 20px 12px',
+            display: 'flex', flexDirection: 'column', gap: 22,
+          }}
+          // Prevent overlay click-through while scrolling
+          onClick={(e) => e.stopPropagation()}
+        >
 
           {/* ── Title ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <label style={labelStyle}>Schedule Title *</label>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Schedule Title <span style={reqStar}>*</span></label>
             <input
               type="text"
               value={title}
@@ -225,10 +258,10 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
             />
           </div>
 
-          {/* ── Type ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* ── Category ── */}
+          <div style={fieldWrap}>
             <label style={labelStyle}>Category</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {TYPES.map((t) => (
                 <button
                   key={t.value}
@@ -236,115 +269,131 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
                   onClick={() => setType(t.value)}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 5, padding: '10px 4px',
+                    gap: 5, padding: '11px 4px',
                     background: type === t.value ? t.color + '22' : 'var(--glass-bg2, rgba(255,255,255,.04))',
                     border: `1.5px solid ${type === t.value ? t.color : 'var(--glass-border, rgba(255,255,255,.08))'}`,
-                    borderRadius: 12, cursor: 'pointer',
-                    transition: 'all .15s',
+                    borderRadius: 12, cursor: 'pointer', transition: 'all .14s',
+                    fontFamily: 'inherit',
                   }}
                 >
                   <span style={{ fontSize: 20 }}>{t.icon}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: type === t.value ? t.color : 'var(--mid)', letterSpacing: '.2px' }}>{t.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: type === t.value ? t.color : 'var(--mid)', letterSpacing: '.2px' }}>
+                    {t.label}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* ── Priority ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={fieldWrap}>
             <label style={labelStyle}>Priority</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {PRIORITIES.map((p) => (
                 <button
                   key={p.value}
                   type="button"
                   onClick={() => setPriority(p.value)}
                   style={{
-                    padding: '9px 4px',
+                    padding: '10px 4px',
                     background: priority === p.value ? p.bg : 'var(--glass-bg2, rgba(255,255,255,.04))',
                     border: `1.5px solid ${priority === p.value ? p.color : 'var(--glass-border, rgba(255,255,255,.08))'}`,
                     borderRadius: 12, cursor: 'pointer',
                     fontSize: 11, fontWeight: 700,
                     color: priority === p.value ? p.color : 'var(--mid)',
-                    transition: 'all .15s',
+                    transition: 'all .14s',
+                    fontFamily: 'inherit',
                   }}
                 >{p.label}</button>
               ))}
             </div>
           </div>
 
-          {/* ── Date display (read-only) + All Day toggle ── */}
+          {/* ── All Day toggle ── */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{
-              flex: 1, padding: '11px 14px',
-              background: 'var(--glass-bg2, rgba(255,255,255,.04))',
-              border: '1px solid var(--glass-border, rgba(255,255,255,.08))',
-              borderRadius: 12,
-              fontSize: 13, fontWeight: 600, color: 'var(--purple)',
-            }}>
-              📆 {dateLabel}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dark)' }}>All Day</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>No specific start or end time</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 700, letterSpacing: '.3px', textTransform: 'uppercase' }}>All Day</span>
-              <button
-                type="button"
-                onClick={() => setAllDay(!allDay)}
-                style={{
-                  width: 44, height: 26,
-                  background: allDay ? 'var(--purple)' : 'var(--glass-bg2, rgba(255,255,255,.08))',
-                  border: '1px solid var(--glass-border, rgba(255,255,255,.10))',
-                  borderRadius: 13, cursor: 'pointer', padding: 0,
-                  position: 'relative', transition: 'background .2s',
-                }}
-              >
-                <span style={{
-                  position: 'absolute', top: 3,
-                  left: allDay ? 21 : 3,
-                  width: 20, height: 20,
-                  background: '#fff', borderRadius: '50%',
-                  transition: 'left .2s',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.3)',
-                }} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setAllDay(!allDay)}
+              style={{
+                width: 46, height: 27,
+                background: allDay ? 'var(--purple)' : 'var(--glass-bg2, rgba(255,255,255,.08))',
+                border: '1px solid var(--glass-border, rgba(255,255,255,.12))',
+                borderRadius: 14, cursor: 'pointer', padding: 0,
+                position: 'relative', transition: 'background .2s', flexShrink: 0,
+                fontFamily: 'inherit',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3,
+                left: allDay ? 22 : 3,
+                width: 21, height: 21,
+                background: '#fff', borderRadius: '50%',
+                transition: 'left .2s',
+                boxShadow: '0 1px 4px rgba(0,0,0,.30)',
+              }} />
+            </button>
           </div>
 
           {/* ── Time pickers ── */}
           {!allDay && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={fieldWrap}>
                 <label style={labelStyle}>Start Time</label>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  style={inputStyle}
+                />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={fieldWrap}>
                 <label style={labelStyle}>End Time</label>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  style={inputStyle}
+                />
               </div>
             </div>
           )}
 
           {/* ── Location ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <label style={labelStyle}>Location <span style={{ fontWeight: 400, opacity: .55 }}>— optional</span></label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Office, Zoom, Client site…"
-              maxLength={120}
-              style={inputStyle}
-            />
+          <div style={fieldWrap}>
+            <label style={labelStyle}>
+              Location <span style={{ fontWeight: 400, opacity: .5, textTransform: 'none', letterSpacing: 0 }}>— optional</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 14, pointerEvents: 'none', opacity: .5,
+              }}>📍</span>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Office, Zoom, Client site…"
+                maxLength={120}
+                style={{ ...inputStyle, paddingLeft: 36 }}
+              />
+            </div>
           </div>
 
           {/* ── Notes ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            <label style={labelStyle}>Notes <span style={{ fontWeight: 400, opacity: .55 }}>— optional</span></label>
+          <div style={fieldWrap}>
+            <label style={labelStyle}>
+              Notes <span style={{ fontWeight: 400, opacity: .5, textTransform: 'none', letterSpacing: 0 }}>— optional</span>
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any details, links, or reminders…"
+              placeholder="Add details, links, or reminders…"
               rows={3}
-              style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
+              style={{ ...inputStyle, resize: 'none', lineHeight: 1.55 }}
             />
           </div>
 
@@ -353,68 +402,116 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
             type="button"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '11px 16px',
-              background: 'var(--pur-lt, rgba(124,106,240,.12))',
-              border: '1px solid var(--purple)',
+              padding: '12px 16px',
+              background: 'var(--pur-lt, rgba(124,106,240,.10))',
+              border: '1px solid rgba(124,106,240,.35)',
               borderRadius: 12, cursor: 'pointer',
               fontSize: 13, fontWeight: 600, color: 'var(--purple)',
-              opacity: .7,
+              fontFamily: 'inherit',
             }}
-            onClick={() => {/* future: open AI assistant */}}
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <path d="M7.5 1L9.18 5.23L13.5 5.64L10.35 8.38L11.3 12.5L7.5 10.27L3.7 12.5L4.65 8.38L1.5 5.64L5.82 5.23L7.5 1Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+              <path d="M7.5 1L9.18 5.23L13.5 5.64L10.35 8.38L11.3 12.5L7.5 10.27L3.7 12.5L4.65 8.38L1.5 5.64L5.82 5.23L7.5 1Z"
+                stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
             </svg>
             Check Schedule Balance with AI
           </button>
 
+          {/* bottom breathing room */}
+          <div style={{ height: 8 }} />
         </div>
 
-        {/* ── Save button ── */}
-        <div style={{
-          padding: '14px 20px 32px', flexShrink: 0,
-          borderTop: '1px solid var(--glass-border, rgba(255,255,255,.07))',
-          background: 'var(--glass-bg, rgba(18,17,30,.72))',
-        }}>
+        {/* ── Pinned save footer ── */}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '14px 20px',
+            paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+            borderTop: '1px solid var(--glass-border, rgba(255,255,255,.07))',
+            background: 'var(--glass-bg, rgba(14,13,24,.96))',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onClick={handleSave}
             disabled={saving || !title.trim()}
             style={{
-              width: '100%', padding: 16,
+              width: '100%', padding: '15px 0',
               background: title.trim() ? 'var(--gradient)' : 'var(--glass-bg2, rgba(255,255,255,.06))',
               border: 'none', borderRadius: 16,
               color: title.trim() ? '#fff' : 'var(--mid)',
-              fontSize: 16, fontWeight: 800, fontFamily: 'inherit',
-              cursor: title.trim() ? 'pointer' : 'default',
+              fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
+              cursor: title.trim() && !saving ? 'pointer' : 'default',
               letterSpacing: '-.2px',
               boxShadow: title.trim() ? '0 4px 20px rgba(124,106,240,.35)' : 'none',
               transition: 'all .18s',
               opacity: saving ? .7 : 1,
             }}
           >
-            {saving ? '⟳ Saving…' : '✓ Save Schedule'}
+            {saving ? '⟳  Saving…' : '✓  Save Schedule'}
           </button>
         </div>
       </div>
 
+      {/* Dismiss strip at the bottom — tap to close */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
+          height: 48,
+          zIndex: 1002,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+          animation: 'modalOverlayIn .30s ease',
+        }}
+        onClick={onClose}
+      >
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          color: 'rgba(255,255,255,.45)', fontSize: 11, fontWeight: 600, letterSpacing: '.3px',
+          userSelect: 'none',
+        }}>
+          <span style={{
+            width: 36, height: 4,
+            background: 'rgba(255,255,255,.25)',
+            borderRadius: 2,
+            display: 'block',
+          }} />
+          <span style={{ fontSize: 10, opacity: .7 }}>tap to dismiss</span>
+        </div>
+      </div>
+
       <style>{`
-        @keyframes sheetBdIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes sheetUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
+        @keyframes modalOverlayIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
-        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+        @keyframes modalSlideDown {
+          from { transform: translateY(-100%); opacity: 0; }
+          to   { transform: translateY(0);     opacity: 1; }
+        }
+        input[type="time"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.5);
+        }
       `}</style>
     </>
   );
 }
 
-// ─── Shared micro-styles ──────────────────────────────────────────────────────
+// ─── Shared styles ────────────────────────────────────────────────────────────
+
+const fieldWrap: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 7,
+};
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: 'var(--mid)',
+  fontSize: 10, fontWeight: 700, color: 'var(--mid)',
   textTransform: 'uppercase', letterSpacing: '.7px',
+};
+
+const reqStar: React.CSSProperties = {
+  color: 'var(--purple)', fontWeight: 900,
 };
 
 const inputStyle: React.CSSProperties = {
