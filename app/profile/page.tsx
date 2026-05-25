@@ -9,6 +9,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { THEME_META, THEME_IDS, ThemeId, getSavedTheme, saveTheme, applyThemeToBody } from '@/lib/theme';
 import { COUNTRIES } from '@/lib/countries';
 import s from './profile.module.css';
+import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 
 const THEMES = THEME_IDS.map(id => ({ id, ...THEME_META[id] }));
 
@@ -50,6 +51,40 @@ export default function ProfilePage() {
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showCustomize, setShowCustomize] = useState(false);
+
+  // ── Lock body scroll when any modal/sheet is open ──
+  useEffect(() => {
+    const isOpen = editing || showCustomize;
+    if (isOpen) {
+      // Save current scroll position and freeze the page
+      const scrollY = window.scrollY;
+      document.body.style.position   = 'fixed';
+      document.body.style.top        = `-${scrollY}px`;
+      document.body.style.left       = '0';
+      document.body.style.right      = '0';
+      document.body.style.overflow   = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      // Restore scroll position when all modals are closed
+      const scrollY = document.body.style.top;
+      document.body.style.position   = '';
+      document.body.style.top        = '';
+      document.body.style.left       = '';
+      document.body.style.right      = '';
+      document.body.style.overflow   = '';
+      document.body.style.touchAction = '';
+      if (scrollY) window.scrollTo(0, -parseInt(scrollY || '0', 10));
+    }
+    return () => {
+      document.body.style.position   = '';
+      document.body.style.top        = '';
+      document.body.style.left       = '';
+      document.body.style.right      = '';
+      document.body.style.overflow   = '';
+      document.body.style.touchAction = '';
+    };
+  }, [editing, showCustomize]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -274,6 +309,53 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+
+        {/* ── Customize Home Dashboard ── */}
+        <div className={s.sh} style={{ marginTop: 4 }}>
+          <div className={s.shT}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight:5 }}>
+              <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+            </svg>
+            Dashboard
+          </div>
+        </div>
+        <button
+          onClick={() => setShowCustomize(true)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '14px 16px', marginBottom: 8,
+            background: 'var(--glass-bg2, rgba(255,255,255,.05))',
+            border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
+            borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit',
+            transition: 'border-color .15s',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(124,106,240,.15)',
+              border: '1px solid rgba(124,106,240,.25)',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <rect x="2" y="2" width="7" height="7" rx="2" stroke="var(--purple)" strokeWidth="1.6"/>
+                <rect x="11" y="2" width="7" height="7" rx="2" stroke="var(--purple)" strokeWidth="1.6"/>
+                <rect x="2" y="11" width="7" height="7" rx="2" stroke="var(--purple)" strokeWidth="1.6"/>
+                <path d="M14.5 11v6M11.5 14h6" stroke="var(--purple)" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Customize Home Dashboard</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>Show or hide sections on your Home screen</div>
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, color: 'var(--mid)' }}>
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
 
         {/* Account info */}
         <div className={s.sh} style={{ marginTop: 4 }}><div className={s.shT}>Account</div></div>
@@ -527,6 +609,12 @@ export default function ProfilePage() {
           100% { opacity: 0; transform: translateX(-50%) translateY(-6px); filter: blur(4px); }
         }
       `}</style>
+
+      <DashboardCustomizeSheet
+        open={showCustomize}
+        onClose={() => setShowCustomize(false)}
+        onSaved={() => setShowCustomize(false)}
+      />
 
       <BottomNav />
     </div>

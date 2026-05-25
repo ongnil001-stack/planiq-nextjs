@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
 import WorkloadSheet from '@/components/WorkloadSheet';
+import { loadDashboardPrefs, type DashboardPrefs } from '@/lib/dashboardPrefs';
 import { useChartColors } from '@/lib/useChartColors';
 
 interface Props {
@@ -37,6 +38,20 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [todayExpanded, setTodayExpanded] = useState(false);
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
+  const [dashPrefs, setDashPrefs] = useState<DashboardPrefs | null>(null);
+
+  // Load dashboard prefs from localStorage on mount
+  // Re-reads on window focus (return from Profile tab) and on custom storage event
+  useEffect(() => {
+    setDashPrefs(loadDashboardPrefs());
+    const refresh = () => setDashPrefs(loadDashboardPrefs());
+    window.addEventListener('focus', refresh);
+    window.addEventListener('planiq_dash_prefs_changed', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('planiq_dash_prefs_changed', refresh);
+    };
+  }, []);
 
   const completedToday = todaySchedules.filter((s) => s.is_completed).length;
   const totalToday = todaySchedules.length;
@@ -240,7 +255,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         </div>
 
         {/* ═══ WIDGET 2 · Performance Card ═══ */}
-        <div className="widget">
+        {(dashPrefs?.performanceCard ?? true) && <div className="widget">
           <div className="perf-card" onClick={() => setPerfExpanded(!perfExpanded)}>
             <div className="pc-summary">
               <div className="pc-left">
@@ -292,10 +307,10 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               </div>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* ═══ WIDGET 3 · Weekly Schedule ═══ */}
-        <div className="widget">
+        {(dashPrefs?.weeklySchedule ?? true) && <div className="widget">
           <Link href="/calendar" className="wk-widget" style={{ textDecoration:'none' }}>
             <div className="wk-w-hdr">
               <div>
@@ -326,10 +341,10 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <span className="wk-w-act">Full view</span>
             </div>
           </Link>
-        </div>
+        </div>}
 
         {/* ═══ WIDGET 4 · Workload Balance Graph ═══ */}
-        <div className="widget">
+        {(dashPrefs?.workloadBalance ?? true) && <div className="widget">
           <div className="wl-card" onClick={() => setWorkloadOpen(true)} style={{ cursor:'pointer' }}>
 
             {/* Title row */}
@@ -487,7 +502,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               );
             })()}
           </div>
-        </div>
+        </div>}
 
         <div style={{ height: 24 }} />
       </div>
