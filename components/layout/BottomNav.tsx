@@ -101,16 +101,15 @@ export default function BottomNav() {
           align-items: center;
           justify-content: space-around;
           height: 66px;
-          background: rgba(8, 10, 20, 0.82);
+          background: rgba(8, 10, 20, 0.88);
           backdrop-filter: blur(32px) saturate(180%);
           -webkit-backdrop-filter: blur(32px) saturate(180%);
           border-radius: 26px;
-          border: 1px solid rgba(255,255,255,0.08);
+          /* Single subtle white hairline — NO colored glow */
+          border: 1px solid rgba(255,255,255,0.07);
           box-shadow:
-            0 2px 0 rgba(255,255,255,0.05) inset,
-            0 -1px 0 rgba(255,255,255,0.03) inset,
-            0 12px 48px rgba(0,0,0,0.65),
-            0 4px 16px rgba(0,0,0,0.4);
+            inset 0 1px 0 rgba(255,255,255,0.06),
+            0 8px 32px rgba(0,0,0,0.55);
           padding: 0 6px;
           position: relative;
           overflow: visible;
@@ -177,16 +176,12 @@ export default function BottomNav() {
           z-index: 10;
         }
 
-        /* Glow ring — static border, no animation, no bleed */
+        /* FAB ring — clean hairline only, zero glow bleed */
         .ni-fab-ring {
           position: absolute;
           inset: -2px;
           border-radius: 50%;
-          border: 1.5px solid rgba(0, 198, 255, 0.5);
-          box-shadow:
-            0 0 8px rgba(0, 198, 255, 0.3),
-            0 0 16px rgba(124, 106, 240, 0.2),
-            inset 0 0 6px rgba(0, 198, 255, 0.1);
+          border: 1.5px solid rgba(255,255,255,0.15);
           pointer-events: none;
         }
 
@@ -210,7 +205,7 @@ export default function BottomNav() {
           transform: scale(0.91);
           box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
-        .ni-fab:active .ni-fab-ring { opacity: 1; }
+        .ni-fab:active .ni-fab-ring { border-color: rgba(255,255,255,0.25); }
       `}</style>
     </>
   );
