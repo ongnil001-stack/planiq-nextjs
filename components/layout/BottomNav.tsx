@@ -10,203 +10,170 @@ export default function BottomNav() {
     pathname === href || (href !== '/schedule/new' && pathname.startsWith(href + '/'));
 
   return (
-    <>
-      {/* Outer safe-area wrapper — pushes pill up from bottom edge */}
-      <div className="bnav-wrap">
-        <nav className="bnav">
+    <nav className="bnav">
 
-          {/* Home */}
-          <Link href="/dashboard" className={`ni${isActive('/dashboard') ? ' on' : ''}`} aria-label="Home">
-            <span className="ni-icon-wrap">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path
-                  d="M3 9.5L11 3L19 9.5V19C19 19.55 18.55 20 18 20H14V15H8V20H4C3.45 20 3 19.55 3 19V9.5Z"
-                  stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="ni-lbl">Home</span>
-            <span className="ni-bar" />
-          </Link>
+      {/* Home */}
+      <Link href="/dashboard" className={`ni${isActive('/dashboard') ? ' on' : ''}`} aria-label="Home">
+        <span className="ni-ico">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+            <path d="M3 10.5L12 3L21 10.5V21C21 21.55 20.55 22 20 22H15V17H9V22H4C3.45 22 3 21.55 3 21V10.5Z"
+              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+          </svg>
+        </span>
+        <span className="ni-lbl">Home</span>
+        <span className="ni-dot" />
+      </Link>
 
-          {/* Schedule */}
-          <Link href="/calendar" className={`ni${isActive('/calendar') ? ' on' : ''}`} aria-label="Schedule">
-            <span className="ni-icon-wrap">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="3" y="5" width="16" height="15" rx="3" stroke="currentColor" strokeWidth="1.7"/>
-                <path d="M3 10H19" stroke="currentColor" strokeWidth="1.7"/>
-                <path d="M8 3V7M14 3V7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-                <circle cx="8" cy="14" r="1" fill="currentColor"/>
-                <circle cx="11" cy="14" r="1" fill="currentColor"/>
-                <circle cx="14" cy="14" r="1" fill="currentColor"/>
-              </svg>
-            </span>
-            <span className="ni-lbl">Schedule</span>
-            <span className="ni-bar" />
-          </Link>
+      {/* Schedule */}
+      <Link href="/calendar" className={`ni${isActive('/calendar') ? ' on' : ''}`} aria-label="Schedule">
+        <span className="ni-ico">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="5" width="18" height="17" rx="3" stroke="currentColor" strokeWidth="1.6"/>
+            <path d="M3 11H21" stroke="currentColor" strokeWidth="1.6"/>
+            <path d="M8 3V7M16 3V7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            <circle cx="8.5" cy="15.5" r="1" fill="currentColor"/>
+            <circle cx="12" cy="15.5" r="1" fill="currentColor"/>
+            <circle cx="15.5" cy="15.5" r="1" fill="currentColor"/>
+          </svg>
+        </span>
+        <span className="ni-lbl">Schedule</span>
+        <span className="ni-dot" />
+      </Link>
 
-          {/* FAB — circular add button with glow ring */}
-          <Link href="/schedule/new" className="ni-fab" aria-label="Add schedule item">
-            <span className="ni-fab-ring" aria-hidden="true" />
-            <span className="ni-fab-inner">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M11 5V17M5 11H17" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </span>
-          </Link>
+      {/* FAB */}
+      <Link href="/schedule/new" className="ni-fab" aria-label="Add">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+        </svg>
+      </Link>
 
-          {/* Priorities */}
-          <Link href="/ai-analysis" className={`ni${isActive('/ai-analysis') ? ' on' : ''}`} aria-label="Priorities">
-            <span className="ni-icon-wrap">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path
-                  d="M11 3L13.5 8.5L19.5 9.3L15.2 13.4L16.4 19.3L11 16.4L5.6 19.3L6.8 13.4L2.5 9.3L8.5 8.5L11 3Z"
-                  stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="ni-lbl">Priorities</span>
-            <span className="ni-bar" />
-          </Link>
+      {/* Priorities */}
+      <Link href="/ai-analysis" className={`ni${isActive('/ai-analysis') ? ' on' : ''}`} aria-label="Priorities">
+        <span className="ni-ico">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3L14.5 9L21 9.75L16.4 14.1L17.8 20.5L12 17.3L6.2 20.5L7.6 14.1L3 9.75L9.5 9L12 3Z"
+              stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+          </svg>
+        </span>
+        <span className="ni-lbl">Priorities</span>
+        <span className="ni-dot" />
+      </Link>
 
-          {/* Profile */}
-          <Link href="/profile" className={`ni${isActive('/profile') ? ' on' : ''}`} aria-label="Profile">
-            <span className="ni-icon-wrap">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="8" r="4" stroke="currentColor" strokeWidth="1.7"/>
-                <path d="M3 20C3 16.13 6.58 13 11 13C15.42 13 19 16.13 19 20" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-              </svg>
-            </span>
-            <span className="ni-lbl">Profile</span>
-            <span className="ni-bar" />
-          </Link>
-
-        </nav>
-      </div>
+      {/* Profile */}
+      <Link href="/profile" className={`ni${isActive('/profile') ? ' on' : ''}`} aria-label="Profile">
+        <span className="ni-ico">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.6"/>
+            <path d="M4 21C4 17.13 7.58 14 12 14C16.42 14 20 17.13 20 21"
+              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </span>
+        <span className="ni-lbl">Profile</span>
+        <span className="ni-dot" />
+      </Link>
 
       <style jsx>{`
-        /* ── Outer wrapper ── */
-        .bnav-wrap {
+        /* ── Nav bar — full width, edge to edge, no pill shape ── */
+        .bnav {
           position: fixed;
           bottom: 0; left: 0; right: 0;
           z-index: 200;
-          padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
-          pointer-events: none;
-        }
 
-        /* ── Floating pill ── */
-        .bnav {
-          pointer-events: all;
           display: flex;
           align-items: center;
           justify-content: space-around;
-          height: 66px;
-          background: rgba(8, 10, 20, 0.88);
-          backdrop-filter: blur(32px) saturate(180%);
-          -webkit-backdrop-filter: blur(32px) saturate(180%);
-          border-radius: 26px;
-          /* Single subtle white hairline — NO colored glow */
-          border: 1px solid rgba(255,255,255,0.07);
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,0.06),
-            0 8px 32px rgba(0,0,0,0.55);
-          padding: 0 6px;
-          position: relative;
-          overflow: visible;
+
+          height: calc(62px + env(safe-area-inset-bottom, 0px));
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          padding-top: 0;
+
+          /* Glass base */
+          background: rgba(8, 9, 18, 0.85);
+          backdrop-filter: blur(24px) saturate(160%);
+          -webkit-backdrop-filter: blur(24px) saturate(160%);
+
+          /* Single clean top border — no glow, no spread */
+          border-top: 1px solid rgba(255,255,255,0.07);
+
+          /* Subtle drop shadow upward */
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.35);
         }
 
-        /* ── Regular nav item ── */
+        /* ── Standard nav item ── */
         .ni {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 3px;
-          padding: 7px 8px 8px;
-          border-radius: 18px;
-          min-width: 54px;
+          flex: 1;
+          height: 100%;
+          padding-top: 10px;
           text-decoration: none;
           color: rgba(255,255,255,0.30);
-          transition: color .2s ease, background .2s ease, box-shadow .2s ease;
           position: relative;
-          flex: 1;
-          height: 52px;
+          transition: color .18s ease;
+          -webkit-tap-highlight-color: transparent;
         }
-        .ni:active { opacity: .75; }
+        .ni:active { opacity: .65; }
 
-        /* Active — dark frosted card with colored label */
-        .ni.on {
-          color: var(--cyan, #00C6FF);
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.07);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-        }
+        /* Active colour — uses theme purple */
+        .ni.on { color: var(--purple, #7C6AF0); }
 
-        .ni-icon-wrap {
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
+        .ni-ico {
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .ni-lbl {
-          font-size: 10px; font-weight: 600;
-          letter-spacing: .2px; line-height: 1;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: .2px;
+          line-height: 1;
         }
 
-        /* Active underline bar — matches theme accent */
-        .ni-bar {
+        /* Active indicator dot under label */
+        .ni-dot {
           position: absolute;
-          bottom: 4px; left: 50%;
-          transform: translateX(-50%);
-          width: 0; height: 2px;
-          border-radius: 2px;
-          background: var(--cyan, #00C6FF);
-          box-shadow: 0 0 6px var(--cyan, #00C6FF);
-          transition: width .22s cubic-bezier(.4,0,.2,1);
+          bottom: 6px;
+          left: 50%; transform: translateX(-50%);
+          width: 4px; height: 4px;
+          border-radius: 50%;
+          background: var(--purple, #7C6AF0);
+          opacity: 0;
+          transition: opacity .18s ease;
         }
-        .ni.on .ni-bar { width: 18px; }
+        .ni.on .ni-dot { opacity: 1; }
 
-        /* ── FAB ── */
+        /* ── FAB — elevated circle, sits in the center ── */
         .ni-fab {
-          position: relative;
-          width: 56px; height: 56px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center;
-          text-decoration: none;
-          margin-top: -18px;
-          z-index: 10;
-        }
-
-        /* FAB ring — clean hairline only, zero glow bleed */
-        .ni-fab-ring {
-          position: absolute;
-          inset: -2px;
+          width: 50px;
+          height: 50px;
           border-radius: 50%;
-          border: 1.5px solid rgba(255,255,255,0.15);
-          pointer-events: none;
-        }
+          margin-bottom: 4px;
 
-        /* Inner dark circle button */
-        .ni-fab-inner {
-          position: relative;
-          width: 50px; height: 50px;
-          border-radius: 50%;
-          background: rgba(14, 16, 30, 0.95);
-          border: 1px solid rgba(255,255,255,0.13);
-          display: flex; align-items: center; justify-content: center;
+          /* Gradient fill matching app theme */
+          background: var(--gradient, linear-gradient(135deg, #7C6AF0, #00C6FF));
+
+          /* Clean shadow — no colored spread */
           box-shadow:
-            0 0 0 1px rgba(0,0,0,0.5),
-            0 8px 28px rgba(0,0,0,0.6),
-            inset 0 1px 0 rgba(255,255,255,0.12);
-          transition: transform .14s ease, box-shadow .14s ease;
-          z-index: 1;
-        }
+            0 4px 16px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(255,255,255,0.15);
 
-        .ni-fab:active .ni-fab-inner {
-          transform: scale(0.91);
-          box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+          text-decoration: none;
+          transition: transform .13s ease, box-shadow .13s ease;
+          -webkit-tap-highlight-color: transparent;
         }
-        .ni-fab:active .ni-fab-ring { border-color: rgba(255,255,255,0.25); }
+        .ni-fab:active {
+          transform: scale(0.91);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
       `}</style>
-    </>
+    </nav>
   );
 }
