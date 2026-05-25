@@ -40,12 +40,14 @@ export default function BottomNav() {
         <span className="ni-dot" />
       </Link>
 
-      {/* FAB */}
-      <Link href="/schedule/new" className="ni-fab" aria-label="Add">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-        </svg>
-      </Link>
+      {/* FAB — elevated above nav bar */}
+      <div className="ni-fab-wrap">
+        <Link href="/schedule/new" className="ni-fab" aria-label="Add">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.4" strokeLinecap="round"/>
+          </svg>
+        </Link>
+      </div>
 
       {/* Priorities */}
       <Link href="/ai-analysis" className={`ni${isActive('/ai-analysis') ? ' on' : ''}`} aria-label="Priorities">
@@ -73,57 +75,70 @@ export default function BottomNav() {
       </Link>
 
       <style jsx>{`
-        /* ── Nav bar — full width, edge to edge, no pill shape ── */
+        /* ─────────────────────────────────────────────────────────
+           NAV BAR
+           Height is split into two zones:
+           • 68px of visible tappable area (up from 62px)
+           • + env(safe-area-inset-bottom) for the iPhone home bar
+           Content is vertically centred in the 68px zone only —
+           the safe-area zone is purely padding below.
+        ───────────────────────────────────────────────────────── */
         .bnav {
           position: fixed;
           bottom: 0; left: 0; right: 0;
           z-index: 200;
 
           display: flex;
-          align-items: center;
+          align-items: flex-start;          /* align to top of content zone */
           justify-content: space-around;
 
-          height: calc(62px + env(safe-area-inset-bottom, 0px));
-          padding-bottom: env(safe-area-inset-bottom, 0px);
-          padding-top: 0;
+          /* Visible zone + safe-area padding */
+          padding-top: 10px;                /* push content up from raw bottom */
+          padding-bottom: env(safe-area-inset-bottom, 8px);
+          min-height: calc(68px + env(safe-area-inset-bottom, 0px));
 
-          /* Glass base */
-          background: rgba(8, 9, 18, 0.85);
-          backdrop-filter: blur(24px) saturate(160%);
-          -webkit-backdrop-filter: blur(24px) saturate(160%);
-
-          /* Single clean top border — no glow, no spread */
-          border-top: 1px solid rgba(255,255,255,0.07);
-
-          /* Subtle drop shadow upward */
-          box-shadow: 0 -4px 20px rgba(0,0,0,0.35);
+          background: rgba(8, 9, 18, 0.88);
+          backdrop-filter: blur(28px) saturate(160%);
+          -webkit-backdrop-filter: blur(28px) saturate(160%);
+          border-top: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 -4px 24px rgba(0,0,0,0.40);
         }
 
-        /* ── Standard nav item ── */
+        /* ─────────────────────────────────────────────────────────
+           STANDARD NAV ITEM
+           Minimum 48×48px touch target (Apple HIG / Material).
+           Icon + label are centred in that space.
+        ───────────────────────────────────────────────────────── */
         .ni {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 3px;
+          gap: 4px;
           flex: 1;
-          height: 100%;
-          padding-top: 10px;
+
+          /* 48px minimum tap height in the visible zone */
+          min-height: 48px;
+          padding: 0 6px;
+
           text-decoration: none;
-          color: rgba(255,255,255,0.30);
+          color: rgba(255,255,255,0.32);
           position: relative;
           transition: color .18s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .ni:active { opacity: .65; }
+        .ni:active { opacity: .60; transform: scale(0.95); transition: none; }
 
-        /* Active colour — uses theme purple */
+        /* Active colour */
         .ni.on { color: var(--purple, #7C6AF0); }
 
         .ni-ico {
           display: flex;
           align-items: center;
           justify-content: center;
+          /* Slightly larger icon area for easier scanning */
+          width: 28px;
+          height: 28px;
         }
 
         .ni-lbl {
@@ -133,11 +148,12 @@ export default function BottomNav() {
           line-height: 1;
         }
 
-        /* Active indicator dot under label */
+        /* Active indicator dot — sits just below label, not near screen edge */
         .ni-dot {
           position: absolute;
-          bottom: 6px;
-          left: 50%; transform: translateX(-50%);
+          bottom: 2px;
+          left: 50%;
+          transform: translateX(-50%);
           width: 4px; height: 4px;
           border-radius: 50%;
           background: var(--purple, #7C6AF0);
@@ -146,32 +162,50 @@ export default function BottomNav() {
         }
         .ni.on .ni-dot { opacity: 1; }
 
-        /* ── FAB — elevated circle, sits in the center ── */
+        /* ─────────────────────────────────────────────────────────
+           FAB WRAPPER — reserves the same flex slot as nav items
+           The actual button floats above the bar via negative margin.
+        ───────────────────────────────────────────────────────── */
+        .ni-fab-wrap {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          /* Pull the FAB up so it sits above the nav bar */
+          margin-top: -22px;
+        }
+
+        /* ─────────────────────────────────────────────────────────
+           FAB BUTTON
+           56px (up from 50px) — matches Material Design M3 FAB size.
+           Elevated above the nav bar for clear visual hierarchy
+           and easier thumb reach from the centre of the screen.
+        ───────────────────────────────────────────────────────── */
         .ni-fab {
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          width: 50px;
-          height: 50px;
+          width: 56px;
+          height: 56px;
           border-radius: 50%;
-          margin-bottom: 4px;
 
-          /* Gradient fill matching app theme */
           background: var(--gradient, linear-gradient(135deg, #7C6AF0, #00C6FF));
 
-          /* Clean shadow — no colored spread */
           box-shadow:
-            0 4px 16px rgba(0,0,0,0.4),
-            inset 0 1px 0 rgba(255,255,255,0.15);
+            0 6px 20px rgba(0,0,0,0.45),
+            0 2px 6px rgba(0,0,0,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.18);
 
           text-decoration: none;
-          transition: transform .13s ease, box-shadow .13s ease;
+          transition: transform .14s ease, box-shadow .14s ease;
           -webkit-tap-highlight-color: transparent;
         }
         .ni-fab:active {
-          transform: scale(0.91);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+          transform: scale(0.90);
+          box-shadow:
+            0 3px 10px rgba(0,0,0,0.40),
+            inset 0 1px 0 rgba(255,255,255,0.12);
         }
       `}</style>
     </nav>

@@ -150,7 +150,7 @@ body[data-theme="dark"] {
    Identity: modern SaaS, calm but confident. Think Notion meets Linear.
 ══════════════════════════════════════════════════════════ */
 body[data-theme="soft"] {
-  --bg:#F4F6FB; --bg2:#ECEFFE; --surf:#FFFFFF; --surf2:#F0F2FC; --surf3:#E6E9F8;
+  --bg:#C8D0EC; --bg2:#BCC5E4; --surf:#EEF1FA; --surf2:#E8ECFA; --surf3:#DCE1F6;
   --g-start:#4A40D4; --g-end:#7B6FFF;
   --gradient:linear-gradient(135deg,#4A40D4 0%,#7B6FFF 100%);
   --gradient-soft:linear-gradient(135deg,rgba(74,64,212,.12) 0%,rgba(123,111,255,.08) 100%);
@@ -160,17 +160,17 @@ body[data-theme="soft"] {
   --amber:#D48A00; --amber-lt:rgba(212,138,0,.10);
   --sky:#2E7DD4;   --sky-lt:rgba(46,125,212,.10);
   --green:#008A60; --green-lt:rgba(0,138,96,.10);
-  --dark:#12106A; --mid:#4840A0; --lite:#9090CC;
-  --border:rgba(74,64,212,.12); --border2:rgba(74,64,212,.22);
-  --card-sh:0 8px 28px rgba(74,64,212,.14); --card-sh2:0 4px 14px rgba(74,64,212,.09);
-  --nav-bg:rgba(244,246,251,0.72);
+  --dark:#12106A; --mid:#3830A0; --lite:#4A4898;
+  --border:rgba(74,64,212,.18); --border2:rgba(74,64,212,.32);
+  --card-sh:0 4px 16px rgba(74,64,212,.22),0 1px 3px rgba(74,64,212,.14); --card-sh2:0 2px 8px rgba(74,64,212,.16),0 1px 2px rgba(74,64,212,.10);
+  --nav-bg:rgba(200,208,236,0.92);
   --accent:var(--purple);
-  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(240,242,252,0.52);
-  --glass-border:rgba(74,64,212,0.14); --glass-border2:rgba(74,64,212,0.24);
+  --glass-bg:rgba(238,241,250,0.93); --glass-bg2:rgba(232,236,250,0.85);
+  --glass-border:rgba(74,64,212,0.28); --glass-border2:rgba(74,64,212,0.42);
   --glass-blur:blur(18px);
-  --glass-sh:0 8px 28px rgba(74,64,212,.14),0 1px 0 rgba(255,255,255,.80) inset;
-  --glass-sh2:0 4px 14px rgba(74,64,212,.09),0 1px 0 rgba(255,255,255,.60) inset;
-  --nav-glass:rgba(244,246,251,0.70);
+  --glass-sh:0 4px 16px rgba(74,64,212,.22),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(74,64,212,.16),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(200,208,236,0.92);
   --chart-1:#4A40D4; --chart-2:#7B6FFF; --chart-3:#00A896; --chart-4:#D48A00; --chart-5:#E83050;
   --chart-ok:#00A896; --chart-mid:#4A40D4; --chart-warn:#D48A00; --chart-full:#E83050;
   --chart-empty:rgba(74,64,212,0.08); --chart-grid:rgba(74,64,212,0.10);
@@ -183,7 +183,7 @@ body[data-theme="soft"] {
    Identity: energetic, creative agency, vibrant but structured.
 ══════════════════════════════════════════════════════════ */
 body[data-theme="colorful"] {
-  --bg:#FFFAF7; --bg2:#FFF3EC; --surf:#FFFFFF; --surf2:#FFF6F0; --surf3:#FFEEE4;
+  --bg:#E0C8AC; --bg2:#D4BC9E; --surf:#FAEEE2; --surf2:#FFEEDE; --surf3:#FFE2CC;
   --g-start:#FF4560; --g-end:#FF8C00;
   --gradient:linear-gradient(135deg,#FF4560 0%,#FF8C00 100%);
   --gradient-soft:linear-gradient(135deg,rgba(255,69,96,.12) 0%,rgba(255,140,0,.08) 100%);
@@ -193,17 +193,17 @@ body[data-theme="colorful"] {
   --amber:#FF8C00; --amber-lt:rgba(255,140,0,.12);
   --sky:#0078D4;   --sky-lt:rgba(0,120,212,.10);
   --green:#00A060; --green-lt:rgba(0,160,96,.10);
-  --dark:#1A0A08; --mid:#6A3828; --lite:#C09080;
-  --border:rgba(255,69,96,.12); --border2:rgba(255,69,96,.22);
-  --card-sh:0 8px 28px rgba(255,69,96,.12); --card-sh2:0 4px 14px rgba(255,69,96,.08);
-  --nav-bg:rgba(255,250,247,0.72);
+  --dark:#1A0A08; --mid:#5A2818; --lite:#8A4030;
+  --border:rgba(255,69,96,.20); --border2:rgba(255,69,96,.36);
+  --card-sh:0 4px 16px rgba(255,69,96,.20),0 1px 3px rgba(200,60,0,.12); --card-sh2:0 2px 8px rgba(255,69,96,.14),0 1px 2px rgba(200,60,0,.08);
+  --nav-bg:rgba(224,200,172,0.93);
   --accent:var(--purple);
-  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(255,246,240,0.52);
-  --glass-border:rgba(255,69,96,0.14); --glass-border2:rgba(255,69,96,0.24);
+  --glass-bg:rgba(250,238,226,0.94); --glass-bg2:rgba(255,238,222,0.85);
+  --glass-border:rgba(255,69,96,0.28); --glass-border2:rgba(255,69,96,0.42);
   --glass-blur:blur(18px);
-  --glass-sh:0 8px 28px rgba(255,69,96,.12),0 1px 0 rgba(255,255,255,.80) inset;
-  --glass-sh2:0 4px 14px rgba(255,69,96,.08),0 1px 0 rgba(255,255,255,.60) inset;
-  --nav-glass:rgba(255,250,247,0.70);
+  --glass-sh:0 4px 16px rgba(255,69,96,.20),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(255,69,96,.14),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(224,200,172,0.93);
   --chart-1:#FF4560; --chart-2:#FF8C00; --chart-3:#00B8A8; --chart-4:#8B5CF6; --chart-5:#E83050;
   --chart-ok:#00B8A8; --chart-mid:#FF8C00; --chart-warn:#FF8C00; --chart-full:#FF4560;
   --chart-empty:rgba(255,69,96,0.08); --chart-grid:rgba(255,69,96,0.10);
@@ -216,7 +216,7 @@ body[data-theme="colorful"] {
    Identity: luxury finance, Bloomberg/WSJ editorial, premium corporate.
 ══════════════════════════════════════════════════════════ */
 body[data-theme="minimal"] {
-  --bg:#FAFAF7; --bg2:#F4F3EE; --surf:#FFFFFF; --surf2:#F4F3EE; --surf3:#ECEAE2;
+  --bg:#CCCAB8; --bg2:#C2C0AE; --surf:#F0F0EA; --surf2:#EFEEE8; --surf3:#E6E4DA;
   --g-start:#1C1C28; --g-end:#B8962E;
   --gradient:linear-gradient(135deg,#1C1C28 0%,#B8962E 100%);
   --gradient-soft:linear-gradient(135deg,rgba(184,150,46,.14) 0%,rgba(184,150,46,.06) 100%);
@@ -226,18 +226,18 @@ body[data-theme="minimal"] {
   --amber:#B8962E; --amber-lt:rgba(184,150,46,.12);
   --sky:#1A4A70;   --sky-lt:rgba(26,74,112,.08);
   --green:#2A6840; --green-lt:rgba(42,104,64,.08);
-  --dark:#0A0A12; --mid:#505060; --lite:#A8A8B8;
-  --border:#E4E2D8; --border2:rgba(28,28,40,.16);
-  --card-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(184,150,46,.10) inset;
-  --card-sh2:0 2px 10px rgba(0,0,0,.05);
-  --nav-bg:rgba(250,250,247,0.75);
+  --dark:#0A0A12; --mid:#3A3A48; --lite:#525260;
+  --border:#AEAC9E; --border2:rgba(28,28,40,.28);
+  --card-sh:0 2px 12px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.10),0 1px 0 rgba(184,150,46,.12) inset;
+  --card-sh2:0 1px 6px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.07);
+  --nav-bg:rgba(204,202,184,0.94);
   --accent:#B8962E;
-  --glass-bg:rgba(255,255,255,0.68); --glass-bg2:rgba(244,243,238,0.56);
-  --glass-border:rgba(184,150,46,0.16); --glass-border2:rgba(184,150,46,0.28);
+  --glass-bg:rgba(240,240,234,0.95); --glass-bg2:rgba(239,238,232,0.88);
+  --glass-border:rgba(184,150,46,0.30); --glass-border2:rgba(184,150,46,0.48);
   --glass-blur:blur(16px);
-  --glass-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(255,255,255,.90) inset,0 -1px 0 rgba(184,150,46,.08) inset;
-  --glass-sh2:0 2px 10px rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.80) inset;
-  --nav-glass:rgba(250,250,247,0.72);
+  --glass-sh:0 2px 12px rgba(0,0,0,.14),0 1px 0 rgba(255,255,255,.85) inset,0 -1px 0 rgba(184,150,46,.12) inset;
+  --glass-sh2:0 1px 6px rgba(0,0,0,.10),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(204,202,184,0.94);
   --chart-1:#B8962E; --chart-2:#1C1C28; --chart-3:#2A6858; --chart-4:#8A6020; --chart-5:#B83030;
   --chart-ok:#2A6858; --chart-mid:#B8962E; --chart-warn:#8A6020; --chart-full:#B83030;
   --chart-empty:rgba(184,150,46,0.08); --chart-grid:rgba(28,28,40,0.10);
@@ -286,7 +286,7 @@ body[data-theme="pixel"] {
    Identity: high-end editorial, refined feminine, like a luxury planner.
 ══════════════════════════════════════════════════════════ */
 body[data-theme="lady"] {
-  --bg:#FDF7F9; --bg2:#F8EEF3; --surf:#FFFFFF; --surf2:#F8EEF3; --surf3:#F0E0EA;
+  --bg:#EACFD8; --bg2:#E0C4CE; --surf:#FBF2F6; --surf2:#F4E4EE; --surf3:#ECD4E4;
   --g-start:#A0306A; --g-end:#C86898;
   --gradient:linear-gradient(135deg,#A0306A 0%,#C86898 100%);
   --gradient-soft:linear-gradient(135deg,rgba(160,48,106,.12) 0%,rgba(200,104,152,.08) 100%);
@@ -296,17 +296,17 @@ body[data-theme="lady"] {
   --amber:#C07830; --amber-lt:rgba(192,120,48,.10);
   --sky:#5058A0;   --sky-lt:rgba(80,88,160,.10);
   --green:#4A8858; --green-lt:rgba(74,136,88,.10);
-  --dark:#280818; --mid:#784860; --lite:#C8A0B8;
-  --border:#EDD8E4; --border2:rgba(160,48,106,.20);
-  --card-sh:0 8px 28px rgba(160,48,106,.12); --card-sh2:0 4px 14px rgba(160,48,106,.08);
-  --nav-bg:rgba(253,247,249,0.72);
+  --dark:#280818; --mid:#602040; --lite:#8A3860;
+  --border:#D4A8BC; --border2:rgba(160,48,106,.32);
+  --card-sh:0 4px 16px rgba(160,48,106,.22),0 1px 3px rgba(120,30,60,.14); --card-sh2:0 2px 8px rgba(160,48,106,.16),0 1px 2px rgba(120,30,60,.10);
+  --nav-bg:rgba(234,207,216,0.90);
   --accent:var(--purple);
-  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(248,238,243,0.52);
-  --glass-border:rgba(160,48,106,0.14); --glass-border2:rgba(160,48,106,0.24);
+  --glass-bg:rgba(251,242,246,0.92); --glass-bg2:rgba(244,228,238,0.86);
+  --glass-border:rgba(160,48,106,0.28); --glass-border2:rgba(160,48,106,0.44);
   --glass-blur:blur(18px);
-  --glass-sh:0 8px 28px rgba(160,48,106,.12),0 1px 0 rgba(255,255,255,.80) inset;
-  --glass-sh2:0 4px 14px rgba(160,48,106,.08),0 1px 0 rgba(255,255,255,.60) inset;
-  --nav-glass:rgba(253,247,249,0.70);
+  --glass-sh:0 4px 16px rgba(160,48,106,.22),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(160,48,106,.16),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(234,207,216,0.90);
   --chart-1:#A0306A; --chart-2:#C86898; --chart-3:#5A9070; --chart-4:#C07830; --chart-5:#C83848;
   --chart-ok:#5A9070; --chart-mid:#A0306A; --chart-warn:#C07830; --chart-full:#C83848;
   --chart-empty:rgba(160,48,106,0.08); --chart-grid:rgba(160,48,106,0.10);
