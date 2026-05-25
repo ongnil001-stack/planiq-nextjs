@@ -12,6 +12,7 @@ interface Props {
   scheduleDayMap: Record<string, Schedule[]>;
   weekWorkload: number[];
   weekRange: string;
+  weekItemCount?: number;
   latestAnalysisSummary?: string | null;
 }
 
