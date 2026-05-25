@@ -85,51 +85,35 @@ export default function BottomNav() {
       </div>
 
       <style jsx>{`
-        /* ── Outer wrapper: safe area + positioning ── */
+        /* ── Outer wrapper ── */
         .bnav-wrap {
           position: fixed;
           bottom: 0; left: 0; right: 0;
           z-index: 200;
-          /* Push pill up from bottom, accounting for iOS home bar */
-          padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
-          pointer-events: none; /* wrapper transparent; nav gets clicks */
+          padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
+          pointer-events: none;
         }
 
-        /* ── Floating pill container ── */
+        /* ── Floating pill ── */
         .bnav {
           pointer-events: all;
           display: flex;
           align-items: center;
           justify-content: space-around;
-          height: 68px;
-          /* Glassmorphism: dark semi-transparent base + blur */
-          background: rgba(12, 14, 26, 0.78);
-          backdrop-filter: blur(28px) saturate(160%);
-          -webkit-backdrop-filter: blur(28px) saturate(160%);
-          /* Pill shape */
-          border-radius: 28px;
-          /* Subtle light border top + glow inner */
-          border: 1px solid rgba(255,255,255,0.09);
+          height: 66px;
+          background: rgba(8, 10, 20, 0.82);
+          backdrop-filter: blur(32px) saturate(180%);
+          -webkit-backdrop-filter: blur(32px) saturate(180%);
+          border-radius: 26px;
+          border: 1px solid rgba(255,255,255,0.08);
           box-shadow:
-            0 0 0 1px rgba(0,0,0,0.4),
-            0 8px 40px rgba(0,0,0,0.55),
-            inset 0 1px 0 rgba(255,255,255,0.07);
-          padding: 0 8px;
-          /* Subtle ambient glow underneath matching theme */
+            0 2px 0 rgba(255,255,255,0.05) inset,
+            0 -1px 0 rgba(255,255,255,0.03) inset,
+            0 12px 48px rgba(0,0,0,0.65),
+            0 4px 16px rgba(0,0,0,0.4);
+          padding: 0 6px;
           position: relative;
           overflow: visible;
-        }
-
-        /* Glow halo under the pill */
-        .bnav::after {
-          content: '';
-          position: absolute;
-          bottom: -8px; left: 20%; right: 20%;
-          height: 20px;
-          background: radial-gradient(ellipse, var(--purple, #7C6AF0) 0%, transparent 70%);
-          opacity: 0.18;
-          filter: blur(8px);
-          pointer-events: none;
         }
 
         /* ── Regular nav item ── */
@@ -137,78 +121,83 @@ export default function BottomNav() {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           gap: 3px;
-          padding: 8px 10px 6px;
-          border-radius: 16px;
-          min-width: 56px;
+          padding: 7px 8px 8px;
+          border-radius: 18px;
+          min-width: 54px;
           text-decoration: none;
-          color: rgba(255,255,255,0.28);
-          transition: color .2s, background .2s;
+          color: rgba(255,255,255,0.30);
+          transition: color .2s ease, background .2s ease, box-shadow .2s ease;
           position: relative;
           flex: 1;
+          height: 52px;
         }
-        .ni:active { background: rgba(255,255,255,.05); }
+        .ni:active { opacity: .75; }
 
-        /* Active state: dark inset card */
+        /* Active — dark frosted card with colored label */
         .ni.on {
-          color: var(--purple, #7C6AF0);
-          background: rgba(0,0,0,0.35);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.3);
+          color: var(--cyan, #00C6FF);
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.07);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
         }
 
-        /* Icon wrapper — keeps icon from shrinking */
         .ni-icon-wrap {
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
 
-        /* Label */
         .ni-lbl {
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: .25px;
-          line-height: 1;
+          font-size: 10px; font-weight: 600;
+          letter-spacing: .2px; line-height: 1;
         }
 
-        /* Active underline bar */
+        /* Active underline bar — matches theme accent */
         .ni-bar {
           position: absolute;
-          bottom: 5px;
-          left: 50%; transform: translateX(-50%);
-          width: 0; height: 2.5px;
+          bottom: 4px; left: 50%;
+          transform: translateX(-50%);
+          width: 0; height: 2px;
           border-radius: 2px;
-          background: var(--purple, #7C6AF0);
-          transition: width .25s cubic-bezier(.4,0,.2,1);
+          background: var(--cyan, #00C6FF);
+          box-shadow: 0 0 6px var(--cyan, #00C6FF);
+          transition: width .22s cubic-bezier(.4,0,.2,1);
         }
-        .ni.on .ni-bar { width: 20px; }
+        .ni.on .ni-bar { width: 18px; }
 
-        /* ── FAB — circular elevated button ── */
+        /* ── FAB ── */
         .ni-fab {
           position: relative;
-          width: 58px; height: 58px;
+          width: 56px; height: 56px;
           flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
           text-decoration: none;
-          margin-top: -14px; /* lifts button above pill */
+          margin-top: -18px;
+          z-index: 10;
         }
 
-        /* Glow ring — animated border */
+        /* Spinning glow ring — conic gradient masked to a thin ring */
         .ni-fab-ring {
           position: absolute;
-          inset: -3px;
+          inset: -2px;
           border-radius: 50%;
+          /* conic gradient gives the arc sweep look */
           background: conic-gradient(
-            from 180deg,
-            var(--purple, #7C6AF0) 0%,
-            var(--cyan, #00C6FF) 40%,
-            transparent 60%,
-            var(--purple, #7C6AF0) 100%
+            from 0deg,
+            transparent 0deg,
+            var(--cyan, #00C6FF) 60deg,
+            var(--purple, #7C6AF0) 160deg,
+            transparent 220deg,
+            transparent 360deg
           );
-          opacity: 0.75;
-          animation: fabSpin 4s linear infinite;
-          filter: blur(1px);
+          /* mask to thin ring — 3px wide */
+          -webkit-mask:
+            radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px));
+          mask:
+            radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px));
+          animation: fabSpin 3s linear infinite;
+          opacity: 0.9;
         }
 
         @keyframes fabSpin {
@@ -216,29 +205,44 @@ export default function BottomNav() {
           to   { transform: rotate(360deg); }
         }
 
-        /* Inner circle — the actual button face */
+        /* Outer glow halo */
+        .ni-fab::before {
+          content: '';
+          position: absolute;
+          inset: -6px;
+          border-radius: 50%;
+          background: radial-gradient(circle,
+            var(--cyan, #00C6FF) 0%,
+            var(--purple, #7C6AF0) 50%,
+            transparent 75%
+          );
+          opacity: 0.15;
+          filter: blur(6px);
+          pointer-events: none;
+        }
+
+        /* Inner dark circle button */
         .ni-fab-inner {
           position: relative;
-          width: 52px; height: 52px;
+          width: 50px; height: 50px;
           border-radius: 50%;
-          background: rgba(10, 12, 24, 0.92);
-          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(14, 16, 30, 0.95);
+          border: 1px solid rgba(255,255,255,0.13);
           display: flex; align-items: center; justify-content: center;
           box-shadow:
-            0 0 0 1px rgba(0,0,0,0.6),
-            0 6px 24px rgba(0,0,0,0.5),
-            inset 0 1px 0 rgba(255,255,255,0.1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          transition: transform .15s, box-shadow .15s;
+            0 0 0 1px rgba(0,0,0,0.5),
+            0 8px 28px rgba(0,0,0,0.6),
+            inset 0 1px 0 rgba(255,255,255,0.12);
+          transition: transform .14s ease, box-shadow .14s ease;
           z-index: 1;
         }
 
         .ni-fab:active .ni-fab-inner {
-          transform: scale(0.93);
-          box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+          transform: scale(0.91);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
         .ni-fab:active .ni-fab-ring { opacity: 1; }
+        .ni-fab:active::before { opacity: 0.3; }
       `}</style>
     </>
   );
