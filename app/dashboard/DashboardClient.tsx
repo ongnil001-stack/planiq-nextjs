@@ -358,70 +358,97 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
               </div>
             </div>
 
-            {/* Chart area: grid lines + bars + value labels */}
-            <div className="wl-chart-wrap">
-              {/* Horizontal grid lines */}
-              <div className="wl-grid">
-                {[100, 75, 50, 25].map(pct => (
-                  <div key={pct} className="wl-grid-row" style={{ bottom: `${pct}%` }}>
-                    <span className="wl-grid-lbl">{pct}</span>
-                    <div className="wl-grid-line"/>
-                  </div>
-                ))}
-                {/* Baseline */}
-                <div className="wl-baseline"/>
-              </div>
+            {/* ── Chart: value labels row → bar area → day labels row ── */}
+            <div className="wl-chart">
 
-              {/* Bars */}
-              <div className="wl-bars">
+              {/* ROW 1: Value labels — one per column, perfectly aligned above bars */}
+              <div className="wl-val-row">
+                <div className="wl-y-spacer" /> {/* matches Y-axis gutter width */}
                 {weekDays.map((d, i) => {
                   const load = WEEK_WORKLOAD[i];
-                  const isToday = d.toDateString() === today.toDateString();
                   const barColor =
                     load >= 90 ? ch.full
                     : load >= 65 ? ch.warn
                     : load >= 30 ? ch.mid
                     : ch.ok;
-                  const barPct = Math.max(2, load);
                   return (
-                    <div key={i} className="wl-col">
-                      {/* Value label above bar */}
-                      <div
+                    <div key={i} className="wl-val-cell">
+                      <span
                         className="wl-val-lbl"
                         style={{ color: load >= 65 ? barColor : 'var(--mid)' }}
                       >
                         {load > 0 ? `${load}%` : '—'}
-                      </div>
-                      {/* Bar */}
-                      <div className="wl-bar-slot">
-                        <div
-                          className={`wl-bar ${isToday ? 'wl-bar-today' : ''}`}
-                          style={{
-                            height: `${barPct}%`,
-                            background: isToday
-                              ? `linear-gradient(to top, ${barColor}, ${barColor}cc)`
-                              : barColor,
-                            opacity: load < 5 ? 0.35 : 1,
-                          }}
-                        />
-                      </div>
+                      </span>
                     </div>
                   );
                 })}
               </div>
-            </div>
 
-            {/* Day labels row — outside chart-wrap so they sit cleanly below */}
-            <div className="wl-bars-labels">
-              {weekDays.map((d, i) => {
-                const isToday = d.toDateString() === today.toDateString();
-                const load = WEEK_WORKLOAD[i];
-                return (
-                  <div key={i} className={`wl-dlbl ${isToday ? 'wl-today' : ''} ${load >= 90 ? 'wl-warn' : ''}`}>
-                    {DAY_LABELS[i].slice(0, 2)}
+              {/* ROW 2: Bar area with Y-axis gutter on left */}
+              <div className="wl-bar-area">
+
+                {/* Y-axis labels — fixed left column */}
+                <div className="wl-y-axis">
+                  {[100, 75, 50, 25].map(pct => (
+                    <div key={pct} className="wl-y-tick" style={{ bottom: `${pct}%` }}>
+                      <span className="wl-y-lbl">{pct}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Grid + bars container */}
+                <div className="wl-plot">
+                  {/* Grid lines — absolute, behind bars */}
+                  <div className="wl-gridlines" aria-hidden="true">
+                    {[100, 75, 50, 25].map(pct => (
+                      <div key={pct} className="wl-gridline" style={{ bottom: `${pct}%` }} />
+                    ))}
+                    <div className="wl-baseline" />
                   </div>
-                );
-              })}
+
+                  {/* Bars */}
+                  {weekDays.map((d, i) => {
+                    const load = WEEK_WORKLOAD[i];
+                    const isToday = d.toDateString() === today.toDateString();
+                    const barColor =
+                      load >= 90 ? ch.full
+                      : load >= 65 ? ch.warn
+                      : load >= 30 ? ch.mid
+                      : ch.ok;
+                    return (
+                      <div key={i} className="wl-bar-col">
+                        <div
+                          className={`wl-bar${isToday ? ' wl-bar-today' : ''}`}
+                          style={{
+                            height: `${Math.max(2, load)}%`,
+                            background: isToday
+                              ? `linear-gradient(to top, ${barColor}, ${barColor}bb)`
+                              : barColor,
+                            opacity: load < 5 ? 0.4 : 1,
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ROW 3: Day labels */}
+              <div className="wl-day-row">
+                <div className="wl-y-spacer" />
+                {weekDays.map((d, i) => {
+                  const isToday = d.toDateString() === today.toDateString();
+                  const load = WEEK_WORKLOAD[i];
+                  return (
+                    <div key={i} className="wl-day-cell">
+                      <span className={`wl-day-lbl${isToday ? ' wl-day-today' : ''}${load >= 90 ? ' wl-day-warn' : ''}`}>
+                        {DAY_LABELS[i].slice(0, 2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
             </div>
 
             {/* Insight footer */}
@@ -732,74 +759,102 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         .wl-leg-swatch { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
         .wl-leg-item span { font-size: 10px; color: var(--mid); font-weight: 500; }
 
-        /* Chart wrapper: positions grid behind bars */
-        .wl-chart-wrap {
-          position: relative;
-          height: 148px;           /* grid area height */
-          margin-bottom: 10px;
+        /* ── Chart outer container — 3 rows stacked ── */
+        .wl-chart {
+          display: flex; flex-direction: column; gap: 0;
+          margin-bottom: 12px;
         }
 
-        /* Grid lines layer */
-        .wl-grid {
-          position: absolute; inset: 0 0 22px 28px; /* leave space left for labels, bottom for day labels */
+        /* Shared spacer that matches Y-axis label column width */
+        .wl-y-spacer { width: 28px; flex-shrink: 0; }
+
+        /* ROW 1: Value labels above each bar */
+        .wl-val-row {
+          display: flex; align-items: flex-end;
+          padding-bottom: 4px;
+        }
+        .wl-val-cell {
+          flex: 1; display: flex; justify-content: center; align-items: center;
+        }
+        .wl-val-lbl {
+          font-size: 9px; font-weight: 700; line-height: 1;
+          white-space: nowrap; letter-spacing: -.2px;
+        }
+
+        /* ROW 2: Bar area = Y-axis column + plot */
+        .wl-bar-area {
+          display: flex; height: 130px; position: relative;
+        }
+
+        /* Y-axis label column */
+        .wl-y-axis {
+          width: 28px; flex-shrink: 0;
+          position: relative; /* tick positions relative to this */
+        }
+        .wl-y-tick {
+          position: absolute; right: 0;
+          transform: translateY(50%); /* center label on the line */
+          display: flex; align-items: center; justify-content: flex-end;
+          padding-right: 5px;
+        }
+        .wl-y-lbl {
+          font-size: 9px; font-weight: 600; color: var(--lite); line-height: 1;
+        }
+
+        /* Plot: grid lines + bars */
+        .wl-plot {
+          flex: 1; position: relative;
+          border-left: 1px solid var(--border2);
+        }
+
+        /* Grid lines inside plot */
+        .wl-gridlines {
+          position: absolute; inset: 0;
           pointer-events: none;
         }
-        .wl-grid-row {
+        .wl-gridline {
           position: absolute; left: 0; right: 0;
-          display: flex; align-items: center; gap: 6px;
-          transform: translateY(50%);  /* center on the line */
-        }
-        .wl-grid-lbl {
-          font-size: 9px; font-weight: 600; color: var(--lite);
-          min-width: 18px; text-align: right; flex-shrink: 0; line-height: 1;
-        }
-        .wl-grid-line {
-          flex: 1; height: 1px;
-          background: var(--border);
-          opacity: .6;
+          height: 1px; background: var(--border); opacity: .5;
+          transform: translateY(50%);
         }
         .wl-baseline {
-          position: absolute; bottom: 0; left: 24px; right: 0;
-          height: 1.5px; background: var(--border2); opacity: .8;
+          position: absolute; bottom: 0; left: 0; right: 0;
+          height: 1.5px; background: var(--border2); opacity: .9;
         }
 
-        /* Bars layer */
-        .wl-bars {
-          position: absolute; inset: 0 0 22px 28px;
-          display: flex; gap: 6px; align-items: flex-end;
+        /* Bar columns inside plot — flex children */
+        .wl-plot {
+          display: flex; align-items: flex-end;
+          padding: 0 4px; gap: 5px;
         }
-        .wl-col {
-          flex: 1; display: flex; flex-direction: column;
-          align-items: center; height: 100%;
-          padding-top: 16px; /* reserve space so 100% label never clips */
-        }
-        /* Value label at top */
-        .wl-val-lbl {
-          font-size: 9px; font-weight: 700;
-          line-height: 1; margin-bottom: 3px;
-          min-height: 11px; flex-shrink: 0;
-          white-space: nowrap;
-        }
-        /* Stretchy bar slot — label sits above, bar grows upward */
-        .wl-bar-slot {
-          flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center;
+        .wl-bar-col {
+          flex: 1; height: 100%;
+          display: flex; align-items: flex-end; justify-content: center;
         }
         .wl-bar {
-          width: 78%; border-radius: 4px 4px 2px 2px;
-          min-height: 4px; transition: height .55s cubic-bezier(.4,0,.2,1);
+          width: 72%; border-radius: 4px 4px 2px 2px;
+          min-height: 3px;
+          transition: height .55s cubic-bezier(.4,0,.2,1);
         }
-        .wl-bar-today { box-shadow: 0 0 10px rgba(139,124,246,.5); }
+        .wl-bar-today {
+          box-shadow: 0 0 10px rgba(139,124,246,.45);
+        }
 
-        /* Day labels row — below chart wrap */
-        .wl-bars-labels {
-          display: flex; gap: 6px; padding-left: 28px; margin-bottom: 2px;
+        /* ROW 3: Day labels */
+        .wl-day-row {
+          display: flex; align-items: center;
+          padding-top: 5px; border-top: 1px solid var(--border);
+          margin-top: 0;
         }
-        .wl-dlbl {
-          flex: 1; text-align: center;
+        .wl-day-cell {
+          flex: 1; display: flex; justify-content: center;
+        }
+        .wl-day-lbl {
           font-size: 9px; font-weight: 700; color: var(--lite);
+          line-height: 1;
         }
-        .wl-today { color: var(--purple); }
-        .wl-warn  { color: var(--coral); }
+        .wl-day-today { color: var(--purple); }
+        .wl-day-warn  { color: var(--coral); }
 
         /* Insight footer */
         .wl-note {
