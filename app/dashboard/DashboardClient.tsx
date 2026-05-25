@@ -425,14 +425,37 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
             </div>
 
             {/* Insight footer */}
-            <div className="wl-note">
-              <div className="wl-note-dot" style={{ background: ch.full }} />
-              <span>
-                {WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD)) !== todayDow
-                  ? `${DAY_LABELS[WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD))]}'s schedule looks heaviest — consider spreading tasks`
-                  : 'Today is your heaviest day — pace yourself'}
-              </span>
-            </div>
+            {(() => {
+              const heaviestIdx = WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD));
+              const heaviestLoad = WEEK_WORKLOAD[heaviestIdx];
+              const isOverloaded = heaviestLoad >= 90;
+              const insightMsg = heaviestIdx !== todayDow
+                ? `${DAY_LABELS[heaviestIdx]}'s schedule looks heaviest — consider spreading tasks`
+                : 'Today is your heaviest day — pace yourself';
+              return (
+                <div className="wl-note">
+                  <div
+                    className="wl-note-pill"
+                    style={{
+                      background: isOverloaded ? `${ch.full}18` : `${ch.warn}18`,
+                      borderColor: isOverloaded ? `${ch.full}55` : `${ch.warn}55`,
+                    }}
+                  >
+                    <svg
+                      width="11" height="11" viewBox="0 0 16 16" fill="none"
+                      style={{ flexShrink: 0, marginTop: 1 }}
+                    >
+                      <path
+                        d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 4v3m0 2.5v.5"
+                        stroke={isOverloaded ? ch.full : ch.warn}
+                        strokeWidth="1.6" strokeLinecap="round"
+                      />
+                    </svg>
+                    <span style={{ color: isOverloaded ? ch.full : ch.warn }}>{insightMsg}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -748,22 +771,24 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         .wl-col {
           flex: 1; display: flex; flex-direction: column;
           align-items: center; height: 100%;
+          padding-top: 16px; /* reserve space so 100% label never clips */
         }
         /* Value label at top */
         .wl-val-lbl {
           font-size: 9px; font-weight: 700;
           line-height: 1; margin-bottom: 3px;
           min-height: 11px; flex-shrink: 0;
+          white-space: nowrap;
         }
         /* Stretchy bar slot — label sits above, bar grows upward */
         .wl-bar-slot {
-          flex: 1; width: 100%; display: flex; align-items: flex-end;
+          flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center;
         }
         .wl-bar {
-          width: 100%; border-radius: 5px 5px 0 0;
+          width: 78%; border-radius: 4px 4px 2px 2px;
           min-height: 4px; transition: height .55s cubic-bezier(.4,0,.2,1);
         }
-        .wl-bar-today { box-shadow: 0 0 8px rgba(139,124,246,.45); }
+        .wl-bar-today { box-shadow: 0 0 10px rgba(139,124,246,.5); }
 
         /* Day labels row — below chart wrap */
         .wl-bars-labels {
@@ -778,11 +803,15 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
 
         /* Insight footer */
         .wl-note {
-          display: flex; align-items: flex-start; gap: 7px;
           padding-top: 10px; border-top: 1px solid var(--border);
-          font-size: 11px; color: var(--mid); font-weight: 500; line-height: 1.4;
         }
-        .wl-note-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+        .wl-note-pill {
+          display: inline-flex; align-items: flex-start; gap: 6px;
+          padding: 7px 10px; border-radius: 10px;
+          border: 1px solid transparent;
+          font-size: 11px; font-weight: 600; line-height: 1.45;
+          width: 100%;
+        }
       `}</style>
     </div>
   );
