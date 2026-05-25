@@ -36,6 +36,53 @@ const GREETING = () => {
 const DAY_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const WEEK_WORKLOAD = [65, 80, 45, 100, 70, 57, 8];
 
+// ─── Shared style objects ──────────────────────────────────────────────────────
+const S = {
+  page: {
+    height: '100dvh',
+    background: 'var(--bg)',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    color: 'var(--dark)',
+    fontFamily: 'inherit',
+    overflow: 'hidden',
+  },
+  hdr: {
+    padding: '52px 22px 14px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+    position: 'relative' as const,
+    zIndex: 10,
+    background: 'var(--glass-bg, var(--bg))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderBottom: '1px solid var(--glass-border, var(--border))',
+  },
+  scrl: {
+    flex: 1,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    padding: '12px 18px 100px',
+    WebkitOverflowScrolling: 'touch' as const,
+    scrollbarWidth: 'none' as const,
+    overscrollBehavior: 'contain' as const,
+  },
+  widget: {
+    marginBottom: 12,
+  },
+  card: {
+    background: 'var(--glass-bg, var(--surf))',
+    borderRadius: 'var(--rmd, 16px)',
+    padding: '14px 16px',
+    boxShadow: 'var(--glass-sh2, 0 4px 24px rgba(0,0,0,.18))',
+    border: '1px solid var(--glass-border, rgba(255,255,255,.09))',
+    backdropFilter: 'blur(18px)',
+    WebkitBackdropFilter: 'blur(18px)',
+  },
+};
+
 export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -61,7 +108,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     };
   }, [refreshPrefs]);
 
-  const completedToday = todaySchedules.filter((s) => s.is_completed).length;
+  const completedToday = todaySchedules.filter(s => s.is_completed).length;
   const totalToday = todaySchedules.length;
   const progressPct = totalToday ? Math.round((completedToday / totalToday) * 100) : 0;
 
@@ -80,10 +127,10 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const workloadScore = latestAnalysis?.workload_score ?? 78;
 
   const workloadStatus =
-    workloadScore >= 85 ? { label: 'Overloaded', color: ch.full,  badgeClass: 'attention' }
-    : workloadScore >= 65 ? { label: 'Attention', color: ch.warn,  badgeClass: 'attention' }
-    : workloadScore >= 30 ? { label: 'On Track',  color: ch.ok,    badgeClass: 'ok' }
-    : { label: 'Light Day',  color: ch.mid,   badgeClass: 'ok' };
+    workloadScore >= 85 ? { badgeClass: 'attention', color: ch.full }
+    : workloadScore >= 65 ? { badgeClass: 'attention', color: ch.warn }
+    : workloadScore >= 30 ? { badgeClass: 'ok', color: ch.ok }
+    : { badgeClass: 'ok', color: ch.mid };
 
   const scoreLabel =
     workloadScore >= 85 ? 'Overloaded'
@@ -91,8 +138,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     : workloadScore >= 30 ? 'On Track' : 'Light';
 
   const streakDays = 7;
-  const inProgress = todaySchedules.find((s) => !s.is_completed);
-
+  const inProgress = todaySchedules.find(s => !s.is_completed);
   const today = new Date();
   const todayDow = today.getDay();
   const startOfWeek = new Date(today);
@@ -105,7 +151,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   });
 
   const scheduleDayMap: Record<string, Schedule[]> = {};
-  weekSchedules.forEach((s) => {
+  weekSchedules.forEach(s => {
     const key = new Date(s.start_time).toDateString();
     if (!scheduleDayMap[key]) scheduleDayMap[key] = [];
     scheduleDayMap[key].push(s);
@@ -127,178 +173,229 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   // ── Prefs helpers ──────────────────────────────────────────────────────
   const cardOrder: DashboardCardKey[] = prefs?.order ?? [
-    'todayCard', 'quickStats', 'pinnedShortcuts',
-    'performanceCard', 'weeklySchedule', 'workloadBalance',
-    'aiPriorities', 'upcomingTasks',
+    'todayCard','quickStats','pinnedShortcuts',
+    'performanceCard','weeklySchedule','workloadBalance',
+    'aiPriorities','upcomingTasks',
   ];
-
   const isVisible = (key: DashboardCardKey) => prefs?.visible[key] ?? true;
   const isCompact = (key: DashboardCardKey) => (prefs?.size[key] ?? 'full') === 'compact';
 
-  const pinnedShortcutDefs = (prefs?.pinnedShortcuts ?? ['addTask', 'viewCalendar', 'viewPriorities'])
+  const pinnedShortcutDefs = (prefs?.pinnedShortcuts ?? ['addTask','viewCalendar','viewPriorities'])
     .map(k => ALL_SHORTCUTS.find(s => s.key === k))
     .filter(Boolean) as typeof ALL_SHORTCUTS;
 
-  // ── Card renderers ─────────────────────────────────────────────────────
-
+  // ── Render: Today Card ────────────────────────────────────────────────
   function renderTodayCard() {
     const compact = isCompact('todayCard');
+    const isAttn = workloadStatus.badgeClass === 'attention';
     return (
-      <div className="widget" key="todayCard">
-        <div className="today-card" onClick={() => setTodayExpanded(!todayExpanded)}>
-          <div className="tc-hdr">
+      <div key="todayCard" style={S.widget}>
+        <div
+          onClick={() => setTodayExpanded(v => !v)}
+          style={{ ...S.card, cursor: 'pointer', padding: '15px 16px 12px' }}
+        >
+          {/* Header row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 11 }}>
             <div>
-              <div className="tc-date-lbl" style={compact ? { fontSize: 16 } : {}}>{todayLabel}</div>
-              <div className="tc-day-lbl">{todayDayName} · {totalToday} activities</div>
+              <div style={{ fontSize: compact ? 16 : 20, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.5px', lineHeight: 1 }}>{todayLabel}</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 3 }}>{todayDayName} · {totalToday} activities</div>
             </div>
-            {workloadStatus.badgeClass === 'attention' ? (
-              <div className="tc-status-badge attention">Attention</div>
-            ) : (
-              <div className="tc-status-badge ok">On Track</div>
-            )}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              borderRadius: 100, padding: '4px 10px',
+              fontSize: 10, fontWeight: 700, letterSpacing: '.3px', flexShrink: 0,
+              background: isAttn ? 'var(--coral-lt, rgba(255,107,138,.12))' : 'var(--mint-lt, rgba(45,212,191,.12))',
+              color: isAttn ? 'var(--coral, #FF6B8A)' : 'var(--mint, #2DD4BF)',
+              border: `1px solid ${isAttn ? 'var(--coral, #FF6B8A)' : 'var(--mint, #2DD4BF)'}`,
+            }}>
+              {isAttn && <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--coral, #FF6B8A)', display: 'inline-block', animation: 'pulseDot 1.4s ease-in-out infinite' }} />}
+              {isAttn ? 'Attention' : 'On Track'}
+            </div>
           </div>
 
           {!compact && (
             <>
-              {inProgress ? (
-                <div className="tc-focus-bar" onClick={(e) => e.stopPropagation()}>
-                  <div className="tc-focus-icon">▶</div>
-                  <div className="tc-focus-info">
-                    <div className="tc-focus-name">{inProgress.title}</div>
-                    <div className="tc-prog-row">
-                      <div className="tc-prog-bar"><div className="tc-prog-fill" style={{ width: `${progressPct}%` }} /></div>
-                      <span className="tc-prog-txt">{progressPct}% · In Progress</span>
-                    </div>
-                  </div>
-                  <div className="tc-focus-time">{formatTime(inProgress.start_time)}</div>
+              {/* Focus bar */}
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 11px', background: 'var(--bg)', borderRadius: 10,
+                  marginBottom: 8, border: '1px solid var(--border, rgba(255,255,255,.08))',
+                  opacity: inProgress ? 1 : 0.7,
+                }}
+              >
+                <div style={{ fontSize: 14, color: 'var(--purple)', fontWeight: 700, flexShrink: 0 }}>
+                  {inProgress ? '▶' : '◎'}
                 </div>
-              ) : (
-                <div className="tc-focus-bar no-task" onClick={(e) => e.stopPropagation()}>
-                  <div className="tc-focus-icon" style={{ opacity: .4 }}>◎</div>
-                  <div className="tc-focus-info">
-                    <div className="tc-focus-name" style={{ opacity: .5 }}>No active task</div>
-                    <div className="tc-prog-row">
-                      <div className="tc-prog-bar"><div className="tc-prog-fill" style={{ width: `${progressPct}%` }} /></div>
-                      <span className="tc-prog-txt">{progressPct}% of today done</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: inProgress ? 'var(--dark)' : 'var(--mid)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {inProgress ? inProgress.title : 'No active task'}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                    <div style={{ flex: 1, height: 3, background: 'var(--border2, rgba(255,255,255,.07))', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'var(--gradient)', borderRadius: 2, width: `${progressPct}%`, transition: 'width .6s ease' }} />
                     </div>
+                    <span style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {progressPct}% {inProgress ? '· In Progress' : 'of today done'}
+                    </span>
                   </div>
                 </div>
-              )}
+                {inProgress && (
+                  <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 600, flexShrink: 0 }}>{formatTime(inProgress.start_time)}</div>
+                )}
+              </div>
 
-              <Link href="/ai-analysis" className="tc-insight-bar" onClick={(e) => e.stopPropagation()}>
-                <div className="tc-ins-ico">
+              {/* Insight bar */}
+              <Link
+                href="/ai-analysis"
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '8px 10px', borderRadius: 10,
+                  background: 'var(--amber-lt, rgba(253,203,110,.10))',
+                  borderLeft: '3px solid var(--amber, #FDCB6E)',
+                  textDecoration: 'none',
+                }}
+              >
+                <div style={{ color: 'var(--amber)', flexShrink: 0 }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M8 2L3.5 8H7L6 12.5L10.5 6.5H7.2L8 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <div className="tc-ins-text">{insightText}</div>
-                <div className="tc-ins-arrow">›</div>
+                <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--dark)', lineHeight: 1.4 }}>{insightText}</div>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--pur-lt)', color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}>›</div>
               </Link>
             </>
           )}
 
           {compact && (
-            <div className="tc-compact-row">
-              <span className="tc-compact-stat"><strong>{completedToday}/{totalToday}</strong> done</span>
-              <div className="tc-prog-bar" style={{ flex:1, margin: '0 8px' }}>
-                <div className="tc-prog-fill" style={{ width: `${progressPct}%` }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600, whiteSpace: 'nowrap' }}><strong>{completedToday}/{totalToday}</strong> done</span>
+              <div style={{ flex: 1, height: 3, background: 'var(--border2, rgba(255,255,255,.07))', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'var(--gradient)', borderRadius: 2, width: `${progressPct}%` }} />
               </div>
-              <span className="tc-compact-pct">{progressPct}%</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dark)', whiteSpace: 'nowrap' }}>{progressPct}%</span>
             </div>
           )}
         </div>
 
+        {/* Expandable task list */}
         {todayExpanded && (
-          <div className="ts-exp">
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 7 }}>
             {todaySchedules.length === 0 ? (
-              <div className="ts-empty">
-                <Link href="/schedule/new" className="ts-add-cta">+ Add your first task</Link>
+              <div style={{ padding: 12, textAlign: 'center' }}>
+                <Link href="/schedule/new" style={{ padding: '9px 20px', background: 'var(--gradient)', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                  + Add your first task
+                </Link>
               </div>
-            ) : (
-              todaySchedules.map((s) => (
-                <div
-                  key={s.id}
-                  className={`tli ${s.is_completed ? 'done' : ''}`}
-                  onClick={() => toggleComplete(s)}
-                >
-                  <div className="tli-time">
-                    {formatTime(s.start_time).split(' ')[0]}<br/>
-                    {formatTime(s.start_time).split(' ')[1]}
-                  </div>
-                  <div className="tli-dot" style={{ background: PRIORITY_COLORS[s.priority] }} />
-                  <div className="tli-info">
-                    <div className="tli-title">{s.title}</div>
-                    <div className="tli-sub">{TYPE_ICONS[s.type]} {s.end_time ? `${formatTime(s.start_time)} – ${formatTime(s.end_time)}` : formatTime(s.start_time)}</div>
-                  </div>
-                  <div
-                    className="tli-dur"
-                    style={{
-                      background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28'
-                        : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
-                      color: (s.priority === 'critical' || s.priority === 'high') ? ch.full
-                        : s.priority === 'medium' ? ch.warn : ch.ok,
-                    }}
-                  >
-                    {s.priority.toUpperCase()}
-                  </div>
+            ) : todaySchedules.map(s => (
+              <div
+                key={s.id}
+                onClick={() => toggleComplete(s)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 14px 12px 0', background: 'var(--surf)',
+                  borderRadius: 14, cursor: 'pointer',
+                  border: '1px solid var(--border)', position: 'relative', overflow: 'hidden',
+                  opacity: s.is_completed ? 0.45 : 1,
+                }}
+              >
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--gradient)', borderRadius: '3px 0 0 3px' }} />
+                <div style={{ width: 44, fontSize: 10, fontWeight: 600, color: 'var(--lite)', textAlign: 'center', flexShrink: 0, lineHeight: 1.3, paddingLeft: 8 }}>
+                  {formatTime(s.start_time).split(' ')[0]}<br/>{formatTime(s.start_time).split(' ')[1]}
                 </div>
-              ))
-            )}
+                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: PRIORITY_COLORS[s.priority] }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dark)' }}>{s.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>{TYPE_ICONS[s.type]} {s.end_time ? `${formatTime(s.start_time)} – ${formatTime(s.end_time)}` : formatTime(s.start_time)}</div>
+                </div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, marginRight: 8,
+                  background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28' : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
+                  color: (s.priority === 'critical' || s.priority === 'high') ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
+                }}>
+                  {s.priority.toUpperCase()}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
     );
   }
 
+  // ── Render: Quick Stats ───────────────────────────────────────────────
   function renderQuickStats() {
     const compact = isCompact('quickStats');
     return (
-      <div className="widget" key="quickStats">
-        <div className={`qs-card${compact ? ' qs-compact' : ''}`}>
-          <div className="qs-stat">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="qs-icon" style={{ color: 'var(--amber)' }}>
+      <div key="quickStats" style={S.widget}>
+        <div style={{ ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: compact ? '10px 14px' : '14px 16px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--amber)', opacity: .85 }}>
               <path d="M10 3C10 3 7 6 7 9C7 10.66 8.34 12 10 12C11.66 12 13 10.66 13 9C13 6 10 3 10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M10 12V17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            <div className="qs-val" style={{ color: 'var(--amber)' }}>{streakDays}</div>
-            <div className="qs-lbl">Streak</div>
+            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)' }}>{streakDays}</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Streak</div>
           </div>
-          <div className="qs-sep" />
-          <div className="qs-stat">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="qs-icon" style={{ color: 'var(--mint)' }}>
+          <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--mint)', opacity: .85 }}>
               <path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <div className="qs-val" style={{ color: 'var(--mint)' }}>{completedToday}</div>
-            <div className="qs-lbl">Done</div>
+            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--mint)' }}>{completedToday}</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Done</div>
           </div>
-          <div className="qs-sep" />
-          <div className="qs-stat">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="qs-icon" style={{ color: 'var(--purple)' }}>
+          <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--purple)', opacity: .85 }}>
               <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 6v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            <div className="qs-val" style={{ color: 'var(--purple)' }}>{workloadScore}</div>
-            <div className="qs-lbl">Score</div>
+            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--purple)' }}>{workloadScore}</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Score</div>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Render: Pinned Shortcuts ──────────────────────────────────────────
   function renderPinnedShortcuts() {
     if (pinnedShortcutDefs.length === 0) return null;
     return (
-      <div className="widget" key="pinnedShortcuts">
-        <div className="ps-row">
+      <div key="pinnedShortcuts" style={S.widget}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${pinnedShortcutDefs.length}, 1fr)`, gap: 8 }}>
           {pinnedShortcutDefs.map(sc => (
-            <Link key={sc.key} href={sc.href} className="ps-btn" style={{ '--sc-color': sc.color } as React.CSSProperties}>
-              <div className="ps-icon-wrap">
+            <Link
+              key={sc.key}
+              href={sc.href}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                padding: '12px 8px',
+                borderRadius: 'var(--rmd, 16px)',
+                background: 'var(--glass-bg, var(--surf))',
+                border: '1px solid var(--glass-border, rgba(255,255,255,.09))',
+                boxShadow: 'var(--glass-sh2, 0 4px 24px rgba(0,0,0,.18))',
+                backdropFilter: 'blur(18px)',
+                WebkitBackdropFilter: 'blur(18px)',
+                textDecoration: 'none',
+              }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: `color-mix(in srgb, ${sc.color} 16%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${sc.color} 35%, transparent)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: sc.color,
+              }}>
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                   <path d={sc.iconPath} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                   {sc.iconPath2 && <path d={sc.iconPath2} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>}
                 </svg>
               </div>
-              <span className="ps-label">{sc.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textAlign: 'center', lineHeight: 1.2 }}>{sc.label}</span>
             </Link>
           ))}
         </div>
@@ -306,60 +403,53 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     );
   }
 
+  // ── Render: Performance Card ──────────────────────────────────────────
   function renderPerformanceCard() {
     const compact = isCompact('performanceCard');
     return (
-      <div className="widget" key="performanceCard">
-        <div className="perf-card" onClick={() => !compact && setPerfExpanded(!perfExpanded)}>
-          <div className="pc-summary">
-            <div className="pc-left">
+      <div key="performanceCard" style={S.widget}>
+        <div style={{ ...S.card, cursor: 'pointer' }} onClick={() => !compact && setPerfExpanded(v => !v)}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
               {!compact && (
-                <div className="pc-ring">
-                  <svg className="pc-ring-svg" viewBox="0 0 54 54" width="54" height="54">
+                <div style={{ width: 54, height: 54, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg style={{ position: 'absolute', top: 0, left: 0 }} viewBox="0 0 54 54" width="54" height="54">
                     <circle cx="27" cy="27" r="22.5" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="4"/>
                     <circle
                       cx="27" cy="27" r="22.5" fill="none"
-                      stroke="url(#scoreGrad)" strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeOffset}
+                      stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
+                      strokeDasharray={circumference} strokeDashoffset={strokeOffset}
                       transform="rotate(-90 27 27)"
                       style={{ transition: 'stroke-dashoffset .6s ease' }}
                     />
                   </svg>
-                  <div className="pc-score-num">{workloadScore}</div>
+                  <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{workloadScore}</div>
                 </div>
               )}
-              <div className="pc-info">
-                <div className="pc-hdline">{scoreLabel}{compact ? ` — Score: ${workloadScore}` : ''}</div>
-                <div className="pc-sub">
-                  <svg width="13" height="13" viewBox="0 0 15 15" fill="none" style={{ display:'inline',verticalAlign:'middle',marginRight:3 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{scoreLabel}{compact ? ` — ${workloadScore}` : ''}</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2 }}>
+                  <svg width="13" height="13" viewBox="0 0 15 15" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight: 3 }}>
                     <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                   </svg>
                   {streakDays}-day streak · {totalToday} tasks today
                 </div>
               </div>
             </div>
-            {!compact && <div className="ts-chev" style={{ transform: perfExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }}>⌄</div>}
+            {!compact && <div style={{ fontSize: 18, color: 'var(--mid)', lineHeight: 1, transform: perfExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }}>⌄</div>}
           </div>
 
           {!compact && perfExpanded && (
-            <div className="pc-grid">
-              <div className="pc-gstat"><div className="pc-gval">{workloadScore}</div><div className="pc-glbl">Score</div></div>
-              <div className="pc-gsep" />
-              <div className="pc-gstat"><div className="pc-gval">{totalToday}</div><div className="pc-glbl">Tasks</div></div>
-              <div className="pc-gsep" />
-              <div className="pc-gstat"><div className="pc-gval">{completedToday}</div><div className="pc-glbl">Done</div></div>
-              <div className="pc-gsep" />
-              <div className="pc-gstat">
-                <div className="pc-gval" style={{ display:'flex', alignItems:'center', gap:3 }}>
-                  <svg width="13" height="13" viewBox="0 0 15 15" fill="none">
-                    <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                  </svg>
-                  {streakDays}
+            <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              {[['Score', workloadScore], ['Tasks', totalToday], ['Done', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
+                <div key={String(lbl)} style={{ display: 'flex', alignItems: 'stretch' }}>
+                  {i > 0 && <div style={{ width: 1, background: 'var(--border)', margin: '4px 0', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)' }}>{val}</div>
+                    <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 2, fontWeight: 600 }}>{lbl}</div>
+                  </div>
                 </div>
-                <div className="pc-glbl">Streak</div>
-              </div>
+              ))}
             </div>
           )}
         </div>
@@ -367,39 +457,46 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     );
   }
 
+  // ── Render: Weekly Schedule ───────────────────────────────────────────
   function renderWeeklySchedule() {
     const compact = isCompact('weeklySchedule');
     return (
-      <div className="widget" key="weeklySchedule">
-        <Link href="/calendar" className="wk-widget" style={{ textDecoration:'none' }}>
-          <div className="wk-w-hdr">
+      <div key="weeklySchedule" style={S.widget}>
+        <Link href="/calendar" style={{ ...S.card, display: 'block', textDecoration: 'none', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
-              <div className="wk-w-ttl">Weekly Schedule</div>
-              {!compact && <div className="wk-w-meta">{weekRange} · {weekItemCount} item{weekItemCount !== 1 ? 's' : ''}</div>}
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Weekly Schedule</div>
+              {!compact && <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2 }}>{weekRange} · {weekItemCount} item{weekItemCount !== 1 ? 's' : ''}</div>}
             </div>
-            <div className="wk-w-arr" style={{ color:'rgba(255,255,255,.3)', fontSize:18 }}>→</div>
+            <div style={{ color: 'rgba(255,255,255,.3)', fontSize: 18 }}>→</div>
           </div>
-          <div className="wk-w-strip">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: compact ? 0 : 10 }}>
             {weekDays.map((d, i) => {
               const isToday = d.toDateString() === today.toDateString();
-              const hasItems = !!scheduleDayMap[d.toDateString()];
               const isHot = (scheduleDayMap[d.toDateString()]?.length ?? 0) >= 4;
-              const dotColor = isHot ? ch.full : hasItems ? ch.c1 : undefined;
+              const hasItems = !!scheduleDayMap[d.toDateString()];
+              const dotColor = isHot ? ch.full : hasItems ? ch.c1 : 'transparent';
               return (
-                <div key={i} className={`wk-wd ${isToday ? 'today' : isHot ? 'hot' : hasItems ? 'has' : ''}`}>
-                  <div className="wk-wd-lbl">{DAY_LABELS[i]}</div>
-                  <div className="wk-wd-num">{d.getDate()}</div>
-                  <div className="wk-wd-dot" style={{ background: dotColor ?? 'transparent' }} />
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? 'var(--purple)' : 'var(--lite)' }}>{DAY_LABELS[i]}</div>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isToday ? 'var(--purple)' : 'transparent',
+                    color: isToday ? '#fff' : isHot ? 'var(--coral)' : hasItems ? 'var(--dark)' : 'var(--mid)',
+                    border: isHot && !isToday ? '1px solid var(--coral)' : '1px solid transparent',
+                  }}>{d.getDate()}</div>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor }} />
                 </div>
               );
             })}
           </div>
           {!compact && (
-            <div className="wk-w-foot">
-              <span className="wk-w-sum">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500 }}>
                 {weekItemCount > 0 ? `${weekItemCount} item${weekItemCount !== 1 ? 's' : ''} this week` : 'Nothing scheduled'}
               </span>
-              <span className="wk-w-act">Full view</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)' }}>Full view</span>
             </div>
           )}
         </Link>
@@ -407,38 +504,54 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     );
   }
 
+  // ── Render: Workload Balance ──────────────────────────────────────────
   function renderWorkloadBalance() {
     const compact = isCompact('workloadBalance');
+    const heaviestIdx = WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD));
+    const heaviestLoad = WEEK_WORKLOAD[heaviestIdx];
+    const isOverloaded = heaviestLoad >= 90;
+    const insightMsg = heaviestIdx !== todayDow
+      ? `${DAY_LABELS[heaviestIdx]}'s schedule looks heaviest — consider spreading tasks`
+      : 'Today is your heaviest day — pace yourself';
+
     return (
-      <div className="widget" key="workloadBalance">
-        <div className="wl-card" onClick={() => setWorkloadOpen(true)} style={{ cursor:'pointer' }}>
-          <div className="wl-title-row">
+      <div key="workloadBalance" style={S.widget}>
+        <div style={{ ...S.card, cursor: 'pointer', padding: '15px 16px 13px' }} onClick={() => setWorkloadOpen(true)}>
+          {/* Title */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
             <div>
-              <div className="wl-title">Workload Balance</div>
-              {!compact && <div className="wl-subtitle">Week of {weekRange}</div>}
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Workload Balance</div>
+              {!compact && <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 3 }}>Week of {weekRange}</div>}
             </div>
-            <div className="wl-tap-pill">Full view →</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--purple)', background: 'var(--pur-lt)', borderRadius: 100, padding: '4px 9px', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid var(--purple)', opacity: .85 }}>
+              Full view →
+            </div>
           </div>
 
+          {/* Legend — full mode only */}
           {!compact && (
-            <div className="wl-legend-row">
-              <div className="wl-leg-item"><div className="wl-leg-swatch" style={{ background: ch.ok }}/><span>Light (&lt;30%)</span></div>
-              <div className="wl-leg-item"><div className="wl-leg-swatch" style={{ background: ch.mid }}/><span>OK (30–64%)</span></div>
-              <div className="wl-leg-item"><div className="wl-leg-swatch" style={{ background: ch.warn }}/><span>Busy (65–89%)</span></div>
-              <div className="wl-leg-item"><div className="wl-leg-swatch" style={{ background: ch.full }}/><span>Full (≥90%)</span></div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+              {[['Light (<30%)', ch.ok], ['OK (30–64%)', ch.mid], ['Busy (65–89%)', ch.warn], ['Full (≥90%)', ch.full]].map(([lbl, col]) => (
+                <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 3, flexShrink: 0, background: col }} />
+                  <span style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 500 }}>{lbl}</span>
+                </div>
+              ))}
             </div>
           )}
 
-          <div className="wl-chart" style={compact ? { marginBottom: 0 } : {}}>
+          {/* Chart */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: compact ? 0 : 12 }}>
+            {/* Value labels row — full only */}
             {!compact && (
-              <div className="wl-val-row">
-                <div className="wl-y-spacer" />
-                {weekDays.map((d, i) => {
+              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+                <div style={{ width: 28, flexShrink: 0 }} />
+                {weekDays.map((_, i) => {
                   const load = WEEK_WORKLOAD[i];
                   const barColor = load >= 90 ? ch.full : load >= 65 ? ch.warn : load >= 30 ? ch.mid : ch.ok;
                   return (
-                    <div key={i} className="wl-val-cell">
-                      <span className="wl-val-lbl" style={{ color: load >= 65 ? barColor : 'var(--mid)' }}>
+                    <div key={i} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap', color: load >= 65 ? barColor : 'var(--mid)' }}>
                         {load > 0 ? `${load}%` : '—'}
                       </span>
                     </div>
@@ -447,55 +560,55 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               </div>
             )}
 
-            <div className="wl-bar-area" style={compact ? { height: 70 } : {}}>
+            {/* Bar area */}
+            <div style={{ display: 'flex', height: compact ? 70 : 130, position: 'relative' }}>
               {!compact && (
-                <div className="wl-y-axis">
-                  {[100, 75, 50, 25].map(pct => (
-                    <div key={pct} className="wl-y-tick" style={{ bottom: `${pct}%` }}>
-                      <span className="wl-y-lbl">{pct}</span>
+                <div style={{ width: 28, flexShrink: 0, position: 'relative' }}>
+                  {[100,75,50,25].map(pct => (
+                    <div key={pct} style={{ position: 'absolute', right: 0, bottom: `${pct}%`, transform: 'translateY(50%)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 5 }}>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--lite)', lineHeight: 1 }}>{pct}</span>
                     </div>
                   ))}
                 </div>
               )}
-
-              <div className="wl-plot">
+              <div style={{ flex: 1, position: 'relative', borderLeft: compact ? 'none' : '1px solid var(--border2)', display: 'flex', alignItems: 'flex-end', padding: '0 4px', gap: 5 }}>
                 {!compact && (
-                  <div className="wl-gridlines" aria-hidden="true">
-                    {[100, 75, 50, 25].map(pct => (
-                      <div key={pct} className="wl-gridline" style={{ bottom: `${pct}%` }} />
+                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                    {[100,75,50,25].map(pct => (
+                      <div key={pct} style={{ position: 'absolute', left: 0, right: 0, bottom: `${pct}%`, height: 1, background: 'var(--border)', opacity: .5, transform: 'translateY(50%)' }} />
                     ))}
-                    <div className="wl-baseline" />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1.5, background: 'var(--border2)', opacity: .9 }} />
                   </div>
                 )}
-
                 {weekDays.map((d, i) => {
                   const load = WEEK_WORKLOAD[i];
                   const isToday = d.toDateString() === today.toDateString();
                   const barColor = load >= 90 ? ch.full : load >= 65 ? ch.warn : load >= 30 ? ch.mid : ch.ok;
                   return (
-                    <div key={i} className="wl-bar-col">
-                      <div
-                        className={`wl-bar${isToday ? ' wl-bar-today' : ''}`}
-                        style={{
-                          height: `${Math.max(2, load)}%`,
-                          background: isToday ? `linear-gradient(to top, ${barColor}, ${barColor}bb)` : barColor,
-                          opacity: load < 5 ? 0.4 : 1,
-                        }}
-                      />
+                    <div key={i} style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <div style={{
+                        width: '72%', borderRadius: '4px 4px 2px 2px', minHeight: 3,
+                        height: `${Math.max(2, load)}%`,
+                        background: isToday ? `linear-gradient(to top, ${barColor}, ${barColor}bb)` : barColor,
+                        opacity: load < 5 ? 0.4 : 1,
+                        boxShadow: isToday ? '0 0 10px rgba(139,124,246,.45)' : 'none',
+                        transition: 'height .55s cubic-bezier(.4,0,.2,1)',
+                      }} />
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="wl-day-row">
-              {!compact && <div className="wl-y-spacer" />}
+            {/* Day labels */}
+            <div style={{ display: 'flex', alignItems: 'center', paddingTop: 5, borderTop: '1px solid var(--border)', marginTop: 0 }}>
+              {!compact && <div style={{ width: 28, flexShrink: 0 }} />}
               {weekDays.map((d, i) => {
                 const isToday = d.toDateString() === today.toDateString();
                 const load = WEEK_WORKLOAD[i];
                 return (
-                  <div key={i} className="wl-day-cell">
-                    <span className={`wl-day-lbl${isToday ? ' wl-day-today' : ''}${load >= 90 ? ' wl-day-warn' : ''}`}>
+                  <div key={i} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isToday ? 'var(--purple)' : load >= 90 ? 'var(--coral)' : 'var(--lite)' }}>
                       {DAY_LABELS[i].slice(0, 2)}
                     </span>
                   </div>
@@ -504,85 +617,84 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             </div>
           </div>
 
-          {!compact && (() => {
-            const heaviestIdx = WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD));
-            const heaviestLoad = WEEK_WORKLOAD[heaviestIdx];
-            const isOverloaded = heaviestLoad >= 90;
-            const insightMsg = heaviestIdx !== todayDow
-              ? `${DAY_LABELS[heaviestIdx]}'s schedule looks heaviest — consider spreading tasks`
-              : 'Today is your heaviest day — pace yourself';
-            return (
-              <div className="wl-note">
-                <div className="wl-note-pill" style={{ background: isOverloaded ? `${ch.full}18` : `${ch.warn}18`, borderColor: isOverloaded ? `${ch.full}55` : `${ch.warn}55` }}>
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-                    <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 4v3m0 2.5v.5" stroke={isOverloaded ? ch.full : ch.warn} strokeWidth="1.6" strokeLinecap="round"/>
-                  </svg>
-                  <span style={{ color: isOverloaded ? ch.full : ch.warn }}>{insightMsg}</span>
-                </div>
+          {/* Insight pill — full mode only */}
+          {!compact && (
+            <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'flex-start', gap: 6,
+                padding: '7px 10px', borderRadius: 10, width: '100%',
+                background: isOverloaded ? `${ch.full}18` : `${ch.warn}18`,
+                border: `1px solid ${isOverloaded ? `${ch.full}55` : `${ch.warn}55`}`,
+                fontSize: 11, fontWeight: 600, lineHeight: 1.45,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 4v3m0 2.5v.5" stroke={isOverloaded ? ch.full : ch.warn} strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+                <span style={{ color: isOverloaded ? ch.full : ch.warn }}>{insightMsg}</span>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // ── Render: AI Priorities ─────────────────────────────────────────────
   function renderAiPriorities() {
     const compact = isCompact('aiPriorities');
     const summary = latestAnalysis?.summary;
     return (
-      <div className="widget" key="aiPriorities">
-        <Link href="/ai-analysis" className="ai-card" style={{ textDecoration: 'none' }}>
-          <div className="ai-hdr">
-            <div className="ai-icon-wrap">
+      <div key="aiPriorities" style={S.widget}>
+        <Link href="/ai-analysis" style={{ ...S.card, display: 'block', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 0 : 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--amber-lt, rgba(253,203,110,.12))', border: '1px solid var(--amber, #FDCB6E)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', flexShrink: 0 }}>
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                 <path d="M10 2L12 8H18L13.5 11.8L15.3 18L10 14.5L4.7 18L6.5 11.8L2 8H8L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
               </svg>
             </div>
-            <div className="ai-title">AI Priorities</div>
-            <div className="ai-arr">→</div>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>AI Priorities</div>
+            <div style={{ fontSize: 16, color: 'var(--mid)' }}>→</div>
           </div>
-          {!compact ? (
-            <div className="ai-body">
-              {summary
-                ? <p className="ai-text">{summary.slice(0, 100)}{summary.length > 100 ? '…' : ''}</p>
-                : <p className="ai-text ai-empty">Tap to generate AI insights for your schedule</p>
-              }
+          {!compact && (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 500, lineHeight: 1.5, margin: 0, opacity: summary ? 1 : 0.6 }}>
+                {summary ? summary.slice(0, 100) + (summary.length > 100 ? '…' : '') : 'Tap to generate AI insights for your schedule'}
+              </p>
             </div>
-          ) : (
-            <div className="ai-compact-row">
-              <span className="ai-compact-txt">{summary ? summary.slice(0, 55) + '…' : 'Tap to generate AI insights'}</span>
-            </div>
+          )}
+          {compact && summary && (
+            <span style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, lineHeight: 1.4 }}>{summary.slice(0, 55)}…</span>
           )}
         </Link>
       </div>
     );
   }
 
+  // ── Render: Upcoming Tasks ────────────────────────────────────────────
   function renderUpcomingTasks() {
     const compact = isCompact('upcomingTasks');
     const items = upcomingSchedules.slice(0, compact ? 2 : 4);
     return (
-      <div className="widget" key="upcomingTasks">
-        <div className="upc-card">
-          <div className="upc-hdr">
-            <div className="upc-title">Upcoming</div>
-            <Link href="/calendar" className="upc-see-all">See all →</Link>
+      <div key="upcomingTasks" style={S.widget}>
+        <div style={S.card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Upcoming</div>
+            <Link href="/calendar" style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)', textDecoration: 'none' }}>See all →</Link>
           </div>
           {items.length === 0 ? (
-            <div className="upc-empty">Nothing upcoming — you&apos;re all clear!</div>
+            <div style={{ fontSize: 12, color: 'var(--mid)', opacity: .7, textAlign: 'center', padding: '8px 0' }}>Nothing upcoming — you&apos;re all clear!</div>
           ) : (
-            <div className={`upc-list${compact ? ' upc-compact' : ''}`}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8 }}>
               {items.map(s => (
-                <div key={s.id} className="upc-item">
-                  <div className="upc-dot" style={{ background: PRIORITY_COLORS[s.priority] }} />
-                  <div className="upc-info">
-                    <div className="upc-name">{s.title}</div>
-                    {!compact && <div className="upc-time">{new Date(s.start_time).toLocaleDateString('en-US',{ month:'short', day:'numeric' })} · {formatTime(s.start_time)}</div>}
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: PRIORITY_COLORS[s.priority] }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.title}</div>
+                    {!compact && <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 1 }}>{new Date(s.start_time).toLocaleDateString('en-US',{ month:'short', day:'numeric' })} · {formatTime(s.start_time)}</div>}
                   </div>
-                  <div className="upc-pri" style={{
-                    color: s.priority === 'critical' || s.priority === 'high' ? ch.full
-                      : s.priority === 'medium' ? ch.warn : ch.ok,
+                  <div style={{
+                    fontSize: 9, fontWeight: 700, flexShrink: 0, letterSpacing: '.3px',
+                    color: s.priority === 'critical' || s.priority === 'high' ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
                   }}>
                     {s.priority.toUpperCase()}
                   </div>
@@ -597,55 +709,51 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   // ── Card renderer map ─────────────────────────────────────────────────
   const cardRenderers: Record<DashboardCardKey, () => React.ReactNode> = {
-    todayCard:        renderTodayCard,
-    quickStats:       renderQuickStats,
-    pinnedShortcuts:  renderPinnedShortcuts,
-    performanceCard:  renderPerformanceCard,
-    weeklySchedule:   renderWeeklySchedule,
-    workloadBalance:  renderWorkloadBalance,
-    aiPriorities:     renderAiPriorities,
-    upcomingTasks:    renderUpcomingTasks,
+    todayCard:       renderTodayCard,
+    quickStats:      renderQuickStats,
+    pinnedShortcuts: renderPinnedShortcuts,
+    performanceCard: renderPerformanceCard,
+    weeklySchedule:  renderWeeklySchedule,
+    workloadBalance: renderWorkloadBalance,
+    aiPriorities:    renderAiPriorities,
+    upcomingTasks:   renderUpcomingTasks,
   };
 
   return (
-    <div className="page">
+    <div style={S.page}>
+      {/* SVG gradient defs */}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
           <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor={ch.c1}/>
             <stop offset="100%" stopColor={ch.c2}/>
           </linearGradient>
-          <linearGradient id="gGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={ch.c1}/>
-            <stop offset="100%" stopColor={ch.c2}/>
-          </linearGradient>
-          <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={ch.c1} stopOpacity="1"/>
-            <stop offset="100%" stopColor={ch.c2} stopOpacity="0.7"/>
-          </linearGradient>
         </defs>
       </svg>
 
-      <div className="hdr">
-        <div className="hdr-info">
-          <h2>{GREETING()}, {firstName}</h2>
+      {/* Pulse dot keyframe */}
+      <style>{`@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}`}</style>
+
+      {/* Header */}
+      <div style={S.hdr}>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0 }}>{GREETING()}, {firstName}</h2>
           {(profile?.designation || profile?.role_title) && (
-            <p className="hdr-role">{profile?.designation || profile?.role_title}</p>
+            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 3, fontWeight: 500, margin: 0 }}>{profile?.designation || profile?.role_title}</p>
           )}
         </div>
-        <Link href="/profile" className="av">
-          <div className="av-inner">
-            {profile?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="avatar" className="av-img" />
-            ) : (
-              profile?.full_name?.[0]?.toUpperCase() ?? '?'
-            )}
+        <Link href="/profile" style={{ width: 44, height: 44, minWidth: 44, flexShrink: 0, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxShadow: '0 0 12px rgba(139,124,246,0.35)', position: 'relative', zIndex: 1 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+              : (profile?.full_name?.[0]?.toUpperCase() ?? '?')
+            }
           </div>
         </Link>
       </div>
 
-      <div className="scrl">
+      {/* Scroll body */}
+      <div style={S.scrl}>
         {cardOrder.map(key => {
           if (!isVisible(key)) return null;
           const renderer = cardRenderers[key];
@@ -666,188 +774,6 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       />
 
       <BottomNav />
-
-      <style jsx>{`
-        .page { height: 100dvh; background: var(--bg); display: flex; flex-direction: column; color: var(--dark); font-family: inherit; overflow: hidden; }
-
-        .hdr { padding: 52px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; position: relative; z-index: 10; background: var(--glass-bg, var(--bg)); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border, var(--border)); }
-        .hdr::after { content: ''; position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 280px; height: 140px; background: radial-gradient(ellipse, var(--pur-lt) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-        .hdr-info { position: relative; z-index: 1; }
-        .hdr-info h2 { font-size: 20px; font-weight: 700; color: var(--dark); letter-spacing: -.3px; }
-        .hdr-role { font-size: 12px; color: var(--mid); margin-top: 3px; font-weight: 500; }
-        .av { width: 44px; height: 44px; min-width: 44px; flex-shrink: 0; border-radius: 50%; background: var(--gradient); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; z-index: 1; text-decoration: none; box-shadow: 0 0 12px rgba(139,124,246,0.35); transition: box-shadow .2s; }
-        .av:active { box-shadow: 0 0 18px rgba(139,124,246,0.55); opacity: .9; }
-        .av-inner { width: 40px; height: 40px; min-width: 40px; min-height: 40px; border-radius: 50%; background: var(--gradient); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; overflow: hidden; flex-shrink: 0; }
-        .av-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; border-radius: 50%; }
-
-        .scrl { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 18px 100px; -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior: contain; }
-        .scrl::-webkit-scrollbar { display: none; }
-        .widget { margin-bottom: 12px; }
-
-        /* ── Quick Stats ── */
-        .qs-card { background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); display: flex; align-items: center; justify-content: space-around; }
-        .qs-compact { padding: 10px 14px; }
-        .qs-stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-        .qs-icon { opacity: .85; }
-        .qs-val { font-size: 22px; font-weight: 900; line-height: 1; letter-spacing: -.5px; }
-        .qs-compact .qs-val { font-size: 18px; }
-        .qs-lbl { font-size: 10px; color: var(--mid); font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
-        .qs-sep { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; margin: 0 4px; }
-        .qs-compact .qs-sep { height: 28px; }
-
-        /* ── Pinned Shortcuts ── */
-        .ps-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; }
-        .ps-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: var(--rmd); background: var(--glass-bg, var(--surf)); border: 1px solid var(--glass-border, var(--border)); box-shadow: var(--glass-sh2, var(--card-sh2)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); text-decoration: none; cursor: pointer; transition: transform .15s, background .15s; }
-        .ps-btn:active { transform: scale(.94); background: var(--glass-bg2, var(--surf2)); }
-        .ps-icon-wrap { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--sc-color) 16%, transparent); border: 1px solid color-mix(in srgb, var(--sc-color) 35%, transparent); display: flex; align-items: center; justify-content: center; color: var(--sc-color); }
-        .ps-label { font-size: 10px; font-weight: 700; color: var(--mid); text-align: center; line-height: 1.2; }
-
-        /* ── Today Card ── */
-        .today-card { background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px 12px; box-shadow: var(--glass-sh2, var(--card-sh2)); cursor: pointer; border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); transition: background .18s, border-color .18s; }
-        .today-card:active { background: var(--glass-bg2, var(--surf2)); }
-        .tc-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 11px; }
-        .tc-date-lbl { font-size: 20px; font-weight: 900; color: var(--dark); letter-spacing: -.5px; line-height: 1; }
-        .tc-day-lbl { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 3px; }
-        .tc-status-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 100px; padding: 4px 10px; font-size: 10px; font-weight: 700; flex-shrink: 0; letter-spacing: .3px; }
-        .tc-status-badge.attention { background: var(--coral-lt); color: var(--coral); border: 1px solid var(--coral); }
-        .tc-status-badge.attention::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--coral); display: inline-block; animation: pulseDot 1.4s ease-in-out infinite; }
-        @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)} }
-        .tc-status-badge.ok { background: var(--mint-lt); color: var(--mint); border: 1px solid var(--mint); }
-        .tc-focus-bar { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--bg); border-radius: var(--rsm); margin-bottom: 8px; cursor: default; border: 1px solid var(--border); }
-        .tc-focus-icon { font-size: 14px; color: var(--purple); font-weight: 700; flex-shrink: 0; }
-        .tc-focus-info { flex: 1; min-width: 0; }
-        .tc-focus-name { font-size: 12px; font-weight: 700; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tc-prog-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
-        .tc-prog-bar { flex: 1; height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
-        .tc-prog-fill { height: 100%; background: var(--gradient); border-radius: 2px; transition: width .6s ease; }
-        .tc-prog-txt { font-size: 10px; color: var(--mid); font-weight: 600; white-space: nowrap; }
-        .tc-focus-time { font-size: 11px; color: var(--mid); font-weight: 600; flex-shrink: 0; }
-        .no-task { opacity: .7; }
-        .tc-insight-bar { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; background: var(--amber-lt); border-left: 3px solid var(--amber); cursor: pointer; transition: opacity .15s; text-decoration: none; }
-        .tc-insight-bar:active { opacity: .75; }
-        .tc-ins-ico { font-size: 13px; flex-shrink: 0; color: var(--amber); }
-        .tc-ins-text { flex: 1; font-size: 11px; font-weight: 600; color: var(--dark); line-height: 1.4; }
-        .tc-ins-arrow { width: 22px; height: 22px; border-radius: 50%; background: var(--pur-lt); color: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; line-height: 1; }
-        .tc-compact-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-        .tc-compact-stat { font-size: 12px; color: var(--mid); font-weight: 600; white-space: nowrap; }
-        .tc-compact-pct { font-size: 12px; font-weight: 700; color: var(--dark); white-space: nowrap; }
-
-        .ts-exp { margin-top: 8px; display: flex; flex-direction: column; gap: 7px; }
-        .ts-empty { padding: 12px; text-align: center; }
-        .ts-add-cta { padding: 9px 20px; background: var(--gradient); border-radius: var(--rsm); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
-        .tli { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 0; background: var(--surf); border-radius: var(--rmd); cursor: pointer; transition: transform .15s, background .15s; border: 1px solid var(--border); position: relative; overflow: hidden; }
-        .tli::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gradient); border-radius: 3px 0 0 3px; }
-        .tli:active { transform: scale(.98); background: var(--surf2); }
-        .tli.done { opacity: .45; }
-        .tli-time { width: 44px; font-size: 10px; font-weight: 600; color: var(--lite); text-align: center; flex-shrink: 0; line-height: 1.3; padding-left: 8px; }
-        .tli-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .tli-info { flex: 1; }
-        .tli-title { font-size: 13px; font-weight: 600; color: var(--dark); }
-        .tli-sub { font-size: 11px; color: var(--mid); margin-top: 2px; font-weight: 400; }
-        .tli-dur { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; flex-shrink: 0; margin-right: 8px; }
-
-        /* ── Performance Card ── */
-        .perf-card { background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); cursor: pointer; transition: background .18s, border-color .18s; }
-        .perf-card:active { background: var(--glass-bg2, var(--surf2)); }
-        .pc-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .pc-left { display: flex; align-items: center; gap: 10px; flex: 1; }
-        .pc-ring { width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; }
-        .pc-ring-svg { position: absolute; top: 0; left: 0; }
-        .pc-score-num { position: relative; z-index: 1; font-size: 14px; font-weight: 700; color: var(--dark); }
-        .pc-info { flex: 1; }
-        .pc-hdline { font-size: 14px; font-weight: 700; color: var(--dark); }
-        .pc-sub { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 2px; }
-        .ts-chev { font-size: 18px; color: var(--mid); line-height: 1; }
-        .pc-grid { display: flex; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-        .pc-gstat { flex: 1; text-align: center; }
-        .pc-gval { font-size: 18px; font-weight: 800; color: var(--dark); display: flex; align-items: center; justify-content: center; gap: 3px; }
-        .pc-glbl { font-size: 10px; color: var(--mid); margin-top: 2px; font-weight: 600; }
-        .pc-gsep { width: 1px; background: var(--border); margin: 4px 0; flex-shrink: 0; }
-
-        /* ── Weekly Widget ── */
-        .wk-widget { display: block; background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); cursor: pointer; transition: background .18s, border-color .18s; }
-        .wk-widget:active { background: var(--glass-bg2, var(--surf2)); }
-        .wk-w-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
-        .wk-w-ttl { font-size: 14px; font-weight: 800; color: var(--dark); }
-        .wk-w-meta { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 2px; }
-        .wk-w-arr { color: var(--mid); font-size: 18px; }
-        .wk-w-strip { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 10px; }
-        .wk-wd { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-        .wk-wd-lbl { font-size: 9px; font-weight: 700; color: var(--lite); }
-        .wk-wd-num { width: 28px; height: 28px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--mid); display: flex; align-items: center; justify-content: center; border: 1px solid transparent; }
-        .wk-wd.today .wk-wd-lbl { color: var(--purple); }
-        .wk-wd.today .wk-wd-num { background: var(--purple); color: #fff; }
-        .wk-wd.hot .wk-wd-num { border-color: var(--coral); color: var(--coral); }
-        .wk-wd.has .wk-wd-num { color: var(--dark); }
-        .wk-wd-dot { width: 4px; height: 4px; border-radius: 50%; }
-        .wk-w-foot { display: flex; align-items: center; justify-content: space-between; }
-        .wk-w-sum { font-size: 11px; color: var(--mid); font-weight: 500; }
-        .wk-w-act { font-size: 11px; font-weight: 700; color: var(--purple); }
-
-        /* ── Workload Graph ── */
-        .wl-card { background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 15px 16px 13px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); transition: background .18s, border-color .18s; }
-        .wl-card:active { background: var(--glass-bg2, var(--surf2)); border-color: var(--purple); }
-        .wl-title-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
-        .wl-title { font-size: 14px; font-weight: 800; color: var(--dark); }
-        .wl-subtitle { font-size: 11px; color: var(--mid); font-weight: 500; margin-top: 3px; }
-        .wl-tap-pill { font-size: 10px; font-weight: 700; color: var(--purple); background: var(--pur-lt); border-radius: 100px; padding: 4px 9px; white-space: nowrap; flex-shrink: 0; border: 1px solid var(--purple); opacity: .85; }
-        .wl-legend-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-        .wl-leg-item { display: flex; align-items: center; gap: 5px; }
-        .wl-leg-swatch { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
-        .wl-leg-item span { font-size: 10px; color: var(--mid); font-weight: 500; }
-        .wl-chart { display: flex; flex-direction: column; gap: 0; margin-bottom: 12px; }
-        .wl-y-spacer { width: 28px; flex-shrink: 0; }
-        .wl-val-row { display: flex; align-items: flex-end; padding-bottom: 4px; }
-        .wl-val-cell { flex: 1; display: flex; justify-content: center; align-items: center; }
-        .wl-val-lbl { font-size: 9px; font-weight: 700; line-height: 1; white-space: nowrap; letter-spacing: -.2px; }
-        .wl-bar-area { display: flex; height: 130px; position: relative; }
-        .wl-y-axis { width: 28px; flex-shrink: 0; position: relative; }
-        .wl-y-tick { position: absolute; right: 0; transform: translateY(50%); display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; }
-        .wl-y-lbl { font-size: 9px; font-weight: 600; color: var(--lite); line-height: 1; }
-        .wl-plot { flex: 1; position: relative; border-left: 1px solid var(--border2); }
-        .wl-gridlines { position: absolute; inset: 0; pointer-events: none; }
-        .wl-gridline { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: .5; transform: translateY(50%); }
-        .wl-baseline { position: absolute; bottom: 0; left: 0; right: 0; height: 1.5px; background: var(--border2); opacity: .9; }
-        .wl-plot { display: flex; align-items: flex-end; padding: 0 4px; gap: 5px; }
-        .wl-bar-col { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
-        .wl-bar { width: 72%; border-radius: 4px 4px 2px 2px; min-height: 3px; transition: height .55s cubic-bezier(.4,0,.2,1); }
-        .wl-bar-today { box-shadow: 0 0 10px rgba(139,124,246,.45); }
-        .wl-day-row { display: flex; align-items: center; padding-top: 5px; border-top: 1px solid var(--border); margin-top: 0; }
-        .wl-day-cell { flex: 1; display: flex; justify-content: center; }
-        .wl-day-lbl { font-size: 9px; font-weight: 700; color: var(--lite); line-height: 1; }
-        .wl-day-today { color: var(--purple); }
-        .wl-day-warn  { color: var(--coral); }
-        .wl-note { padding-top: 10px; border-top: 1px solid var(--border); }
-        .wl-note-pill { display: inline-flex; align-items: flex-start; gap: 6px; padding: 7px 10px; border-radius: 10px; border: 1px solid transparent; font-size: 11px; font-weight: 600; line-height: 1.45; width: 100%; }
-
-        /* ── AI Priorities Card ── */
-        .ai-card { display: block; background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); transition: background .18s, border-color .18s; }
-        .ai-card:active { background: var(--glass-bg2, var(--surf2)); border-color: var(--amber); }
-        .ai-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .ai-icon-wrap { width: 28px; height: 28px; border-radius: 8px; background: var(--amber-lt); border: 1px solid var(--amber); display: flex; align-items: center; justify-content: center; color: var(--amber); flex-shrink: 0; }
-        .ai-title { flex: 1; font-size: 14px; font-weight: 800; color: var(--dark); }
-        .ai-arr { font-size: 16px; color: var(--mid); }
-        .ai-body { padding-top: 4px; }
-        .ai-text { font-size: 12px; color: var(--mid); font-weight: 500; line-height: 1.5; margin: 0; }
-        .ai-empty { opacity: .6; }
-        .ai-compact-row { padding-top: 0; }
-        .ai-compact-txt { font-size: 11px; color: var(--mid); font-weight: 500; line-height: 1.4; }
-
-        /* ── Upcoming Tasks Card ── */
-        .upc-card { background: var(--glass-bg, var(--surf)); border-radius: var(--rmd); padding: 14px 16px; box-shadow: var(--glass-sh2, var(--card-sh2)); border: 1px solid var(--glass-border, var(--border)); backdrop-filter: var(--glass-blur, blur(18px)); -webkit-backdrop-filter: var(--glass-blur, blur(18px)); }
-        .upc-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .upc-title { font-size: 14px; font-weight: 800; color: var(--dark); }
-        .upc-see-all { font-size: 11px; font-weight: 700; color: var(--purple); text-decoration: none; }
-        .upc-empty { font-size: 12px; color: var(--mid); opacity: .7; text-align: center; padding: 8px 0; }
-        .upc-list { display: flex; flex-direction: column; gap: 8px; }
-        .upc-compact { gap: 6px; }
-        .upc-item { display: flex; align-items: center; gap: 10px; }
-        .upc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-        .upc-info { flex: 1; min-width: 0; }
-        .upc-name { font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .upc-time { font-size: 10px; color: var(--mid); margin-top: 1px; }
-        .upc-pri { font-size: 9px; font-weight: 700; flex-shrink: 0; letter-spacing: .3px; }
-      `}</style>
     </div>
   );
 }
