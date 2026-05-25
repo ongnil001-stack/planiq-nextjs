@@ -502,20 +502,28 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
       <BottomNav />
 
       <style jsx>{`
-        /* ── Page wrapper — uses CSS vars so every theme applies ── */
+        /* ── Page wrapper ── */
         .page {
-          min-height: 100vh;
+          height: 100dvh;           /* full viewport, no overflow on the page itself */
           background: var(--bg);
           display: flex; flex-direction: column;
           color: var(--dark);
           font-family: inherit;
+          overflow: hidden;         /* scroll lives inside .scrl only */
         }
 
-        /* ── Header ── */
+        /* ── Header — sticky, never scrolls away ── */
         .hdr {
           padding: 52px 22px 14px;
           display: flex; align-items: flex-start; justify-content: space-between;
-          flex-shrink: 0; position: relative;
+          flex-shrink: 0;           /* never squishes */
+          position: relative;
+          z-index: 10;
+          /* Frosted glass effect so content scrolling under it looks clean */
+          background: var(--glass-bg, var(--bg));
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-bottom: 1px solid var(--glass-border, var(--border));
         }
         .hdr::after {
           content: ''; position: absolute;
@@ -561,11 +569,14 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
           border-radius: 50%;
         }
 
-        /* ── Scroll area ── */
+        /* ── Scroll area — fills all remaining space, only this scrolls ── */
         .scrl {
-          flex: 1; overflow-y: auto; overflow-x: hidden;
-          padding: 4px 18px 100px;
-          -webkit-overflow-scrolling: touch; scrollbar-width: none;
+          flex: 1;
+          overflow-y: auto; overflow-x: hidden;
+          padding: 12px 18px 100px;   /* 12px top gap after sticky header */
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          overscroll-behavior: contain;
         }
         .scrl::-webkit-scrollbar { display: none; }
 
