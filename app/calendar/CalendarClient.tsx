@@ -9,23 +9,22 @@ import BottomNav from '@/components/layout/BottomNav';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
 import { createClient } from '@/lib/supabase/client';
 
-const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS     = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SH  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// ── SVG country flag icons — clean, minimal, theme-neutral ──────────────────
+type ViewMode = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// ── SVG flag icons ─────────────────────────────────────────────────────────────
 function CountryFlag({ code }: { code: string }) {
   if (code === 'PH') return (
     <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
       style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
-      {/* Blue top half */}
       <rect width="20" height="6.5" fill="#0038A8"/>
-      {/* Red bottom half */}
       <rect y="6.5" width="20" height="6.5" fill="#CE1126"/>
-      {/* White triangle on left */}
       <polygon points="0,0 9,6.5 0,13" fill="#FFFFFF"/>
-      {/* Golden sun */}
       <circle cx="4.2" cy="6.5" r="1.4" fill="#FCD116"/>
-      {/* 8 sun rays */}
       {[0,45,90,135,180,225,270,315].map((deg,i) => {
         const a = deg * Math.PI / 180;
         return <line key={i}
@@ -33,13 +32,11 @@ function CountryFlag({ code }: { code: string }) {
           x2={4.2 + Math.cos(a)*2.6} y2={6.5 + Math.sin(a)*2.6}
           stroke="#FCD116" strokeWidth="0.55"/>;
       })}
-      {/* 3 stars at triangle corners */}
       <polygon points="1.6,1.5 1.85,2.2 2.55,2.2 2,2.6 2.2,3.3 1.6,2.9 1,3.3 1.2,2.6 0.65,2.2 1.35,2.2" fill="#FCD116"/>
       <polygon points="1.6,9.7 1.85,10.4 2.55,10.4 2,10.8 2.2,11.5 1.6,11.1 1,11.5 1.2,10.8 0.65,10.4 1.35,10.4" fill="#FCD116"/>
       <polygon points="6.2,5.8 6.45,6.5 7.15,6.5 6.6,6.9 6.8,7.6 6.2,7.2 5.6,7.6 5.8,6.9 5.25,6.5 5.95,6.5" fill="#FCD116"/>
     </svg>
   );
-
   if (code === 'US') return (
     <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
       style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
@@ -51,7 +48,6 @@ function CountryFlag({ code }: { code: string }) {
       ))}
     </svg>
   );
-
   if (code === 'GB') return (
     <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
       style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
@@ -62,39 +58,72 @@ function CountryFlag({ code }: { code: string }) {
       <path d="M10,0 V13 M0,6.5 H20" stroke="#C8102E" strokeWidth="2.2"/>
     </svg>
   );
-
   if (code === 'AU') return (
     <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
       style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
       <rect width="20" height="13" rx="2" fill="#00008B"/>
-      {/* Union Jack mini */}
       <path d="M0,0 L6,4 M6,0 L0,4" stroke="#FFF" strokeWidth="1.5"/>
       <path d="M0,0 L6,4 M6,0 L0,4" stroke="#C8102E" strokeWidth="0.9"/>
       <path d="M3,0 V4 M0,2 H6" stroke="#FFF" strokeWidth="1.8"/>
       <path d="M3,0 V4 M0,2 H6" stroke="#C8102E" strokeWidth="1.1"/>
-      {/* Stars */}
       <circle cx="14" cy="4" r="0.8" fill="#FFF"/>
       <circle cx="17" cy="7" r="0.8" fill="#FFF"/>
       <circle cx="12" cy="8" r="0.8" fill="#FFF"/>
       <circle cx="15" cy="11" r="0.8" fill="#FFF"/>
     </svg>
   );
-
-  // Generic fallback — themed pill with country code
   return (
-    <span style={{
-      display:'inline-flex', alignItems:'center', justifyContent:'center',
-      width:20, height:13, borderRadius:2,
-      background:'var(--pur-lt)', color:'var(--purple)',
-      fontSize:7, fontWeight:800, letterSpacing:'.5px', flexShrink:0,
-    }}>{code}</span>
+    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:13, borderRadius:2, background:'var(--pur-lt)', color:'var(--purple)', fontSize:7, fontWeight:800, letterSpacing:'.5px', flexShrink:0 }}>{code}</span>
   );
 }
 
+// ── Shared sub-components ──────────────────────────────────────────────────────
+function HolidayBanner({ holiday }: { holiday: Holiday }) {
+  return (
+    <div className="holiday-banner">
+      <span className="hol-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="4" width="16" height="14" rx="3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+          <path d="M2 8h16" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+          <path d="M6 2v3M14 2v3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="7" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+          <circle cx="10" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+          <circle cx="13" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+        </svg>
+      </span>
+      <div className="hol-info">
+        <div className="hol-name">{holiday.localName}</div>
+        {holiday.localName !== holiday.name && <div className="hol-en">{holiday.name}</div>}
+      </div>
+      <span className="hol-tag">Holiday</span>
+    </div>
+  );
+}
+
+function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
+  return (
+    <div className={`event-item${s.is_completed ? ' done' : ''}${compact ? ' compact' : ''}`}>
+      <div className="event-bar" style={{ background: PRIORITY_COLORS[s.priority] }} />
+      <div className="event-body">
+        <p className="event-title">{s.title}</p>
+        <p className="event-meta">
+          {TYPE_ICONS[s.type]}{' '}
+          {s.all_day ? 'All day' : formatTime(s.start_time)}
+          {s.end_time ? ` — ${formatTime(s.end_time)}` : ''}
+          {(s as Schedule & { location?: string }).location ? ` · ${(s as Schedule & { location?: string }).location}` : ''}
+        </p>
+      </div>
+      {s.is_completed && <span className="done-badge">✓</span>}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function CalendarClient({ initialSchedules }: { initialSchedules: Schedule[] }) {
   const today    = new Date();
   const supabase = createClient();
 
+  const [viewMode,    setViewMode]    = useState<ViewMode>('monthly');
   const [viewDate,    setViewDate]    = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<number>(today.getDate());
   const [holidays,    setHolidays]    = useState<Map<string, Holiday>>(new Map());
@@ -127,18 +156,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     loadCountry();
   }, [year, month]);
 
-  function prevMonth() { setViewDate(new Date(year, month - 1, 1)); setSelectedDay(1); }
-  function nextMonth() { setViewDate(new Date(year, month + 1, 1)); setSelectedDay(1); }
-
-  // Refresh schedules after a new one is saved
+  // Refresh schedules after adding
   const refreshSchedules = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const startOfMonth = new Date(year, month, 1).toISOString();
     const endOfMonth   = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-    const { data } = await supabase
-      .from('schedules')
-      .select('*')
+    const { data } = await supabase.from('schedules').select('*')
       .eq('user_id', user.id)
       .gte('start_time', startOfMonth)
       .lte('start_time', endOfMonth)
@@ -146,8 +170,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     if (data) setSchedules(data as Schedule[]);
   }, [year, month]);
 
+  // Build day map
   const dayMap: Record<number, Schedule[]> = {};
-  schedules.forEach((s) => {
+  schedules.forEach(s => {
     const d = new Date(s.start_time);
     if (d.getFullYear() === year && d.getMonth() === month) {
       const day = d.getDate();
@@ -160,145 +185,322 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const selectedDateStr   = toDateStr(selectedDate);
   const selectedSchedules = dayMap[selectedDay] ?? [];
   const selectedHol       = holidays.get(selectedDateStr) ?? null;
-  const countryName       = COUNTRIES.find(c => c.code === countryCode);
+  const countryInfo       = COUNTRIES.find(c => c.code === countryCode);
+  const isToday           = (d: number) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-  const isToday = (d: number) =>
-    d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-
-  // Tap a date → select it. Double-tap (or second tap on already-selected) → open sheet
   function handleDayClick(d: number) {
-    if (d === selectedDay) {
-      setSheetOpen(true);
-    } else {
-      setSelectedDay(d);
-    }
+    if (d === selectedDay) setSheetOpen(true);
+    else setSelectedDay(d);
   }
+
+  // Navigation — direction depends on viewMode
+  function navPrev() {
+    if (viewMode === 'daily')   { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setSelectedDay(d.getDate()); }
+    else if (viewMode === 'weekly') { const d = new Date(viewDate); d.setDate(d.getDate() - 7); setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); }
+    else if (viewMode === 'yearly') setViewDate(new Date(year - 1, 0, 1));
+    else { setViewDate(new Date(year, month - 1, 1)); setSelectedDay(1); }
+  }
+  function navNext() {
+    if (viewMode === 'daily')   { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setSelectedDay(d.getDate()); }
+    else if (viewMode === 'weekly') { const d = new Date(viewDate); d.setDate(d.getDate() + 7); setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); }
+    else if (viewMode === 'yearly') setViewDate(new Date(year + 1, 0, 1));
+    else { setViewDate(new Date(year, month + 1, 1)); setSelectedDay(1); }
+  }
+  function navToday() {
+    setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedDay(today.getDate());
+  }
+
+  // Nav label
+  const navLabel = (() => {
+    if (viewMode === 'daily')   return selectedDate.toLocaleDateString('en-US', { weekday:'short', month:'long', day:'numeric', year:'numeric' });
+    if (viewMode === 'weekly') {
+      const dow   = selectedDate.getDay();
+      const wStart = new Date(selectedDate); wStart.setDate(selectedDate.getDate() - dow);
+      const wEnd   = new Date(wStart);       wEnd.setDate(wStart.getDate() + 6);
+      return `${wStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${wEnd.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+    }
+    if (viewMode === 'yearly') return `${year}`;
+    return `${MONTHS[month]} ${year}`;
+  })();
+
+  // ── Weekly view data ────────────────────────────────────────────────────────
+  const weekDays = (() => {
+    const dow   = selectedDate.getDay();
+    const start = new Date(selectedDate); start.setDate(selectedDate.getDate() - dow);
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+  })();
+
+  // ── Yearly view data ────────────────────────────────────────────────────────
+  // Count schedules per month in a given year
+  const monthCounts = Array.from({ length: 12 }, (_, mo) =>
+    schedules.filter(s => {
+      const d = new Date(s.start_time);
+      return d.getFullYear() === year && d.getMonth() === mo;
+    }).length
+  );
 
   return (
     <div className="page">
-      {/* Header */}
+
+      {/* ── Fixed Header ── */}
       <div className="pg-header">
         <div>
           <h1 className="pg-title">Schedule</h1>
-          {countryCode && countryName && (
+          {countryCode && countryInfo && (
             <div className="country-badge">
               <CountryFlag code={countryCode} />
-              <span>{countryName.name} holidays</span>
+              <span>{countryInfo.name} holidays</span>
             </div>
           )}
         </div>
+        <button className="today-btn" onClick={navToday}>Today</button>
       </div>
 
-      {/* Month navigator */}
+      {/* ── View mode switcher ── */}
+      <div className="view-switcher">
+        {(['daily','weekly','monthly','yearly'] as ViewMode[]).map(v => (
+          <button
+            key={v}
+            className={`view-pill${viewMode === v ? ' active' : ''}`}
+            onClick={() => setViewMode(v)}
+          >
+            {v.charAt(0).toUpperCase() + v.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Month / Period navigator ── */}
       <div className="month-nav">
-        <button className="nav-arrow" onClick={prevMonth}>‹</button>
-        <span className="month-label">{MONTHS[month]} {year}</span>
-        <button className="nav-arrow" onClick={nextMonth}>›</button>
+        <button className="nav-arrow" onClick={navPrev}>‹</button>
+        <span className="month-label">{navLabel}</span>
+        <button className="nav-arrow" onClick={navNext}>›</button>
       </div>
 
-      {/* Day-of-week headers */}
-      <div className="cal-grid header-row">
-        {DAYS.map((d) => <div key={d} className="dow">{d}</div>)}
-      </div>
+      {/* ════════════════════════════════════════════════════════════
+          SCROLLABLE CONTENT AREA
+      ════════════════════════════════════════════════════════════ */}
+      <div className="scroll-body">
 
-      {/* Calendar grid */}
-      <div className="cal-grid">
-        {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const d       = i + 1;
-          const dateStr = toDateStr(new Date(year, month, d));
-          const holiday = holidays.get(dateStr);
-          const hasDots = dayMap[d]?.length > 0;
-          const active  = d === selectedDay;
-          const todayDay = isToday(d);
-
-          return (
-            <button
-              key={d}
-              className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
-              onClick={() => handleDayClick(d)}
-              title={holiday ? holiday.localName : undefined}
-            >
-              <span className="day-num">{d}</span>
-              <div className="day-indicators">
-                {holiday && <span className="h-dot" title={holiday.localName} />}
-                {hasDots && dayMap[d].slice(0, 2).map((s, idx) => (
-                  <span key={idx} className="dot" style={{ background: PRIORITY_COLORS[s.priority] }} />
-                ))}
+        {/* ── MONTHLY VIEW (default) ── */}
+        {viewMode === 'monthly' && (
+          <>
+            {/* Day-of-week headers */}
+            <div className="cal-grid header-row">
+              {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
+            </div>
+            {/* Calendar grid */}
+            <div className="cal-grid">
+              {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const d       = i + 1;
+                const dateStr = toDateStr(new Date(year, month, d));
+                const holiday = holidays.get(dateStr);
+                const hasDots = dayMap[d]?.length > 0;
+                const active  = d === selectedDay;
+                const todayDay = isToday(d);
+                return (
+                  <button key={d}
+                    className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
+                    onClick={() => handleDayClick(d)}
+                    title={holiday ? holiday.localName : undefined}>
+                    <span className="day-num">{d}</span>
+                    <div className="day-indicators">
+                      {holiday && <span className="h-dot" />}
+                      {hasDots && dayMap[d].slice(0, 2).map((s, idx) => (
+                        <span key={idx} className="dot" style={{ background: PRIORITY_COLORS[s.priority] }} />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Selected day panel */}
+            <div className="day-panel">
+              <div className="day-panel-header">
+                <span className="day-panel-title">
+                  {selectedDate.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}
+                </span>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span className="day-count">{selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}</span>
+                  <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
+                </div>
               </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Selected day panel */}
-      <div className="day-panel">
-        <div className="day-panel-header">
-          <span className="day-panel-title">
-            {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="day-count">{selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}</span>
-            <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
-          </div>
-        </div>
-
-        {/* Holiday banner */}
-        {selectedHol && (
-          <div className="holiday-banner">
-            <span className="hol-icon">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2" y="4" width="16" height="14" rx="3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
-                <path d="M2 8h16" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
-                <path d="M6 2v3M14 2v3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="7" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-                <circle cx="10" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-                <circle cx="13" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-              </svg>
-            </span>
-            <div className="hol-info">
-              <div className="hol-name">{selectedHol.localName}</div>
-              {selectedHol.localName !== selectedHol.name && (
-                <div className="hol-en">{selectedHol.name}</div>
+              {selectedHol && <HolidayBanner holiday={selectedHol} />}
+              {selectedSchedules.length === 0 ? (
+                <div className="day-empty">
+                  <p>Nothing scheduled for this day</p>
+                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+                </div>
+              ) : (
+                <div className="event-list">
+                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
+                </div>
               )}
             </div>
-            <span className="hol-tag">Holiday</span>
-          </div>
+          </>
         )}
 
-        {selectedSchedules.length === 0 ? (
-          <div className="day-empty">
-            <p>Nothing scheduled for this day</p>
-            <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
-          </div>
-        ) : (
-          <div className="event-list">
-            {selectedSchedules.map((s) => (
-              <div key={s.id} className={`event-item${s.is_completed ? ' done' : ''}`}>
-                <div className="event-bar" style={{ background: PRIORITY_COLORS[s.priority] }} />
-                <div className="event-body">
-                  <p className="event-title">{s.title}</p>
-                  <p className="event-meta">
-                    {TYPE_ICONS[s.type]}{' '}
-                    {s.all_day ? 'All day' : formatTime(s.start_time)}
-                    {s.end_time ? ` — ${formatTime(s.end_time)}` : ''}
-                    {(s as Schedule & { location?: string }).location ? ` · 📍 ${(s as Schedule & { location?: string }).location}` : ''}
-                  </p>
+        {/* ── DAILY VIEW ── */}
+        {viewMode === 'daily' && (
+          <div className="day-panel" style={{ paddingTop: 16 }}>
+            {/* Date heading */}
+            <div className="daily-hdr">
+              <div>
+                <div className="daily-dow">{DAYS_FULL[selectedDate.getDay()]}</div>
+                <div className="daily-date">
+                  {MONTHS[selectedDate.getMonth()]} {selectedDate.getDate()}, {selectedDate.getFullYear()}
                 </div>
-                {s.is_completed && <span className="done-badge">✓</span>}
               </div>
-            ))}
+              <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
+            </div>
+
+            {/* Today indicator */}
+            {isToday(selectedDay) && (
+              <div className="today-indicator">
+                <span className="today-dot" />
+                <span>Today</span>
+              </div>
+            )}
+
+            {/* Holiday */}
+            {selectedHol && <HolidayBanner holiday={selectedHol} />}
+
+            {/* Schedule list */}
+            {selectedSchedules.length === 0 ? (
+              <div className="day-empty">
+                <div className="empty-icon">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
+                    <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
+                    <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
+                    <path d="M14 26h12M14 22h8" stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p>Nothing scheduled for this day</p>
+                <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+              </div>
+            ) : (
+              <div className="event-list timeline">
+                {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
+              </div>
+            )}
           </div>
         )}
 
-        {!countryCode && (
-          <div className="no-country-hint">
-            <a href="/profile">⚙️ Set your country in Profile to see local holidays</a>
+        {/* ── WEEKLY VIEW ── */}
+        {viewMode === 'weekly' && (
+          <div style={{ padding: '0 0 100px' }}>
+            {/* 7-column day strip */}
+            <div className="week-strip">
+              {weekDays.map((d, i) => {
+                const isT  = d.toDateString() === today.toDateString();
+                const isSel = d.toDateString() === selectedDate.toDateString();
+                const ds   = toDateStr(d);
+                const cnt  = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length;
+                return (
+                  <button key={i} className={`week-day-col${isSel ? ' sel' : ''}${isT ? ' today' : ''}`}
+                    onClick={() => { setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); }}>
+                    <div className="wdc-name">{DAYS_SHORT[i].slice(0,2)}</div>
+                    <div className="wdc-num">{d.getDate()}</div>
+                    {cnt > 0 && <div className="wdc-cnt">{cnt}</div>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Events grouped by day */}
+            <div style={{ padding: '0 16px' }}>
+              {weekDays.map((d, i) => {
+                const ds   = toDateStr(d);
+                const hol  = holidays.get(ds);
+                const evts = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds);
+                const isT  = d.toDateString() === today.toDateString();
+                if (evts.length === 0 && !hol) return null;
+                return (
+                  <div key={i} className="week-day-group">
+                    <div className={`week-day-label${isT ? ' today' : ''}`}>
+                      <span className="wdl-name">{DAYS_FULL[d.getDay()]}</span>
+                      <span className="wdl-date">{MONTHS_SH[d.getMonth()]} {d.getDate()}</span>
+                      {isT && <span className="today-pip" />}
+                    </div>
+                    {hol && (
+                      <div className="week-holiday-row">
+                        <span className="whr-dot" />
+                        <span className="whr-name">{hol.localName}</span>
+                        <span className="hol-tag" style={{ fontSize:9 }}>Holiday</span>
+                      </div>
+                    )}
+                    {evts.map(s => <EventCard key={s.id} s={s} compact />)}
+                  </div>
+                );
+              })}
+              {/* If the whole week is empty */}
+              {weekDays.every(d => {
+                const ds = toDateStr(d);
+                return schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length === 0 && !holidays.get(ds);
+              }) && (
+                <div className="day-empty" style={{ paddingTop: 32 }}>
+                  <p>No events this week</p>
+                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Add Schedule bottom sheet */}
+        {/* ── YEARLY VIEW ── */}
+        {viewMode === 'yearly' && (
+          <div style={{ padding: '16px 14px 100px' }}>
+            <div className="year-grid">
+              {Array.from({ length: 12 }, (_, mo) => {
+                const cnt    = monthCounts[mo];
+                const isThisMon  = mo === today.getMonth() && year === today.getFullYear();
+                const isSel  = mo === month;
+                const daysIn = new Date(year, mo + 1, 0).getDate();
+                const firstD = new Date(year, mo, 1).getDay();
+                // Mini calendar dots
+                const miniDayMap: Record<number, number> = {};
+                schedules.filter(s => {
+                  const d = new Date(s.start_time);
+                  return d.getFullYear() === year && d.getMonth() === mo;
+                }).forEach(s => {
+                  const d = new Date(s.start_time).getDate();
+                  miniDayMap[d] = (miniDayMap[d] || 0) + 1;
+                });
+
+                return (
+                  <button key={mo}
+                    className={`year-month-card${isSel ? ' sel' : ''}${isThisMon ? ' current' : ''}`}
+                    onClick={() => { setViewDate(new Date(year, mo, 1)); setSelectedDay(mo === today.getMonth() && year === today.getFullYear() ? today.getDate() : 1); setViewMode('monthly'); }}>
+                    <div className="ymc-header">
+                      <span className="ymc-name">{MONTHS_SH[mo]}</span>
+                      {cnt > 0 && <span className="ymc-count">{cnt}</span>}
+                    </div>
+                    {/* Mini 7-col grid */}
+                    <div className="ymc-grid">
+                      {Array.from({ length: firstD }).map((_, i) => <div key={`e${i}`} className="ymc-cell" />)}
+                      {Array.from({ length: daysIn }, (_, i) => {
+                        const d = i + 1;
+                        const isT = d === today.getDate() && isThisMon;
+                        const hasDot = !!miniDayMap[d];
+                        return (
+                          <div key={d} className={`ymc-cell${isT ? ' tod' : ''}${hasDot ? ' has' : ''}`}>
+                            <span>{d}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>{/* end scroll-body */}
+
+      {/* Add Schedule sheet */}
       <AddScheduleSheet
         open={sheetOpen}
         selectedDate={selectedDate}
@@ -310,69 +512,122 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       <BottomNav />
 
       <style jsx>{`
-        .page { min-height:100vh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); }
+        /* ── Page shell ── */
+        .page { height:100dvh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); overflow:hidden; }
 
-        /* Header */
-        .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-start; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
+        /* ── Header ── */
+        .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
+        .today-btn { padding:6px 14px; background:var(--glass-bg2,rgba(255,255,255,.07)); border:1px solid var(--glass-border,rgba(255,255,255,.10)); border-radius:20px; color:var(--purple); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .14s; flex-shrink:0; }
+        .today-btn:active { background:var(--pur-lt); }
 
-        /* Month nav */
-        .month-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 8px; background:var(--glass-bg2, var(--surf)); border-bottom:1px solid var(--glass-border, var(--border)); }
-        .month-label { font-size:17px; font-weight:700; color:var(--dark); }
+        /* ── View switcher ── */
+        .view-switcher { flex-shrink:0; display:flex; gap:6px; padding:10px 16px; background:var(--glass-bg,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .view-pill { flex:1; padding:8px 4px; border-radius:10px; border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); background:var(--glass-bg2,rgba(255,255,255,.04)); color:var(--mid); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .14s; letter-spacing:.2px; }
+        .view-pill.active { background:var(--purple); border-color:var(--purple); color:#fff; box-shadow:0 2px 12px rgba(124,106,240,.35); }
+        .view-pill:not(.active):active { background:var(--pur-lt); color:var(--purple); }
+
+        /* ── Month / period navigator ── */
+        .month-nav { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .month-label { font-size:15px; font-weight:700; color:var(--dark); }
         .nav-arrow { background:none; border:none; color:var(--mid); font-size:22px; cursor:pointer; padding:4px 10px; line-height:1; border-radius:8px; }
         .nav-arrow:active { background:var(--surf2); }
 
-        /* Grid */
-        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2, var(--surf)); }
+        /* ── Scrollable body ── */
+        .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+
+        /* ════ MONTHLY ════ */
+        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2,var(--surf)); }
         .header-row { padding-top:8px; }
         .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:4px 0; }
-
-        /* Day cell */
         .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; }
         .cal-day:active { background:var(--pur-lt); }
         .cal-day.active { background:var(--purple) !important; }
         .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:800; }
         .cal-day.holiday:not(.active) { background:rgba(255,107,107,.07); }
         .day-num { font-size:13px; font-weight:600; color:var(--mid); line-height:1; }
-        .cal-day.active .day-num  { color:#fff; }
+        .cal-day.active .day-num { color:#fff; }
         .cal-day.holiday:not(.active) .day-num { color:var(--coral,#FF6B8A); font-weight:700; }
-
-        /* Dots */
         .day-indicators { display:flex; gap:2px; align-items:center; min-height:5px; }
         .h-dot { width:5px; height:5px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
         .cal-day.active .h-dot { background:rgba(255,255,255,.8); }
         .dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
         .cal-day.active .dot { background:rgba(255,255,255,.7) !important; }
 
-        /* Day panel */
-        .day-panel { flex:1; overflow-y:auto; padding:14px 16px 100px; }
+        /* ════ DAY PANEL (shared: monthly + daily) ════ */
+        .day-panel { padding:14px 16px 100px; }
         .day-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .day-panel-title  { font-size:15px; font-weight:700; color:var(--dark); }
-        .day-count        { font-size:12px; color:var(--mid); }
-        .day-add-inline   { padding:5px 12px; background:var(--gradient); border:none; border-radius:8px; color:#fff; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .day-panel-title { font-size:15px; font-weight:700; color:var(--dark); }
+        .day-count { font-size:12px; color:var(--mid); }
+        .day-add-inline { padding:6px 14px; background:var(--gradient); border:none; border-radius:20px; color:#fff; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
 
-        /* Holiday banner */
-        .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
+        /* Daily heading */
+        .daily-hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+        .daily-dow { font-size:12px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.8px; }
+        .daily-date { font-size:20px; font-weight:800; color:var(--dark); letter-spacing:-.3px; margin-top:2px; }
+        .today-indicator { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--purple); margin-bottom:12px; }
+        .today-dot { width:7px; height:7px; border-radius:50%; background:var(--purple); flex-shrink:0; box-shadow:0 0 6px var(--purple); }
+
+        /* ════ WEEKLY ════ */
+        .week-strip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 12px 0; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .week-day-col { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px 10px; border-radius:12px; background:transparent; border:1.5px solid transparent; cursor:pointer; font-family:inherit; transition:all .14s; }
+        .week-day-col.today .wdc-num { color:var(--purple); font-weight:800; }
+        .week-day-col.sel { background:var(--pur-lt,rgba(124,106,240,.15)); border-color:var(--purple); }
+        .week-day-col.sel .wdc-num { color:var(--purple); font-weight:800; }
+        .wdc-name { font-size:9px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; }
+        .wdc-num  { font-size:15px; font-weight:600; color:var(--dark); line-height:1; }
+        .wdc-cnt  { font-size:9px; font-weight:700; color:#fff; background:var(--purple); border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; }
+
+        .week-day-group { margin-top:18px; }
+        .week-day-label { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .wdl-name { font-size:12px; font-weight:700; color:var(--dark); }
+        .wdl-date { font-size:11px; color:var(--mid); }
+        .week-day-label.today .wdl-name { color:var(--purple); }
+        .today-pip { width:6px; height:6px; border-radius:50%; background:var(--purple); flex-shrink:0; }
+        .week-holiday-row { display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.18); border-radius:10px; margin-bottom:6px; }
+        .whr-dot { width:6px; height:6px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
+        .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
+
+        /* ════ YEARLY ════ */
+        .year-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+        .year-month-card { display:flex; flex-direction:column; gap:6px; padding:10px 8px; background:var(--glass-bg2,rgba(255,255,255,.04)); border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); border-radius:14px; cursor:pointer; font-family:inherit; transition:all .14s; text-align:left; }
+        .year-month-card.sel { background:var(--pur-lt,rgba(124,106,240,.14)); border-color:var(--purple); }
+        .year-month-card.current { border-color:var(--purple); }
+        .year-month-card:active { opacity:.8; }
+        .ymc-header { display:flex; align-items:center; justify-content:space-between; }
+        .ymc-name { font-size:12px; font-weight:800; color:var(--dark); }
+        .ymc-count { font-size:9px; font-weight:700; color:var(--purple); background:var(--pur-lt,rgba(124,106,240,.15)); border-radius:8px; padding:1px 6px; }
+        .ymc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+        .ymc-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:3px; }
+        .ymc-cell span { font-size:5.5px; color:var(--mid); line-height:1; }
+        .ymc-cell.tod { background:var(--purple); border-radius:3px; }
+        .ymc-cell.tod span { color:#fff; font-weight:700; }
+        .ymc-cell.has { background:rgba(124,106,240,.18); border-radius:3px; }
+        .ymc-cell.has span { color:var(--purple); font-weight:700; }
+
+        /* ════ SHARED ════ */
+        .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.10); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
         .hol-icon { display:flex; align-items:center; flex-shrink:0; }
         .hol-info { flex:1; }
-        .hol-name { font-size:14px; font-weight:700; color:var(--coral,#FF6B8A); }
-        .hol-en   { font-size:11px; color:var(--mid); margin-top:1px; }
-        .hol-tag  { font-size:10px; font-weight:700; color:var(--coral,#FF6B8A); background:rgba(255,107,107,.15); padding:3px 8px; border-radius:20px; }
+        .hol-name { font-size:13px; font-weight:700; color:var(--coral,#FF6B8A); }
+        .hol-en   { font-size:10px; color:var(--mid); margin-top:1px; }
+        .hol-tag  { font-size:10px; font-weight:700; color:var(--coral,#FF6B8A); background:rgba(255,107,107,.15); padding:3px 8px; border-radius:20px; white-space:nowrap; }
 
-        /* Events */
         .event-list { display:flex; flex-direction:column; gap:8px; }
-        .event-item { background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-radius:var(--rmd); padding:14px 14px 14px 10px; display:flex; align-items:center; gap:10px; border:1px solid var(--glass-border, var(--border)); box-shadow:var(--glass-sh2, none); }
+        .event-item { background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-radius:14px; padding:14px 14px 14px 10px; display:flex; align-items:center; gap:10px; border:1px solid var(--glass-border,var(--border)); }
+        .event-item.compact { padding:10px 12px 10px 10px; border-radius:12px; }
         .event-item.done { opacity:.45; }
-        .event-bar  { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; }
-        .event-body { flex:1; }
-        .event-title { font-size:14px; font-weight:600; color:var(--dark); }
-        .event-meta  { font-size:12px; color:var(--mid); margin-top:2px; }
-        .done-badge  { font-size:14px; color:var(--mint,#2DD4BF); font-weight:700; }
+        .event-bar  { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; min-height:28px; }
+        .event-body { flex:1; min-width:0; }
+        .event-title { font-size:14px; font-weight:600; color:var(--dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .event-item.compact .event-title { font-size:13px; }
+        .event-meta  { font-size:11px; color:var(--mid); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .done-badge  { font-size:14px; color:var(--mint,#2DD4BF); font-weight:700; flex-shrink:0; }
 
-        /* Empty */
-        .day-empty { text-align:center; padding:24px 0; color:var(--mid); font-size:13px; }
-        .day-add-cta { display:inline-block; margin-top:10px; padding:10px 22px; background:var(--gradient); border-radius:12px; color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(124,106,240,.3); }
+        .day-empty { text-align:center; padding:32px 0; color:var(--mid); font-size:13px; }
+        .empty-icon { margin:0 auto 12px; opacity:.35; display:flex; justify-content:center; }
+        .day-add-cta { display:inline-block; margin-top:12px; padding:10px 24px; background:var(--gradient); border-radius:12px; color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(124,106,240,.3); }
         .no-country-hint { text-align:center; margin-top:16px; font-size:12px; color:var(--mid); }
         .no-country-hint a { color:var(--purple); text-decoration:none; font-weight:600; }
       `}</style>
