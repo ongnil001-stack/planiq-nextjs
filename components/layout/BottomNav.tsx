@@ -177,47 +177,16 @@ export default function BottomNav() {
           z-index: 10;
         }
 
-        /* Spinning glow ring — conic gradient masked to a thin ring */
+        /* Glow ring — static border, no animation, no bleed */
         .ni-fab-ring {
           position: absolute;
           inset: -2px;
           border-radius: 50%;
-          /* conic gradient gives the arc sweep look */
-          background: conic-gradient(
-            from 0deg,
-            transparent 0deg,
-            var(--cyan, #00C6FF) 60deg,
-            var(--purple, #7C6AF0) 160deg,
-            transparent 220deg,
-            transparent 360deg
-          );
-          /* mask to thin ring — 3px wide */
-          -webkit-mask:
-            radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px));
-          mask:
-            radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px));
-          animation: fabSpin 3s linear infinite;
-          opacity: 0.9;
-        }
-
-        @keyframes fabSpin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-
-        /* Outer glow halo */
-        .ni-fab::before {
-          content: '';
-          position: absolute;
-          inset: -6px;
-          border-radius: 50%;
-          background: radial-gradient(circle,
-            var(--cyan, #00C6FF) 0%,
-            var(--purple, #7C6AF0) 50%,
-            transparent 75%
-          );
-          opacity: 0.15;
-          filter: blur(6px);
+          border: 1.5px solid rgba(0, 198, 255, 0.5);
+          box-shadow:
+            0 0 8px rgba(0, 198, 255, 0.3),
+            0 0 16px rgba(124, 106, 240, 0.2),
+            inset 0 0 6px rgba(0, 198, 255, 0.1);
           pointer-events: none;
         }
 
@@ -242,7 +211,6 @@ export default function BottomNav() {
           box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
         .ni-fab:active .ni-fab-ring { opacity: 1; }
-        .ni-fab:active::before { opacity: 0.3; }
       `}</style>
     </>
   );
