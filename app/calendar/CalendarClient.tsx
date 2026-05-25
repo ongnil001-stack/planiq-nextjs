@@ -12,6 +12,85 @@ import { createClient } from '@/lib/supabase/client';
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+// ── SVG country flag icons — clean, minimal, theme-neutral ──────────────────
+function CountryFlag({ code }: { code: string }) {
+  if (code === 'PH') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      {/* Blue top half */}
+      <rect width="20" height="6.5" fill="#0038A8"/>
+      {/* Red bottom half */}
+      <rect y="6.5" width="20" height="6.5" fill="#CE1126"/>
+      {/* White triangle on left */}
+      <polygon points="0,0 9,6.5 0,13" fill="#FFFFFF"/>
+      {/* Golden sun */}
+      <circle cx="4.2" cy="6.5" r="1.4" fill="#FCD116"/>
+      {/* 8 sun rays */}
+      {[0,45,90,135,180,225,270,315].map((deg,i) => {
+        const a = deg * Math.PI / 180;
+        return <line key={i}
+          x1={4.2 + Math.cos(a)*1.7} y1={6.5 + Math.sin(a)*1.7}
+          x2={4.2 + Math.cos(a)*2.6} y2={6.5 + Math.sin(a)*2.6}
+          stroke="#FCD116" strokeWidth="0.55"/>;
+      })}
+      {/* 3 stars at triangle corners */}
+      <polygon points="1.6,1.5 1.85,2.2 2.55,2.2 2,2.6 2.2,3.3 1.6,2.9 1,3.3 1.2,2.6 0.65,2.2 1.35,2.2" fill="#FCD116"/>
+      <polygon points="1.6,9.7 1.85,10.4 2.55,10.4 2,10.8 2.2,11.5 1.6,11.1 1,11.5 1.2,10.8 0.65,10.4 1.35,10.4" fill="#FCD116"/>
+      <polygon points="6.2,5.8 6.45,6.5 7.15,6.5 6.6,6.9 6.8,7.6 6.2,7.2 5.6,7.6 5.8,6.9 5.25,6.5 5.95,6.5" fill="#FCD116"/>
+    </svg>
+  );
+
+  if (code === 'US') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" fill="#B22234"/>
+      {[1,3,5,7,9,11].map(y => <rect key={y} y={y} width="20" height="1" fill="#FFF"/>)}
+      <rect width="9" height="7" fill="#3C3B6E"/>
+      {[1,3,5].flatMap(row => [1,3,5,7].map(col =>
+        <circle key={`${row}${col}`} cx={col} cy={row} r="0.6" fill="#FFF"/>
+      ))}
+    </svg>
+  );
+
+  if (code === 'GB') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" rx="2" fill="#012169"/>
+      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#FFF" strokeWidth="3"/>
+      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#C8102E" strokeWidth="1.8"/>
+      <path d="M10,0 V13 M0,6.5 H20" stroke="#FFF" strokeWidth="3.5"/>
+      <path d="M10,0 V13 M0,6.5 H20" stroke="#C8102E" strokeWidth="2.2"/>
+    </svg>
+  );
+
+  if (code === 'AU') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" rx="2" fill="#00008B"/>
+      {/* Union Jack mini */}
+      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#FFF" strokeWidth="1.5"/>
+      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#C8102E" strokeWidth="0.9"/>
+      <path d="M3,0 V4 M0,2 H6" stroke="#FFF" strokeWidth="1.8"/>
+      <path d="M3,0 V4 M0,2 H6" stroke="#C8102E" strokeWidth="1.1"/>
+      {/* Stars */}
+      <circle cx="14" cy="4" r="0.8" fill="#FFF"/>
+      <circle cx="17" cy="7" r="0.8" fill="#FFF"/>
+      <circle cx="12" cy="8" r="0.8" fill="#FFF"/>
+      <circle cx="15" cy="11" r="0.8" fill="#FFF"/>
+    </svg>
+  );
+
+  // Generic fallback — themed pill with country code
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center', justifyContent:'center',
+      width:20, height:13, borderRadius:2,
+      background:'var(--pur-lt)', color:'var(--purple)',
+      fontSize:7, fontWeight:800, letterSpacing:'.5px', flexShrink:0,
+    }}>{code}</span>
+  );
+}
+
 export default function CalendarClient({ initialSchedules }: { initialSchedules: Schedule[] }) {
   const today    = new Date();
   const supabase = createClient();
@@ -102,7 +181,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         <div>
           <h1 className="pg-title">Schedule</h1>
           {countryCode && countryName && (
-            <div className="country-badge">{countryName.flag} {countryName.name} holidays</div>
+            <div className="country-badge">
+              <CountryFlag code={countryCode} />
+              <span>{countryName.name} holidays</span>
+            </div>
           )}
         </div>
       </div>
@@ -164,7 +246,16 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {/* Holiday banner */}
         {selectedHol && (
           <div className="holiday-banner">
-            <span className="hol-icon">🎌</span>
+            <span className="hol-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="4" width="16" height="14" rx="3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+                <path d="M2 8h16" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+                <path d="M6 2v3M14 2v3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="7" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+                <circle cx="10" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+                <circle cx="13" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+              </svg>
+            </span>
             <div className="hol-info">
               <div className="hol-name">{selectedHol.localName}</div>
               {selectedHol.localName !== selectedHol.name && (
@@ -224,7 +315,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         /* Header */
         .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-start; background:var(--glass-bg, var(--surf)); backdrop-filter:var(--glass-blur, blur(18px)); -webkit-backdrop-filter:var(--glass-blur, blur(18px)); border-bottom:1px solid var(--glass-border, var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
-        .country-badge { font-size:11px; color:var(--purple); font-weight:600; margin-top:2px; }
+        .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
 
         /* Month nav */
         .month-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 20px 8px; background:var(--glass-bg2, var(--surf)); border-bottom:1px solid var(--glass-border, var(--border)); }
@@ -263,7 +354,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         /* Holiday banner */
         .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
-        .hol-icon { font-size:20px; }
+        .hol-icon { display:flex; align-items:center; flex-shrink:0; }
         .hol-info { flex:1; }
         .hol-name { font-size:14px; font-weight:700; color:var(--coral,#FF6B8A); }
         .hol-en   { font-size:11px; color:var(--mid); margin-top:1px; }

@@ -14,6 +14,7 @@ import { useChartColors } from '@/lib/useChartColors';
 interface Props {
   profile: Profile | null;
   todaySchedules: Schedule[];
+  weekSchedules: Schedule[];
   upcomingSchedules: Schedule[];
   latestAnalysis: AiAnalysis | null;
 }
@@ -28,7 +29,7 @@ const GREETING = () => {
 const DAY_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const WEEK_WORKLOAD = [65, 80, 45, 100, 70, 57, 8];
 
-export default function DashboardClient({ profile, todaySchedules, upcomingSchedules, latestAnalysis }: Props) {
+export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const ch = useChartColors();
@@ -80,12 +81,14 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
     return d;
   });
 
+  // Build day map from the full week fetch — matches exactly what Calendar shows
   const scheduleDayMap: Record<string, Schedule[]> = {};
-  [...todaySchedules, ...upcomingSchedules].forEach((s) => {
+  weekSchedules.forEach((s) => {
     const key = new Date(s.start_time).toDateString();
     if (!scheduleDayMap[key]) scheduleDayMap[key] = [];
     scheduleDayMap[key].push(s);
   });
+  const weekItemCount = weekSchedules.length;
 
   const todayLabel = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const todayDayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -297,7 +300,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
             <div className="wk-w-hdr">
               <div>
                 <div className="wk-w-ttl">Weekly Schedule</div>
-                <div className="wk-w-meta">{weekRange} · {upcomingSchedules.length} tasks</div>
+                <div className="wk-w-meta">{weekRange} · {weekItemCount} item{weekItemCount !== 1 ? 's' : ''}</div>
               </div>
               <div className="wk-w-arr" style={{ color:'rgba(255,255,255,.3)', fontSize:18 }}>→</div>
             </div>
@@ -318,7 +321,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
             </div>
             <div className="wk-w-foot">
               <span className="wk-w-sum">
-                {upcomingSchedules.length > 0 ? `${upcomingSchedules.length} items this week` : 'Nothing scheduled'}
+                {weekItemCount > 0 ? `${weekItemCount} item${weekItemCount !== 1 ? 's' : ''} this week` : 'Nothing scheduled'}
               </span>
               <span className="wk-w-act">Full view</span>
             </div>
@@ -496,6 +499,7 @@ export default function DashboardClient({ profile, todaySchedules, upcomingSched
         scheduleDayMap={scheduleDayMap}
         weekWorkload={WEEK_WORKLOAD}
         weekRange={weekRange}
+        weekItemCount={weekItemCount}
         latestAnalysisSummary={latestAnalysis?.summary}
       />
 
