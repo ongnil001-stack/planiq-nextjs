@@ -9,24 +9,123 @@ export default function BottomNav() {
   const isActive = (href: string) =>
     pathname === href || (href !== '/schedule/new' && pathname.startsWith(href + '/'));
 
+  // ── Shared inline style objects ──────────────────────────────
+  const NAV: React.CSSProperties = {
+    position: 'fixed',
+    bottom: 0, left: 0, right: 0,
+    zIndex: 200,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'flex-start',          // align to top of content zone
+    justifyContent: 'space-around',
+    paddingTop: '10px',
+    paddingBottom: 'env(safe-area-inset-bottom, 8px)',
+    minHeight: 'calc(68px + env(safe-area-inset-bottom, 0px))',
+    background: 'rgba(8, 9, 18, 0.92)',
+    backdropFilter: 'blur(28px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+    borderTop: '1px solid rgba(255,255,255,0.07)',
+    boxShadow: '0 -4px 24px rgba(0,0,0,0.45)',
+  };
+
+  const ITEM = (active: boolean): React.CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: '4px',
+    flex: 1,
+    minWidth: 0,
+    padding: '0 4px',
+    minHeight: '48px',
+    textDecoration: 'none',
+    color: active ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,0.40)',
+    position: 'relative',
+    WebkitTapHighlightColor: 'transparent',
+  });
+
+  const ICO: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '28px',
+    flexShrink: 0,
+  };
+
+  const LBL: React.CSSProperties = {
+    fontSize: '10px',
+    fontWeight: 600,
+    letterSpacing: '.15px',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    fontFamily: 'inherit',
+  };
+
+  const DOT = (active: boolean): React.CSSProperties => ({
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '24px',
+    height: '3px',
+    borderRadius: '0 0 3px 3px',
+    background: 'var(--purple, #7C6AF0)',
+    opacity: active ? 1 : 0,
+  });
+
+  // FAB column — same flex slot, button pops slightly above
+  const FAB_COL: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: '4px',
+    flex: 1,
+    minWidth: 0,
+    padding: '0 4px',
+    minHeight: '48px',
+    WebkitTapHighlightColor: 'transparent',
+  };
+
+  const FAB_BTN: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    width: '48px',
+    height: '48px',
+    borderRadius: '50%',
+    marginTop: '-14px',               // pops above nav top edge
+    background: 'var(--gradient, linear-gradient(135deg,#7C6AF0 0%,#00C6FF 100%))',
+    boxShadow: '0 4px 18px rgba(124,106,240,0.55), 0 2px 6px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.20)',
+    textDecoration: 'none',
+  };
+
+  const FAB_LBL: React.CSSProperties = {
+    ...LBL,
+    color: 'rgba(255,255,255,0.40)',
+  };
+
   return (
-    <nav className="bnav">
+    <nav style={NAV}>
 
       {/* ── Home ── */}
-      <Link href="/dashboard" className={`ni${isActive('/dashboard') ? ' on' : ''}`} aria-label="Home">
-        <span className="ni-ico">
+      <Link href="/dashboard" style={ITEM(isActive('/dashboard'))} aria-label="Home">
+        <span style={DOT(isActive('/dashboard'))} />
+        <span style={ICO}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M3 10.5L12 3L21 10.5V21C21 21.55 20.55 22 20 22H15V17H9V22H4C3.45 22 3 21.55 3 21V10.5Z"
               stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
           </svg>
         </span>
-        <span className="ni-lbl">Home</span>
-        <span className="ni-bar" />
+        <span style={LBL}>Home</span>
       </Link>
 
       {/* ── Schedule ── */}
-      <Link href="/calendar" className={`ni${isActive('/calendar') ? ' on' : ''}`} aria-label="Schedule">
-        <span className="ni-ico">
+      <Link href="/calendar" style={ITEM(isActive('/calendar'))} aria-label="Schedule">
+        <span style={DOT(isActive('/calendar'))} />
+        <span style={ICO}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <rect x="3" y="5" width="18" height="17" rx="3" stroke="currentColor" strokeWidth="1.7"/>
             <path d="M3 11H21" stroke="currentColor" strokeWidth="1.7"/>
@@ -36,172 +135,47 @@ export default function BottomNav() {
             <circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/>
           </svg>
         </span>
-        <span className="ni-lbl">Schedule</span>
-        <span className="ni-bar" />
+        <span style={LBL}>Schedule</span>
       </Link>
 
-      {/* ── FAB — centre, pokes slightly above bar ── */}
-      <div className="ni ni-fab-col">
-        <Link href="/schedule/new" className="ni-fab" aria-label="Add">
+      {/* ── FAB ── */}
+      <div style={FAB_COL}>
+        <Link href="/schedule/new" style={FAB_BTN} aria-label="Add">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
           </svg>
         </Link>
-        <span className="ni-lbl ni-fab-lbl">Add</span>
+        <span style={FAB_LBL}>Add</span>
       </div>
 
       {/* ── Priorities ── */}
-      <Link href="/ai-analysis" className={`ni${isActive('/ai-analysis') ? ' on' : ''}`} aria-label="Priorities">
-        <span className="ni-ico">
+      <Link href="/ai-analysis" style={ITEM(isActive('/ai-analysis'))} aria-label="Priorities">
+        <span style={DOT(isActive('/ai-analysis'))} />
+        <span style={ICO}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 3L14.5 9L21 9.75L16.4 14.1L17.8 20.5L12 17.3L6.2 20.5L7.6 14.1L3 9.75L9.5 9L12 3Z"
               stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
           </svg>
         </span>
-        <span className="ni-lbl">Priorities</span>
-        <span className="ni-bar" />
+        <span style={LBL}>Priorities</span>
       </Link>
 
       {/* ── Profile ── */}
-      <Link href="/profile" className={`ni${isActive('/profile') ? ' on' : ''}`} aria-label="Profile">
-        <span className="ni-ico">
+      <Link href="/profile" style={ITEM(isActive('/profile'))} aria-label="Profile">
+        <span style={DOT(isActive('/profile'))} />
+        <span style={ICO}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.7"/>
             <path d="M4 21C4 17.13 7.58 14 12 14C16.42 14 20 17.13 20 21"
               stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
           </svg>
         </span>
-        <span className="ni-lbl">Profile</span>
-        <span className="ni-bar" />
+        <span style={LBL}>Profile</span>
       </Link>
 
-      <style jsx>{`
-
-        /* ═══════════════════════════════════════════
-           NAV BAR — unified row, taller bar
-           All 5 items stay in one connected row.
-           Bar height increased to 72px + safe area.
-        ═══════════════════════════════════════════ */
-        .bnav {
-          position: fixed;
-          bottom: 0; left: 0; right: 0;
-          z-index: 200;
-
-          display: flex;
-          flex-direction: row;
-          align-items: center;              /* all items centred on same axis */
-          justify-content: space-around;
-
-          padding-top: 8px;
-          padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-          min-height: calc(72px + env(safe-area-inset-bottom, 0px));
-
-          background: rgba(8, 9, 18, 0.92);
-          backdrop-filter: blur(28px) saturate(160%);
-          -webkit-backdrop-filter: blur(28px) saturate(160%);
-          border-top: 1px solid rgba(255,255,255,0.07);
-          box-shadow: 0 -4px 24px rgba(0,0,0,0.45);
-        }
-
-        /* ═══════════════════════════════════════════
-           STANDARD NAV ITEM
-           All items same height, icon + label centred.
-        ═══════════════════════════════════════════ */
-        .ni {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          flex: 1;
-          min-width: 0;
-          padding: 0 4px;
-
-          min-height: 52px;               /* uniform tap target */
-          text-decoration: none;
-          color: rgba(255,255,255,0.38);
-          position: relative;
-          transition: color .18s ease;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .ni:active { opacity: .55; transform: scale(0.93); transition: none; }
-        .ni.on { color: var(--purple, #7C6AF0); }
-
-        /* Icon wrapper */
-        .ni-ico {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          flex-shrink: 0;
-        }
-
-        /* Label */
-        .ni-lbl {
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: .15px;
-          line-height: 1;
-          white-space: nowrap;
-        }
-
-        /* Active top-bar indicator */
-        .ni-bar {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 24px;
-          height: 3px;
-          border-radius: 0 0 3px 3px;
-          background: var(--purple, #7C6AF0);
-          opacity: 0;
-          transition: opacity .18s ease;
-        }
-        .ni.on .ni-bar { opacity: 1; }
-
-        /* ═══════════════════════════════════════════
-           FAB COLUMN — same flex slot as other items,
-           button pokes 10px above the bar, no shelf,
-           no separate floating — stays in the row.
-        ═══════════════════════════════════════════ */
-        .ni-fab-col {
-          color: rgba(255,255,255,0.38);   /* label colour */
-        }
-
-        .ni-fab {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          width: 52px;
-          height: 52px;
-          border-radius: 50%;
-          margin-top: -10px;              /* pokes 10px above row baseline */
-
-          background: var(--gradient, linear-gradient(135deg, #7C6AF0 0%, #00C6FF 100%));
-          box-shadow:
-            0 4px 18px rgba(124,106,240,0.50),
-            0 2px 6px rgba(0,0,0,0.30),
-            inset 0 1px 0 rgba(255,255,255,0.20);
-
-          text-decoration: none;
-          transition: transform .14s ease, box-shadow .14s ease;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .ni-fab:active {
-          transform: scale(0.88);
-          box-shadow:
-            0 2px 10px rgba(124,106,240,0.38),
-            0 1px 3px rgba(0,0,0,0.25),
-            inset 0 1px 0 rgba(255,255,255,0.12);
-        }
-
-        /* FAB label sits below the button, same style as other labels */
-        .ni-fab-lbl {
-          margin-top: 2px;
-        }
+      {/* Keyframe for active dot pulse — only animation needs a style tag */}
+      <style>{`
+        @keyframes navPop { 0%,100%{transform:scale(1)} 50%{transform:scale(0.92)} }
       `}</style>
     </nav>
   );
