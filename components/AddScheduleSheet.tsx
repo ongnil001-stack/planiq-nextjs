@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
+import { detectLocation, type GeoResult } from '@/lib/geoDetect';
 import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import SmartScheduleAI from '@/components/SmartScheduleAI';
 
@@ -250,6 +251,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   const [activeTimezone, setActiveTimezone] = useState('');
   const [tzSource,       setTzSource]       = useState<'profile'|'gps'|'manual'>('profile');
   const [gpsTimezone,    setGpsTimezone]    = useState<string | null>(null);
+  const [gpsResult,      setGpsResult]      = useState<GeoResult | null>(null);
   const [gpsDetecting,   setGpsDetecting]   = useState(false);
   const [showTzPanel,    setShowTzPanel]    = useState(false);
   const [manualTz,       setManualTz]       = useState('');
@@ -298,7 +300,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
       }
       setSaving(false); setSaveError(null);
-      setTzSource('profile'); setGpsTimezone(null); setManualTz(''); setShowTzPanel(false);
+      setTzSource('profile'); setGpsTimezone(null); setGpsResult(null); setManualTz(''); setShowTzPanel(false);
     }
   }, [open]);
 
@@ -314,15 +316,20 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   }, [open, selectedDate, countryCode]);
 
   const detectGps = useCallback(() => {
-    if (!navigator.geolocation) { setSaveError('Geolocation not supported on this device.'); return; }
     setGpsDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        setGpsTimezone(browserTz); setManualTz(browserTz); setTzSource('gps'); setGpsDetecting(false);
+    setSaveError(null);
+    detectLocation(
+      (result) => {
+        setGpsResult(result);
+        setGpsTimezone(result.timezone);
+        setManualTz(result.timezone);
+        setTzSource('gps');
+        setGpsDetecting(false);
       },
-      (err) => { setGpsDetecting(false); setSaveError(`GPS: ${err.message}`); },
-      { timeout: 8000, maximumAge: 60000 },
+      (errMsg) => {
+        setGpsDetecting(false);
+        setSaveError(errMsg);
+      }
     );
   }, []);
 
@@ -660,7 +667,11 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
               </span>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tzLabel}</div>
-                <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{tzSourceLabel}</div>
+                <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>
+                  {tzSource === 'gps' && gpsResult?.city
+                    ? `GPS · ${gpsResult.city}${gpsResult.country ? `, ${gpsResult.country}` : ''}`
+                    : tzSourceLabel}
+                </div>
               </div>
             </div>
 
@@ -677,7 +688,15 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
                   fontFamily:'inherit', opacity: gpsDetecting ? .6 : 1, transition:'all .14s',
                 }}>
                   <Icon d={['M10 10m-1.5 0a1.5 1.5 0 103 0 1.5 1.5 0 10-3 0','M5.2 14.8a8 8 0 000-9.6','M14.8 5.2a8 8 0 010 9.6','M7.4 12.6a5 5 0 010-5.2','M12.6 7.4a5 5 0 010 5.2']} size={16} stroke="currentColor" />
-                  <span>{gpsDetecting ? 'Detecting location…' : tzSource === 'gps' ? `GPS: ${gpsTimezone}` : 'Auto-detect via GPS'}</span>
+                  <span>
+                    {gpsDetecting
+                      ? 'Detecting location…'
+                      : tzSource === 'gps' && gpsResult
+                        ? `GPS: ${gpsResult.displayLabel}`
+                        : tzSource === 'gps' && gpsTimezone
+                          ? `GPS: ${gpsTimezone}`
+                          : 'Auto-detect via GPS'}
+                  </span>
                 </button>
 
                 {/* Profile TZ */}

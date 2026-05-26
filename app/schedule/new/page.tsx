@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
+import { detectLocation, type GeoResult } from '@/lib/geoDetect';
 import type { ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import BottomNav from '@/components/layout/BottomNav';
 
@@ -170,6 +171,7 @@ export default function AddSchedulePage() {
   const [activeTimezone, setActiveTimezone] = useState('');
   const [tzSource,       setTzSource]       = useState<'profile'|'gps'|'manual'>('profile');
   const [gpsTimezone,    setGpsTimezone]    = useState<string | null>(null);
+  const [gpsResult,      setGpsResult]      = useState<GeoResult | null>(null);
   const [gpsDetecting,   setGpsDetecting]   = useState(false);
   const [showTzPanel,    setShowTzPanel]    = useState(false);
   const [manualTz,       setManualTz]       = useState('');
@@ -205,15 +207,20 @@ export default function AddSchedulePage() {
   }, [startDate, countryCode]);
 
   const detectGps = useCallback(() => {
-    if (!navigator.geolocation) { setSaveError('Geolocation not supported.'); return; }
     setGpsDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        setGpsTimezone(tz); setManualTz(tz); setTzSource('gps'); setGpsDetecting(false);
+    setSaveError(null);
+    detectLocation(
+      (result) => {
+        setGpsResult(result);
+        setGpsTimezone(result.timezone);
+        setManualTz(result.timezone);
+        setTzSource('gps');
+        setGpsDetecting(false);
       },
-      (err) => { setGpsDetecting(false); setSaveError(`GPS: ${err.message}`); },
-      { timeout: 8000, maximumAge: 60000 },
+      (errMsg) => {
+        setGpsDetecting(false);
+        setSaveError(errMsg);
+      }
     );
   }, []);
 
@@ -530,7 +537,15 @@ export default function AddSchedulePage() {
                 fontFamily: 'inherit', opacity: gpsDetecting ? .6 : 1, transition: 'all .14s',
               }}>
                 {ICONS.gps}
-                <span>{gpsDetecting ? 'Detecting…' : tzSource === 'gps' ? `GPS: ${gpsTimezone}` : 'Auto-detect via GPS'}</span>
+                <span>
+                  {gpsDetecting
+                    ? 'Detecting location…'
+                    : tzSource === 'gps' && gpsResult
+                      ? `GPS: ${gpsResult.displayLabel}`
+                      : tzSource === 'gps' && gpsTimezone
+                        ? `GPS: ${gpsTimezone}`
+                        : 'Auto-detect via GPS'}
+                </span>
               </button>
               <button type="button" onClick={() => setTzSource('profile')} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 11,
