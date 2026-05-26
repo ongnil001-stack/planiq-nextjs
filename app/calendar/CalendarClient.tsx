@@ -246,6 +246,142 @@ function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Dat
   );
 }
 
+
+// ── Fluid swipe calendar track ────────────────────────────────────────────────
+interface CalTrackProps {
+  year: number; month: number;
+  selectedDay: number;
+  dayMapFn: (y: number, mo: number) => Record<number, import('@/types/database').Schedule[]>;
+  holidaysFn: (y: number, mo: number) => Map<string, import('@/lib/holidays').Holiday>;
+  isToday: (d: number, y?: number, mo?: number) => boolean;
+  onDayClick: (d: number) => void;
+  onMonthChange: (delta: -1 | 1) => void;
+}
+function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday, onDayClick, onMonthChange }: CalTrackProps) {
+  const trackRef   = useRef<HTMLDivElement>(null);
+  const startX     = useRef<number | null>(null);
+  const startY     = useRef<number | null>(null);
+  const [dragX,    setDragX]    = useState(0);
+  const [animating,setAnimating]= useState(false);
+  const [locked,   setLocked]   = useState<'h'|'v'|null>(null); // axis lock
+
+  function renderGrid(y: number, mo: number) {
+    const days   = new Date(y, mo + 1, 0).getDate();
+    const first  = new Date(y, mo, 1).getDay();
+    const dMap   = dayMapFn(y, mo);
+    const hMap   = holidaysFn(y, mo);
+    return (
+      <div className="cal-grid">
+        {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: days }).map((_, i) => {
+          const d       = i + 1;
+          const dateStr = toDateStr(new Date(y, mo, d));
+          const holiday = hMap.get(dateStr);
+          const events  = dMap[d] ?? [];
+          const hasDots = events.length > 0;
+          const active  = (mo === month && y === year) && d === selectedDay;
+          const todayD  = isToday(d, y, mo);
+          return (
+            <button key={d}
+              className={`cal-day${active ? ' active' : ''}${todayD ? ' today' : ''}${holiday ? ' holiday' : ''}`}
+              onClick={() => { if (mo === month && y === year) onDayClick(d); }}
+              title={holiday ? holiday.localName : undefined}>
+              <span className="day-num">{d}</span>
+              <div className="day-indicators">
+                {holiday && <span className="h-dot" />}
+                {hasDots && !holiday && <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />}
+                {hasDots && events.length > 1 && <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const prevY  = month === 0 ? year - 1 : year;
+  const prevMo = month === 0 ? 11 : month - 1;
+  const nextY  = month === 11 ? year + 1 : year;
+  const nextMo = month === 11 ? 0 : month + 1;
+
+  const W = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const THRESHOLD = W * 0.30; // 30% of screen width
+
+  function handleTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    setLocked(null);
+    setDragX(0);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (startX.current === null || animating) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - (startY.current ?? 0);
+    // Determine axis lock on first significant move
+    if (locked === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        setLocked(Math.abs(dx) > Math.abs(dy) ? 'h' : 'v');
+      }
+      return;
+    }
+    if (locked === 'v') return; // let vertical scroll proceed
+    e.preventDefault();        // only block scroll when horizontal
+    // Rubber-band at edges: resist if dragging too far
+    const resist = 0.35;
+    setDragX(Math.abs(dx) > W * 0.65 ? (dx > 0 ? 1 : -1) * W * 0.65 * resist + (dx - (dx > 0 ? 1 : -1) * W * 0.65) * resist : dx);
+  }
+
+  function handleTouchEnd() {
+    if (startX.current === null) return;
+    startX.current = null;
+    if (locked !== 'h' || animating) { setDragX(0); setLocked(null); return; }
+    const snap = dragX > THRESHOLD ? -1 : dragX < -THRESHOLD ? 1 : 0;
+    if (snap !== 0) {
+      setAnimating(true);
+      setDragX(snap < 0 ? W : -W); // fly off screen
+      setTimeout(() => {
+        onMonthChange(snap as -1 | 1);
+        setDragX(0);
+        setAnimating(false);
+        setLocked(null);
+      }, 220);
+    } else {
+      // Bounce back
+      setAnimating(true);
+      setDragX(0);
+      setTimeout(() => { setAnimating(false); setLocked(null); }, 280);
+    }
+  }
+
+  const transition = (animating || dragX === 0) ? 'transform 220ms cubic-bezier(.25,.46,.45,.94)' : 'none';
+
+  return (
+    <div
+      ref={trackRef}
+      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* 3-panel sliding track */}
+      <div style={{
+        display:'flex', width:'300%',
+        transform:`translateX(calc(-33.333% + ${dragX}px))`,
+        transition,
+        willChange:'transform',
+      }}>
+        {/* Previous month */}
+        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(prevY, prevMo)}</div>
+        {/* Current month */}
+        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(year, month)}</div>
+        {/* Next month */}
+        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(nextY, nextMo)}</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CalendarClient({ initialSchedules }: { initialSchedules: Schedule[] }) {
   const today    = new Date();
@@ -353,8 +489,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const countryInfo       = COUNTRIES.find(c => c.code === countryCode);
   const isToday           = (d: number) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   const timelineRef  = useRef<HTMLDivElement>(null);
-  const swipeRef      = useRef<HTMLDivElement>(null);
-  const swipeTouchX   = useRef<number | null>(null);
+
 
   // Auto-scroll timeline to current hour when daily view activates
   useEffect(() => {
@@ -688,52 +823,44 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               </div>
             )}
 
-            {/* ── Calendar grid — swipe left = next month, swipe right = prev month ── */}
-            <div
-              ref={swipeRef}
-              style={{ padding:'10px 8px 0', flexShrink:0, touchAction:'pan-y' }}
-              onTouchStart={e => { swipeTouchX.current = e.touches[0].clientX; }}
-              onTouchEnd={e => {
-                if (swipeTouchX.current === null) return;
-                const dx = e.changedTouches[0].clientX - swipeTouchX.current;
-                swipeTouchX.current = null;
-                if (Math.abs(dx) < 50) return;          // too short — ignore
-                if (dx < 0) navNext(); else navPrev();   // left = next, right = prev
-              }}
-            >
-              <div className="cal-grid header-row" style={{ paddingTop:0 }}>
+            {/* ── Calendar grid — fluid swipe track ── */}
+            <div style={{ padding:'10px 0 0', flexShrink:0 }}>
+              <div className="cal-grid header-row" style={{ paddingTop:0, padding:'0 8px' }}>
                 {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
               </div>
-              <div className="cal-grid">
-                {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const d        = i + 1;
-                  const dateStr  = toDateStr(new Date(year, month, d));
-                  const holiday  = holidays.get(dateStr);
-                  const events   = dayMap[d] ?? [];
-                  const hasDots  = events.length > 0;
-                  const active   = d === selectedDay;
-                  const todayDay = isToday(d);
-                  const isBusy   = hasDots;
-                  return (
-                    <button key={d}
-                      className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
-                      onClick={() => { handleDayClick(d); setMonthlyTab('overview'); }}
-                      title={holiday ? holiday.localName : undefined}>
-                      <span className="day-num">{d}</span>
-                      <div className="day-indicators">
-                        {holiday && <span className="h-dot" />}
-                        {isBusy && !holiday && (
-                          <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />
-                        )}
-                        {isBusy && events.length > 1 && (
-                          <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <CalendarTrack
+                year={year}
+                month={month}
+                selectedDay={selectedDay}
+                dayMapFn={(y, mo) => {
+                  const scheds = schedules.filter(s => {
+                    const sd = new Date(s.start_time);
+                    return sd.getFullYear() === y && sd.getMonth() === mo;
+                  });
+                  const map: Record<number, Schedule[]> = {};
+                  scheds.forEach(s => {
+                    const d = new Date(s.start_time).getDate();
+                    if (!map[d]) map[d] = [];
+                    map[d].push(s);
+                  });
+                  return map;
+                }}
+                holidaysFn={(y, mo) => {
+                  // Return subset of loaded holidays matching y/mo
+                  const out = new Map<string, import('@/lib/holidays').Holiday>();
+                  holidays.forEach((v, k) => {
+                    const [hy, hm] = k.split('-').map(Number);
+                    if (hy === y && hm - 1 === mo) out.set(k, v);
+                  });
+                  return out;
+                }}
+                isToday={(d, y2, mo2) => {
+                  const ty = today.getFullYear(), tm = today.getMonth(), td = today.getDate();
+                  return d === td && (y2 ?? year) === ty && (mo2 ?? month) === tm;
+                }}
+                onDayClick={d => { handleDayClick(d); setMonthlyTab('overview'); }}
+                onMonthChange={delta => { if (delta === -1) navPrev(); else navNext(); }}
+              />
             </div>
 
             {/* ── Selected day detail ── */}
