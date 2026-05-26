@@ -86,11 +86,20 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
           body: JSON.stringify({
             action: 'reschedule_suggest',
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            schedules: schedules.filter(s => !s.is_completed).map(s => ({
-              id: s.id, title: s.title, type: s.type, priority: s.priority,
-              start_time: s.start_time, end_time: s.end_time,
-              all_day: s.all_day ?? false, is_completed: s.is_completed,
-            })),
+            schedules: schedules.filter(s => !s.is_completed).map(s => {
+              const sd = new Date(s.start_time);
+              const ed = s.end_time ? new Date(s.end_time) : null;
+              const timeFmt = { hour: '2-digit' as const, minute: '2-digit' as const, hour12: true as const };
+              const dateFmt = { weekday: 'short' as const, month: 'short' as const, day: 'numeric' as const };
+              return {
+                id: s.id, title: s.title, type: s.type, priority: s.priority,
+                start_time: s.start_time, end_time: s.end_time,
+                all_day: s.all_day ?? false, is_completed: s.is_completed,
+                start_display: s.all_day ? 'All day' : sd.toLocaleTimeString('en-US', timeFmt),
+                end_display:   ed && !s.all_day ? ed.toLocaleTimeString('en-US', timeFmt) : undefined,
+                date_display:  sd.toLocaleDateString('en-US', dateFmt),
+              };
+            }),
           }),
         }
       );

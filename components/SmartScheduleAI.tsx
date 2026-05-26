@@ -89,8 +89,34 @@ export default function SmartScheduleAI({ proposed, existingSchedules, onSelectT
           body: JSON.stringify({
             action: 'smart_suggest',
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            proposed,
-            schedules: existingSchedules,
+            proposed: proposed ? (() => {
+              const timeFmt = { hour: '2-digit' as const, minute: '2-digit' as const, hour12: true as const };
+              const dateFmt = { weekday: 'short' as const, month: 'short' as const, day: 'numeric' as const };
+              return {
+                ...proposed,
+                start_display: proposed.start_time
+                  ? new Date(proposed.start_time).toLocaleTimeString('en-US', timeFmt)
+                  : undefined,
+                end_display: proposed.end_time
+                  ? new Date(proposed.end_time).toLocaleTimeString('en-US', timeFmt)
+                  : undefined,
+                date_display: proposed.start_time
+                  ? new Date(proposed.start_time).toLocaleDateString('en-US', dateFmt)
+                  : undefined,
+              };
+            })() : proposed,
+            schedules: existingSchedules.map(s => {
+              const sd = new Date(s.start_time);
+              const ed = s.end_time ? new Date(s.end_time) : null;
+              const timeFmt = { hour: '2-digit' as const, minute: '2-digit' as const, hour12: true as const };
+              const dateFmt = { weekday: 'short' as const, month: 'short' as const, day: 'numeric' as const };
+              return {
+                ...s,
+                start_display: s.all_day ? 'All day' : sd.toLocaleTimeString('en-US', timeFmt),
+                end_display:   ed && !s.all_day ? ed.toLocaleTimeString('en-US', timeFmt) : undefined,
+                date_display:  sd.toLocaleDateString('en-US', dateFmt),
+              };
+            }),
           }),
         }
       );

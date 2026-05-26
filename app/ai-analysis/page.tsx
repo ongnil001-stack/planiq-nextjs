@@ -187,11 +187,20 @@ export default function AIAnalysisPage() {
       .gte('start_time', wStart.toISOString())
       .lte('start_time', wEnd.toISOString());
 
-    const schedules = (scheds ?? []).map(s => ({
-      id: s.id, title: s.title, type: s.type, priority: s.priority,
-      start_time: s.start_time, end_time: s.end_time,
-      all_day: s.all_day ?? false, is_completed: s.is_completed,
-    }));
+    const schedules = (scheds ?? []).map(s => {
+      const sd = new Date(s.start_time);
+      const ed = s.end_time ? new Date(s.end_time) : null;
+      const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+      const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+      return {
+        id: s.id, title: s.title, type: s.type, priority: s.priority,
+        start_time: s.start_time, end_time: s.end_time,
+        all_day: s.all_day ?? false, is_completed: s.is_completed,
+        start_display: s.all_day ? 'All day' : sd.toLocaleTimeString('en-US', timeFmt),
+        end_display:   ed && !s.all_day ? ed.toLocaleTimeString('en-US', timeFmt) : undefined,
+        date_display:  sd.toLocaleDateString('en-US', dateFmt),
+      };
+    });
     setWeekSchedules(schedules);
 
     // Fire all 3 in parallel

@@ -164,11 +164,20 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             action: 'weekly_analysis',
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             dateRange: { from: wStart.toDateString(), to: wEnd.toDateString() },
-            schedules: weekSchedules.map(s => ({
-              id: s.id, title: s.title, type: s.type, priority: s.priority,
-              start_time: s.start_time, end_time: s.end_time,
-              all_day: s.all_day ?? false, is_completed: s.is_completed,
-            })),
+            schedules: weekSchedules.map(s => {
+              const startD = new Date(s.start_time);
+              const endD   = s.end_time ? new Date(s.end_time) : null;
+              const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+              const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+              return {
+                id: s.id, title: s.title, type: s.type, priority: s.priority,
+                start_time: s.start_time, end_time: s.end_time,
+                all_day: s.all_day ?? false, is_completed: s.is_completed,
+                start_display: s.all_day ? 'All day' : startD.toLocaleTimeString('en-US', timeFmt),
+                end_display:   endD && !s.all_day ? endD.toLocaleTimeString('en-US', timeFmt) : undefined,
+                date_display:  startD.toLocaleDateString('en-US', dateFmt),
+              };
+            }),
           }),
         }
       );

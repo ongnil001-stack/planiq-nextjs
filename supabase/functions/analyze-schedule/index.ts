@@ -23,10 +23,14 @@ interface ScheduleItem {
   title: string;
   type: string;
   priority: string;
-  start_time: string;
+  start_time: string;           // UTC ISO string (used for filtering/sorting)
   end_time: string | null;
   all_day: boolean;
   is_completed: boolean;
+  // Pre-formatted in the client's local timezone — use these in AI prompts
+  start_display?: string;       // e.g. "11:15 PM"
+  end_display?: string;         // e.g. "11:45 PM"
+  date_display?: string;        // e.g. "Tue, May 26"
 }
 
 interface ProposedSchedule {
@@ -36,19 +40,32 @@ interface ProposedSchedule {
   start_time: string;
   end_time: string | null;
   duration_minutes?: number;
+  start_display?: string;   // pre-formatted in client's local TZ
+  end_display?: string;
+  date_display?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtItem(s: ScheduleItem, tz = 'UTC') {
-  const opts: Intl.DateTimeFormatOptions = {
-    weekday: 'short', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZone: tz,
-  };
-  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: tz };
-  const start = new Date(s.start_time).toLocaleString('en-US', opts);
-  const end   = s.end_time ? ` → ${new Date(s.end_time).toLocaleTimeString('en-US', timeOpts)}` : '';
-  const done  = s.is_completed ? ' [DONE]' : '';
+  // Prefer pre-formatted display strings sent by the client (already in user's local TZ)
+  // Fall back to server-side formatting with the provided tz
+  let start: string;
+  let end = '';
+  if (s.start_display) {
+    const date = s.date_display ?? new Date(s.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: tz });
+    start = `${date}, ${s.start_display}`;
+    end   = s.end_display ? ` → ${s.end_display}` : '';
+  } else {
+    const opts: Intl.DateTimeFormatOptions = {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: tz,
+    };
+    const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: tz };
+    start = new Date(s.start_time).toLocaleString('en-US', opts);
+    end   = s.end_time ? ` → ${new Date(s.end_time).toLocaleTimeString('en-US', timeOpts)}` : '';
+  }
+  const done = s.is_completed ? ' [DONE]' : '';
   return `• [${s.priority.toUpperCase()}] ${s.type}: "${s.title}" @ ${start}${end}${done}`;
 }
 
@@ -217,8 +234,12 @@ async function smartSuggest(existingSchedules: ScheduleItem[], proposed: Propose
   const sameDay     = existingSchedules.filter(s => localDateStr(s.start_time, tz) === proposedLocalDate);
   const scheduleText = sameDay.length ? sameDay.map(s => fmtItem(s, tz)).join('\n') : '(no other items scheduled on this day)';
 
-  const startStr = proposedStart.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz });
-  const endStr   = proposedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const startStr = proposed.start_display
+    ? `${proposed.date_display ?? proposedStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: tz })}, ${proposed.start_display}`
+    : proposedStart.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const endStr = proposed.end_display
+    ? proposed.end_display
+    : proposedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: tz });
 
   const prompt = `You are PlanIQ's Smart Schedule AI. Check if the proposed item conflicts with existing schedules and suggest better alternatives.
 
