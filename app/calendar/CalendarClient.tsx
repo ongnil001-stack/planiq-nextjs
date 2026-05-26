@@ -130,22 +130,30 @@ function HolidayBanner({ holiday }: { holiday: Holiday }) {
   );
 }
 
-function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
+function EventCard({ s, compact = false, onEdit }: { s: Schedule; compact?: boolean; onEdit?: (s: Schedule) => void }) {
   const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
   const loc    = (s as Schedule & { location?: string }).location;
   const startD = new Date(s.start_time);
   const endD   = s.end_time ? new Date(s.end_time) : null;
+  const Tag    = onEdit ? 'button' : 'div';
   return (
-    <div style={{
-      display:'flex', flexDirection:'column', gap: compact ? 3 : 4,
-      padding: compact ? '8px 10px 8px 12px' : '10px 12px 10px 14px',
-      borderRadius: compact ? 10 : 12,
-      background:'var(--surf)',
-      border:'1px solid var(--glass-border,var(--border))',
-      borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
-      boxShadow:'0 1px 5px rgba(0,0,0,.07)',
-      opacity: s.is_completed ? 0.5 : 1,
-    }}>
+    <Tag
+      {...(onEdit ? { onClick: () => onEdit(s) } : {})}
+      style={{
+        display:'flex', flexDirection:'column', gap: compact ? 3 : 4,
+        padding: compact ? '8px 10px 8px 12px' : '10px 12px 10px 14px',
+        borderRadius: compact ? 10 : 12,
+        background:'var(--surf)',
+        border:'1px solid var(--glass-border,var(--border))',
+        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
+        opacity: s.is_completed ? 0.5 : 1,
+        width: onEdit ? '100%' : undefined,
+        textAlign: onEdit ? 'left' : undefined,
+        cursor: onEdit ? 'pointer' : 'default',
+        fontFamily:'inherit',
+        transition: onEdit ? 'background .1s' : undefined,
+      } as React.CSSProperties}>
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
         <TypeIcon type={s.type} />
         <span style={{
@@ -153,7 +161,10 @@ function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
           flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
           textDecoration: s.is_completed ? 'line-through' : 'none',
         }}>{s.title}</span>
-        {s.is_completed && <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>}
+        {s.is_completed
+          ? <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
+          : onEdit && <span style={{ fontSize:9, color:'var(--mid)', flexShrink:0, opacity:.5 }}>›</span>
+        }
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
         <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
@@ -170,7 +181,7 @@ function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
           padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
         }}>{s.priority}</span>
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -249,6 +260,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [sheetOpen,  setSheetOpen]  = useState(false);
   const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
   const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [editSched,  setEditSched]  = useState<Schedule | undefined>(undefined);
 
   const year        = viewDate.getFullYear();
   const month       = viewDate.getMonth();
@@ -342,6 +355,11 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   function handleDayClick(d: number) {
     if (d === selectedDay) { setSheetTime(undefined); setSheetOpen(true); }
     else setSelectedDay(d);
+  }
+
+  function openEditSheet(s: Schedule) {
+    setEditSched(s);
+    setEditOpen(true);
   }
 
   function openSheetAtHour(h: number) {
@@ -605,7 +623,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                 key={s.id}
                                 s={s}
                                 dayDate={dayDate}
-                                onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                                onClick={() => openEditSheet(s)}
                               />
                             ))}
                           </div>
@@ -699,8 +717,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             <div className="day-panel">
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
                 <div>
-                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
-                    {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                  <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                    <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
+                      {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                    </div>
+                    {isToday(selectedDay) && (
+                      <span style={{ fontSize:9, fontWeight:900, color:'#fff', background:'var(--purple)', borderRadius:6, padding:'2px 7px', letterSpacing:'.5px', textTransform:'uppercase', boxShadow:'0 1px 6px rgba(124,106,240,.45)' }}>TODAY</span>
+                    )}
                   </div>
                   <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
                     {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
@@ -725,7 +748,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
+                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} onEdit={openEditSheet} />)}
                 </div>
               )}
             </div>
@@ -792,7 +815,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                               key={s.id}
                               s={s}
                               dayDate={dayDate}
-                              onClick={() => goToDay(d)}
+                              onClick={() => openEditSheet(s)}
                             />
                           ))}
                         </div>
@@ -930,9 +953,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                           const loc    = (s as Schedule & { location?: string }).location;
                           const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
                           return (
-                            <div
+                            <button
                               key={s.id}
-                              onClick={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); openEditSheet(s); }}
                               style={{
                                 display:'flex', flexDirection:'column', gap:4,
                                 padding:'8px 10px 8px 12px',
@@ -942,7 +965,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                 borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
                                 boxShadow:'0 1px 6px rgba(0,0,0,.08)',
                                 opacity: s.is_completed ? 0.5 : 1,
-                                position:'relative', cursor:'default',
+                                position:'relative', cursor:'pointer',
+                                textAlign:'left', width:'100%', fontFamily:'inherit',
                               }}
                             >
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -974,7 +998,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                   letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
                                 }}>{s.priority}</span>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -1055,7 +1079,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
                     {evts.length > 0 ? (
                       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                        {evts.map(s => <EventCard key={s.id} s={s} compact />)}
+                        {evts.map(s => <EventCard key={s.id} s={s} compact onEdit={openEditSheet} />)}
                       </div>
                     ) : (
                       <div style={{
@@ -1134,6 +1158,14 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         onClose={() => { setSheetOpen(false); setSheetTime(undefined); }}
         onSaved={refreshSchedules}
       />
+      <AddScheduleSheet
+        open={editOpen}
+        selectedDate={editSched ? new Date(editSched.start_time) : selectedDate}
+        countryCode={countryCode}
+        editSchedule={editSched}
+        onClose={() => { setEditOpen(false); setEditSched(undefined); }}
+        onSaved={(id) => { setEditOpen(false); setEditSched(undefined); refreshSchedules(id); }}
+      />
 
       <BottomNav />
 
@@ -1170,7 +1202,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; }
         .cal-day:active { background:var(--pur-lt); }
         .cal-day.active { background:var(--purple) !important; }
-        .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:800; }
+        .cal-day.today:not(.active) { box-shadow:0 0 0 2px var(--purple); background:rgba(124,106,240,.10) !important; }
+        .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:900; }
+        .cal-day.today:not(.active)::after { content:'·'; display:block; font-size:7px; color:var(--purple); font-weight:900; line-height:1; margin-top:-1px; }
         .cal-day.holiday:not(.active) { background:rgba(255,107,107,.07); }
         .day-num { font-size:13px; font-weight:600; color:var(--mid); line-height:1; }
         .cal-day.active .day-num { color:#fff; }
@@ -1187,7 +1221,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         /* ════ WEEKLY ════ */
         .week-strip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 12px 0; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
         .week-day-col { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px 10px; border-radius:12px; background:transparent; border:1.5px solid transparent; cursor:pointer; font-family:inherit; transition:all .14s; }
-        .week-day-col.today .wdc-num { color:var(--purple); font-weight:800; }
+        .week-day-col.today .wdc-num { color:var(--purple); font-weight:900; }
+        .week-day-col.today:not(.sel) { background:rgba(124,106,240,.08); box-shadow:0 0 0 1.5px var(--purple) inset; }
         .week-day-col.sel { background:var(--pur-lt,rgba(124,106,240,.15)); border-color:var(--purple); }
         .week-day-col.sel .wdc-num { color:var(--purple); font-weight:800; }
         .wdc-name { font-size:9px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; }

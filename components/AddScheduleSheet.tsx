@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
-import type { ScheduleType, Priority, RecurrenceRule } from '@/types/database';
+import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 
 // ─── SVG Icon Library ─────────────────────────────────────────────────────────
 
@@ -218,14 +218,15 @@ interface Props {
   open: boolean;
   selectedDate: Date;
   countryCode: string;
-  initialTime?: string;   // e.g. "14:00" — pre-fills start time when sheet opens
+  initialTime?: string;     // e.g. "14:00" — pre-fills start time when sheet opens
+  editSchedule?: Schedule;  // if set, opens in edit mode with fields pre-filled
   onClose: () => void;
-  onSaved: (newId?: string) => void;  // passes the new record's id for instant UI update
+  onSaved: (newId?: string) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, onClose, onSaved }: Props) {
+export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, editSchedule, onClose, onSaved }: Props) {
   const supabase = createClient();
 
   const [title,         setTitle]         = useState('');
@@ -270,11 +271,30 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
 
   useEffect(() => {
     if (open) {
-      setTitle(''); setType('task'); setPriority('medium');
-      const t0 = initialTime ?? '09:00';
-      setStartTime(t0); setEndTime(addMinutes(t0, 30)); setEndTouched(false);
-      setAllDay(false); setSchedLocation(''); setNotes('');
-      setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
+      if (editSchedule) {
+        // Edit mode — pre-fill all fields from existing record
+        const startD = new Date(editSchedule.start_time);
+        const endD   = editSchedule.end_time ? new Date(editSchedule.end_time) : null;
+        const fmt2   = (n: number) => String(n).padStart(2,'0');
+        const t0     = `${fmt2(startD.getHours())}:${fmt2(startD.getMinutes())}`;
+        const t1     = endD ? `${fmt2(endD.getHours())}:${fmt2(endD.getMinutes())}` : addMinutes(t0, 30);
+        setTitle(editSchedule.title);
+        setType(editSchedule.type as ScheduleType);
+        setPriority(editSchedule.priority as Priority);
+        setStartTime(t0); setEndTime(t1); setEndTouched(true);
+        setAllDay(editSchedule.all_day ?? false);
+        setSchedLocation((editSchedule as Schedule & { location?: string }).location ?? '');
+        setNotes((editSchedule as Schedule & { description?: string }).description ?? '');
+        setRecurrence((editSchedule.recurrence_rule ? editSchedule.recurrence_rule : 'none') as RecurrenceRule);
+        setCustomDays([]); setRecurrenceEnd(editSchedule.recurrence_end ?? '');
+      } else {
+        // Add mode — clear all fields
+        setTitle(''); setType('task'); setPriority('medium');
+        const t0 = initialTime ?? '09:00';
+        setStartTime(t0); setEndTime(addMinutes(t0, 30)); setEndTouched(false);
+        setAllDay(false); setSchedLocation(''); setNotes('');
+        setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
+      }
       setSaving(false); setSaveError(null);
       setTzSource('profile'); setGpsTimezone(null); setManualTz(''); setShowTzPanel(false);
     }
@@ -338,18 +358,32 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         if (rrule && recurrenceEnd) rrule += `;UNTIL=${recurrenceEnd.replace(/-/g,'')}T000000Z`;
       }
 
-      const { data: insertedRows, error: insertErr } = await supabase.from('schedules').insert({
-        user_id: user.id, title: title.trim(), type, priority,
-        start_time: startISO, end_time: endISO, all_day: allDay,
-        location: schedLocation.trim() || null, description: notes.trim() || null,
-        recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
-      }).select();
+      let savedId: string | undefined;
 
-      if (insertErr) { setSaveError(`Database error: ${insertErr.message}`); setSaving(false); return; }
+      if (editSchedule) {
+        // Edit mode — UPDATE existing record
+        const { error: updateErr } = await supabase.from('schedules').update({
+          title: title.trim(), type, priority,
+          start_time: startISO, end_time: endISO, all_day: allDay,
+          location: schedLocation.trim() || null, description: notes.trim() || null,
+          recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
+        }).eq('id', editSchedule.id);
+        if (updateErr) { setSaveError(`Update error: ${updateErr.message}`); setSaving(false); return; }
+        savedId = String(editSchedule.id);
+      } else {
+        // Add mode — INSERT new record
+        const { data: insertedRows, error: insertErr } = await supabase.from('schedules').insert({
+          user_id: user.id, title: title.trim(), type, priority,
+          start_time: startISO, end_time: endISO, all_day: allDay,
+          location: schedLocation.trim() || null, description: notes.trim() || null,
+          recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
+        }).select();
+        if (insertErr) { setSaveError(`Database error: ${insertErr.message}`); setSaving(false); return; }
+        savedId = Array.isArray(insertedRows) && insertedRows[0]?.id ? String(insertedRows[0].id) : undefined;
+      }
+
       setSaving(false);
-      // Pass back inserted record for instant parent state update
-      const newId = Array.isArray(insertedRows) && insertedRows[0]?.id ? String(insertedRows[0].id) : undefined;
-      onSaved(newId);
+      onSaved(savedId);
       onClose();
     } catch (e: unknown) {
       setSaveError(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
@@ -390,7 +424,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingBottom:12, paddingTop:4 }}>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--dark)', letterSpacing:'-.3px' }}>Add Schedule</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--dark)', letterSpacing:'-.3px' }}>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</div>
               <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3, color:'var(--purple)' }}>
                 <Icon d={['M3 8h14','M6 5V3m8 2V3','M5 5h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z']} size={13} stroke="var(--purple)" />
                 <span style={{ fontSize:12, fontWeight:600 }}>{dateLabel}</span>
@@ -723,7 +757,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
           }}>
             {saving
               ? <><Icon d={['M4 10a6 6 0 106-6']} size={16} stroke="currentColor" strokeWidth={2} /> Saving…</>
-              : <><Icon d={['M4 10l5 5 8-8']} size={16} stroke="currentColor" strokeWidth={2.2} /> Save Schedule</>
+              : <><Icon d={['M4 10l5 5 8-8']} size={16} stroke="currentColor" strokeWidth={2.2} /> {editSchedule ? 'Update Schedule' : 'Save Schedule'}</>
             }
           </button>
         </div>
