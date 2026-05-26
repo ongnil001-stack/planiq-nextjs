@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
-import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
-import SmartScheduleAI from '@/components/SmartScheduleAI';
+import type { ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 
 // ─── SVG Icon Library ─────────────────────────────────────────────────────────
 
@@ -161,38 +160,25 @@ const DAYS_FULL    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
-  // Strategy: use Intl to find what UTC time corresponds to "dateStr timeHHMM" in tz.
-  // We format a candidate UTC time back into tz and iterate until wall-clock matches.
   try {
     const [y, mo, d] = dateStr.split('-').map(Number);
     const [h, mi]    = timeHHMM.split(':').map(Number);
-
-    // Start with a naive guess: treat as UTC, which will be off by the tz offset
-    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
-
+    const utcWall    = Date.UTC(y, mo - 1, d, h, mi, 0);
     const fmt = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
       year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
-
-    // Two iterations converges for any tz offset
-    for (let i = 0; i < 2; i++) {
-      const parts: Record<string, string> = {};
-      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
-      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
-      const diffMs = (
-        (Number(parts.year) - y) * 365 * 86400000 +
-        (Number(parts.month) - mo) * 30 * 86400000 +
-        (Number(parts.day) - d) * 86400000 +
-        (localH - h) * 3600000 +
-        (Number(parts.minute) - mi) * 60000
-      );
-      candidate -= diffMs;
-    }
-    return new Date(candidate).toISOString();
+    const parts: Record<string, string> = {};
+    fmt.formatToParts(new Date(utcWall)).forEach(({ type, value }) => { parts[type] = value; });
+    const formattedUTC = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      parts.hour === '24' ? 0 : Number(parts.hour),
+      Number(parts.minute), Number(parts.second),
+    );
+    const offsetMs = utcWall - formattedUTC;
+    return new Date(utcWall - offsetMs).toISOString();
   } catch {
-    // Fallback: parse as local time (browser tz)
     return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
   }
 }
@@ -219,15 +205,13 @@ interface Props {
   open: boolean;
   selectedDate: Date;
   countryCode: string;
-  initialTime?: string;     // e.g. "14:00" — pre-fills start time when sheet opens
-  editSchedule?: Schedule;  // if set, opens in edit mode with fields pre-filled
   onClose: () => void;
-  onSaved: (newId?: string) => void;
+  onSaved: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, editSchedule, onClose, onSaved }: Props) {
+export default function AddScheduleSheet({ open, selectedDate, countryCode, onClose, onSaved }: Props) {
   const supabase = createClient();
 
   const [title,         setTitle]         = useState('');
@@ -244,7 +228,6 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   const [recurrenceEnd, setRecurrenceEnd] = useState('');
   const [saving,        setSaving]        = useState(false);
   const [saveError,     setSaveError]     = useState<string | null>(null);
-  const [daySchedules,  setDaySchedules]  = useState<Schedule[]>([]);
   const [holiday,       setHoliday]       = useState<Holiday | null>(null);
 
   const [activeTimezone, setActiveTimezone] = useState('');
@@ -273,30 +256,10 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
 
   useEffect(() => {
     if (open) {
-      if (editSchedule) {
-        // Edit mode — pre-fill all fields from existing record
-        const startD = new Date(editSchedule.start_time);
-        const endD   = editSchedule.end_time ? new Date(editSchedule.end_time) : null;
-        const fmt2   = (n: number) => String(n).padStart(2,'0');
-        const t0     = `${fmt2(startD.getHours())}:${fmt2(startD.getMinutes())}`;
-        const t1     = endD ? `${fmt2(endD.getHours())}:${fmt2(endD.getMinutes())}` : addMinutes(t0, 30);
-        setTitle(editSchedule.title);
-        setType(editSchedule.type as ScheduleType);
-        setPriority(editSchedule.priority as Priority);
-        setStartTime(t0); setEndTime(t1); setEndTouched(true);
-        setAllDay(editSchedule.all_day ?? false);
-        setSchedLocation((editSchedule as Schedule & { location?: string }).location ?? '');
-        setNotes((editSchedule as Schedule & { description?: string }).description ?? '');
-        setRecurrence((editSchedule.recurrence_rule ? editSchedule.recurrence_rule : 'none') as RecurrenceRule);
-        setCustomDays([]); setRecurrenceEnd(editSchedule.recurrence_end ?? '');
-      } else {
-        // Add mode — clear all fields
-        setTitle(''); setType('task'); setPriority('medium');
-        const t0 = initialTime ?? '09:00';
-        setStartTime(t0); setEndTime(addMinutes(t0, 30)); setEndTouched(false);
-        setAllDay(false); setSchedLocation(''); setNotes('');
-        setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
-      }
+      setTitle(''); setType('task'); setPriority('medium');
+      setStartTime('09:00'); setEndTime('09:30'); setEndTouched(false);
+      setAllDay(false); setSchedLocation(''); setNotes('');
+      setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
       setSaving(false); setSaveError(null);
       setTzSource('profile'); setGpsTimezone(null); setManualTz(''); setShowTzPanel(false);
     }
@@ -360,33 +323,15 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         if (rrule && recurrenceEnd) rrule += `;UNTIL=${recurrenceEnd.replace(/-/g,'')}T000000Z`;
       }
 
-      let savedId: string | undefined;
+      const { error: insertErr } = await supabase.from('schedules').insert({
+        user_id: user.id, title: title.trim(), type, priority,
+        start_time: startISO, end_time: endISO, all_day: allDay,
+        location: schedLocation.trim() || null, description: notes.trim() || null,
+        recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
+      });
 
-      if (editSchedule) {
-        // Edit mode — UPDATE existing record
-        const { error: updateErr } = await supabase.from('schedules').update({
-          title: title.trim(), type, priority,
-          start_time: startISO, end_time: endISO, all_day: allDay,
-          location: schedLocation.trim() || null, description: notes.trim() || null,
-          recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
-        }).eq('id', editSchedule.id);
-        if (updateErr) { setSaveError(`Update error: ${updateErr.message}`); setSaving(false); return; }
-        savedId = String(editSchedule.id);
-      } else {
-        // Add mode — INSERT new record
-        const { data: insertedRows, error: insertErr } = await supabase.from('schedules').insert({
-          user_id: user.id, title: title.trim(), type, priority,
-          start_time: startISO, end_time: endISO, all_day: allDay,
-          location: schedLocation.trim() || null, description: notes.trim() || null,
-          recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
-        }).select();
-        if (insertErr) { setSaveError(`Database error: ${insertErr.message}`); setSaving(false); return; }
-        savedId = Array.isArray(insertedRows) && insertedRows[0]?.id ? String(insertedRows[0].id) : undefined;
-      }
-
-      setSaving(false);
-      onSaved(savedId);
-      onClose();
+      if (insertErr) { setSaveError(`Database error: ${insertErr.message}`); setSaving(false); return; }
+      setSaving(false); onSaved(); onClose();
     } catch (e: unknown) {
       setSaveError(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
       setSaving(false);
@@ -426,7 +371,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingBottom:12, paddingTop:4 }}>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--dark)', letterSpacing:'-.3px' }}>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--dark)', letterSpacing:'-.3px' }}>Add Schedule</div>
               <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3, color:'var(--purple)' }}>
                 <Icon d={['M3 8h14','M6 5V3m8 2V3','M5 5h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z']} size={13} stroke="var(--purple)" />
                 <span style={{ fontSize:12, fontWeight:600 }}>{dateLabel}</span>
@@ -736,38 +681,6 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
           background:'var(--glass-bg, rgba(14,13,24,.98))' }}
           onClick={e => e.stopPropagation()}>
 
-          {/* Smart Schedule AI panel */}
-          <SmartScheduleAI
-            proposed={title.trim() && !allDay ? {
-              title: title.trim(),
-              type,
-              priority,
-              start_time: (() => {
-                try {
-                  const tz = activeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-                  const dateStr2 = selectedDate.toISOString().slice(0,10);
-                  const [h, m] = startTime.split(':').map(Number);
-                  const d = new Date(`${dateStr2}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
-                  void tz; return d.toISOString();
-                } catch { return ''; }
-              })(),
-              end_time: endTime ? (() => {
-                try {
-                  const dateStr2 = selectedDate.toISOString().slice(0,10);
-                  const [h, m] = endTime.split(':').map(Number);
-                  const d = new Date(`${dateStr2}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
-                  return d.toISOString();
-                } catch { return null; }
-              })() : null,
-            } : null}
-            existingSchedules={daySchedules.map(s => ({
-              id: s.id, title: s.title, type: s.type, priority: s.priority,
-              start_time: s.start_time, end_time: s.end_time,
-              all_day: s.all_day ?? false, is_completed: s.is_completed,
-            }))}
-            onSelectTime={t => { setStartTime(t); setEndTouched(false); }}
-          />
-
           {saveError && (
             <div style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'9px 14px', marginBottom:10,
               background:'rgba(255,59,48,.10)', border:'1px solid rgba(255,59,48,.28)',
@@ -791,7 +704,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
           }}>
             {saving
               ? <><Icon d={['M4 10a6 6 0 106-6']} size={16} stroke="currentColor" strokeWidth={2} /> Saving…</>
-              : <><Icon d={['M4 10l5 5 8-8']} size={16} stroke="currentColor" strokeWidth={2.2} /> {editSchedule ? 'Update Schedule' : 'Save Schedule'}</>
+              : <><Icon d={['M4 10l5 5 8-8']} size={16} stroke="currentColor" strokeWidth={2.2} /> Save Schedule</>
             }
           </button>
         </div>

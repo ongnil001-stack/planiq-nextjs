@@ -1,10 +1,13 @@
 // ═══════════════════════════════════════════════════════════
-// PlanIQ — Supabase Edge Function: analyze-schedule
-// Receives schedule data, calls Anthropic Claude API,
-// returns workload analysis + recommendations.
+// PlanIQ — Supabase Edge Function: analyze-schedule  v2
 //
-// Deploy: supabase functions deploy analyze-schedule
-// Secret: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+// Actions:
+//   weekly_analysis  → workload score + recommendations (Dashboard)
+//   daily_brief      → AI-powered focus brief (FocusHub)
+//   smart_suggest    → conflict detection + best times (AddSchedule)
+//
+// Deploy:  supabase functions deploy analyze-schedule
+// Secret:  supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 // ═══════════════════════════════════════════════════════════
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -26,78 +29,82 @@ interface ScheduleItem {
   is_completed: boolean;
 }
 
-serve(async (req: Request) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+interface ProposedSchedule {
+  title: string;
+  type: string;
+  priority: string;
+  start_time: string;
+  end_time: string | null;
+  duration_minutes?: number;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtItem(s: ScheduleItem) {
+  const start = new Date(s.start_time).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const end  = s.end_time ? ` → ${new Date(s.end_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : '';
+  const done = s.is_completed ? ' [DONE]' : '';
+  return `• [${s.priority.toUpperCase()}] ${s.type}: "${s.title}" @ ${start}${end}${done}`;
+}
+
+async function callClaude(prompt: string, maxTokens = 1024): Promise<string> {
+  const key = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!key) throw new Error('ANTHROPIC_API_KEY not set. Run: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Anthropic API ${res.status}: ${errText}`);
   }
 
-  try {
-    // Authenticate the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  const data = await res.json();
+  return data.content?.[0]?.text ?? '';
+}
 
-    // Create Supabase client to verify user
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
+function parseJson(raw: string): unknown {
+  try { return JSON.parse(raw); } catch { /* fall through */ }
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (match) { try { return JSON.parse(match[1]); } catch { /* fall through */ } }
+  throw new Error('Claude did not return valid JSON. Raw: ' + raw.slice(0, 200));
+}
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+// ─── Action: weekly_analysis ──────────────────────────────────────────────────
 
-    // Parse request body
-    const { schedules, dateRange } = await req.json() as {
-      schedules: ScheduleItem[];
-      dateRange: { from: string; to: string };
-    };
+async function weeklyAnalysis(schedules: ScheduleItem[], dateRange: { from: string; to: string }) {
+  if (!schedules.length) {
+    return { workload_score: 0, summary: 'No schedules found for this period.', recommendations: [], issues: [] };
+  }
 
-    if (!schedules || schedules.length === 0) {
-      return new Response(
-        JSON.stringify({
-          workload_score: 0,
-          summary: 'No schedules found for this period.',
-          recommendations: [],
-          issues: [],
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const scheduleText = schedules.map(fmtItem).join('\n');
+  const completed = schedules.filter(s => s.is_completed).length;
 
-    // Build prompt for Claude
-    const scheduleText = schedules
-      .map((s) => {
-        const start = new Date(s.start_time).toLocaleString();
-        const end = s.end_time ? ` → ${new Date(s.end_time).toLocaleString()}` : '';
-        const done = s.is_completed ? ' [DONE]' : '';
-        return `• [${s.priority.toUpperCase()}] ${s.type.toUpperCase()}: "${s.title}" — ${start}${end}${done}`;
-      })
-      .join('\n');
-
-    const prompt = `You are PlanIQ's AI Schedule Advisor. Analyze the following schedule and provide actionable insights.
+  const prompt = `You are PlanIQ's AI Schedule Advisor. Analyze this weekly schedule and provide actionable insights.
 
 DATE RANGE: ${dateRange.from} to ${dateRange.to}
-TOTAL ITEMS: ${schedules.length}
-COMPLETED: ${schedules.filter((s) => s.is_completed).length}
+TOTAL ITEMS: ${schedules.length}   COMPLETED: ${completed}
 
 SCHEDULE:
 ${scheduleText}
 
-Respond ONLY with valid JSON in exactly this format (no markdown, no extra text):
+Respond ONLY with valid JSON — no markdown, no extra text:
 {
-  "workload_score": <0-100 integer, 0=empty, 100=completely overloaded>,
-  "summary": "<2-3 sentence plain English summary of the week's workload and patterns>",
+  "workload_score": <0-100 integer, 0=empty 100=overloaded>,
+  "summary": "<2-3 sentence plain-English summary of workload and patterns>",
   "recommendations": [
     { "icon": "<emoji>", "title": "<short title>", "detail": "<1-2 sentence actionable advice>" },
     { "icon": "<emoji>", "title": "<short title>", "detail": "<1-2 sentence actionable advice>" },
@@ -108,73 +115,213 @@ Respond ONLY with valid JSON in exactly this format (no markdown, no extra text)
   ]
 }
 
-Focus on: overloading, scheduling conflicts, high-priority clustering, lack of breaks, balance between task types.`;
+Focus on: overloading, conflicts, high-priority clustering, missing breaks, task-type balance.`;
 
-    // Call Anthropic Claude API
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY secret not set. Run: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...');
+  const raw = await callClaude(prompt);
+  return parseJson(raw);
+}
+
+// ─── Action: daily_brief ──────────────────────────────────────────────────────
+
+async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 'today') {
+  const now     = new Date();
+  const today   = now.toISOString().slice(0, 10);
+  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+
+  let inScope: ScheduleItem[];
+  let scopeLabel: string;
+
+  if (mode === 'today') {
+    inScope    = schedules.filter(s => s.start_time.slice(0, 10) === today);
+    scopeLabel = `today (${dayName}, ${today})`;
+  } else {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    inScope    = schedules.filter(s => { const d = new Date(s.start_time); return d >= weekStart && d <= weekEnd; });
+    scopeLabel = `this week (${weekStart.toDateString()} - ${weekEnd.toDateString()})`;
+  }
+
+  if (!inScope.length) {
+    return {
+      headline: mode === 'today' ? 'All clear today — great time to plan ahead!' : 'Nothing scheduled this week.',
+      items: [{
+        type: 'suggestion',
+        title: 'Add your first item',
+        body: 'Tap "Add Schedule" below to get started and let PlanIQ help you stay on track.',
+        accent: '#00C6FF',
+      }],
+    };
+  }
+
+  const pending   = inScope.filter(s => !s.is_completed);
+  const completed = inScope.filter(s => s.is_completed);
+  const scheduleText = inScope.map(fmtItem).join('\n');
+
+  const prompt = `You are PlanIQ's AI Focus Advisor. Generate a motivating, actionable daily brief for ${scopeLabel}.
+
+SCOPE: ${scopeLabel}
+TOTAL: ${inScope.length} items  |  PENDING: ${pending.length}  |  DONE: ${completed.length}
+
+SCHEDULE:
+${scheduleText}
+
+Respond ONLY with valid JSON — no markdown, no extra text:
+{
+  "headline": "<one energizing sentence summarizing the day or week — under 12 words>",
+  "items": [
+    {
+      "type": "priority|conflict|suggestion|win",
+      "title": "<concise card title — under 10 words>",
+      "body": "<1-3 sentences of specific, actionable insight referencing actual schedule titles>",
+      "accent": "<hex: #7C6AF0 for priority, #FF3B30 for conflict, #00C6FF for suggestion, #00C896 for win>"
+    }
+  ]
+}
+
+Rules:
+- Generate 2-4 items that are genuinely useful (not generic platitudes)
+- Mention specific schedule item titles when relevant
+- If time overlaps exist, flag as type "conflict"
+- If all items are done or scope is clear, use type "win"
+- Keep body text concise and mobile-friendly (no bullet characters)`;
+
+  const raw = await callClaude(prompt, 800);
+  return parseJson(raw);
+}
+
+// ─── Action: smart_suggest ────────────────────────────────────────────────────
+
+async function smartSuggest(existingSchedules: ScheduleItem[], proposed: ProposedSchedule) {
+  if (!proposed.start_time) {
+    return { has_conflicts: false, conflicts: [], suggestions: [{ text: 'Choose a start time to check for conflicts.', reason: '' }], best_times: [] };
+  }
+
+  const proposedStart = new Date(proposed.start_time);
+  const proposedEnd   = proposed.end_time
+    ? new Date(proposed.end_time)
+    : new Date(proposedStart.getTime() + (proposed.duration_minutes ?? 60) * 60000);
+
+  const sameDay     = existingSchedules.filter(s => s.start_time.slice(0, 10) === proposed.start_time.slice(0, 10));
+  const scheduleText = sameDay.length ? sameDay.map(fmtItem).join('\n') : '(no other items scheduled on this day)';
+
+  const startStr = proposedStart.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const endStr   = proposedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  const prompt = `You are PlanIQ's Smart Schedule AI. Check if the proposed item conflicts with existing schedules and suggest better alternatives.
+
+PROPOSED ITEM:
+  Title:    "${proposed.title}"
+  Type:     ${proposed.type}
+  Priority: ${proposed.priority}
+  Start:    ${startStr}
+  End:      ${endStr}
+
+EXISTING ITEMS ON SAME DAY:
+${scheduleText}
+
+Respond ONLY with valid JSON — no markdown, no extra text:
+{
+  "has_conflicts": <true|false>,
+  "conflicts": [
+    { "with_title": "<title of conflicting item>", "overlap_minutes": <integer>, "severity": "high|medium|low" }
+  ],
+  "suggestions": [
+    { "text": "<short actionable suggestion under 10 words>", "reason": "<brief reason>" }
+  ],
+  "best_times": ["<HH:MM>", "<HH:MM>", "<HH:MM>"]
+}
+
+Rules:
+- A conflict = time overlap OR two critical/high-priority items within 30 minutes
+- best_times: 2-3 realistic alternative start times on same day (24-hour HH:MM), at least 30 min gap from existing items
+- If no conflicts, return empty conflicts array and a positive suggestion
+- Keep all text short and mobile-friendly`;
+
+  const raw = await callClaude(prompt, 600);
+  return parseJson(raw);
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
+
+serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      throw new Error(`Anthropic API error ${anthropicRes.status}: ${errText}`);
-    }
-
-    const anthropicData = await anthropicRes.json();
-    const rawText = anthropicData.content?.[0]?.text ?? '';
-
-    // Parse the JSON response from Claude
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // If Claude returned markdown-wrapped JSON, strip it
-      const match = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      parsed = match ? JSON.parse(match[1]) : { summary: rawText, workload_score: 50, recommendations: [], issues: [] };
-    }
-
-    // Save the analysis to DB
-    const serviceClient = createClient(
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    await serviceClient.from('ai_analyses').insert({
-      user_id: user.id,
-      analysis_date: new Date().toISOString().split('T')[0],
-      workload_score: parsed.workload_score,
-      summary: parsed.summary,
-      recommendations: parsed.recommendations,
-      issues: parsed.issues,
-      raw_response: rawText,
-    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    return new Response(JSON.stringify(parsed), {
+    const body = await req.json() as {
+      action?: string;
+      schedules: ScheduleItem[];
+      dateRange?: { from: string; to: string };
+      mode?: 'today' | 'week';
+      proposed?: ProposedSchedule;
+    };
+
+    const action = body.action ?? 'weekly_analysis';
+    let result: unknown;
+
+    if (action === 'daily_brief') {
+      result = await dailyBrief(body.schedules ?? [], body.mode ?? 'today');
+
+    } else if (action === 'smart_suggest') {
+      if (!body.proposed) throw new Error('smart_suggest requires a "proposed" schedule object');
+      result = await smartSuggest(body.schedules ?? [], body.proposed);
+
+    } else {
+      // weekly_analysis (default)
+      const dateRange = body.dateRange ?? { from: 'this week', to: 'this week' };
+      result = await weeklyAnalysis(body.schedules ?? [], dateRange);
+
+      // Persist to ai_analyses table
+      const serviceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      const r = result as Record<string, unknown>;
+      await serviceClient.from('ai_analyses').insert({
+        user_id: user.id,
+        analysis_date: new Date().toISOString().split('T')[0],
+        workload_score: r.workload_score,
+        summary: r.summary,
+        recommendations: r.recommendations,
+        issues: r.issues,
+        raw_response: JSON.stringify(result),
+      }).then(() => {/* fire-and-forget */});
+    }
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (err) {
     console.error('Edge function error:', err);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

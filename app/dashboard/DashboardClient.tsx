@@ -98,6 +98,9 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
   const [prefs, setPrefs] = useState<DashboardFullPrefs | null>(null);
+  const [liveScore, setLiveScore] = useState<number | null>(null);
+  const [liveSummary, setLiveSummary] = useState<string | null>(null);
+  const [refreshingAI, setRefreshingAI] = useState(false);
   const hdrRef  = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(80);   // measured header height in px
 
@@ -142,8 +145,47 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     setCompletingId(null);
   }
 
+  async function refreshAI() {
+    setRefreshingAI(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setRefreshingAI(false); return; }
+    try {
+      const now = new Date();
+      const wStart = new Date(now); wStart.setDate(now.getDate() - now.getDay()); wStart.setHours(0,0,0,0);
+      const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6); wEnd.setHours(23,59,59,999);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-schedule`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            action: 'weekly_analysis',
+            dateRange: { from: wStart.toDateString(), to: wEnd.toDateString() },
+            schedules: weekSchedules.map(s => ({
+              id: s.id, title: s.title, type: s.type, priority: s.priority,
+              start_time: s.start_time, end_time: s.end_time,
+              all_day: s.all_day ?? false, is_completed: s.is_completed,
+            })),
+          }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.workload_score === 'number') setLiveScore(data.workload_score);
+        if (typeof data.summary === 'string') setLiveSummary(data.summary);
+        toast.success('AI insights updated!');
+      } else {
+        toast.error('Could not reach AI. Try again later.');
+      }
+    } catch {
+      toast.error('AI refresh failed.');
+    } finally {
+      setRefreshingAI(false);
+    }
+  }
+
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
-  const workloadScore = latestAnalysis?.workload_score ?? 78;
+  const workloadScore = liveScore ?? latestAnalysis?.workload_score ?? 78;
 
   const workloadStatus =
     workloadScore >= 85 ? { badgeClass: 'attention', color: ch.full }
@@ -181,8 +223,9 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const todayDayName = today.toLocaleDateString('en-US', { weekday: 'long' });
   const weekRange = `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
-  const insightText = latestAnalysis?.summary
-    ? latestAnalysis.summary.slice(0, 60) + (latestAnalysis.summary.length > 60 ? '…' : '')
+  const rawInsight   = liveSummary ?? latestAnalysis?.summary ?? null;
+  const insightText  = rawInsight
+    ? rawInsight.slice(0, 60) + (rawInsight.length > 60 ? '…' : '')
     : upcomingSchedules.length > 0
     ? `${upcomingSchedules.length} upcoming items — tap to review your week`
     : 'Add schedules to get AI workload insights';
@@ -265,26 +308,54 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                 )}
               </div>
 
-              {/* Insight bar */}
-              <Link
-                href="/progress"
-                onClick={e => e.stopPropagation()}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '8px 10px', borderRadius: 10,
-                  background: 'var(--amber-lt, rgba(253,203,110,.10))',
-                  borderLeft: '3px solid var(--amber, #FDCB6E)',
-                  textDecoration: 'none',
-                }}
-              >
-                <div style={{ color: 'var(--amber)', flexShrink: 0 }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M8 2L3.5 8H7L6 12.5L10.5 6.5H7.2L8 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--dark)', lineHeight: 1.4 }}>{insightText}</div>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--pur-lt)', color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}>›</div>
-              </Link>
+              {/* Insight bar + AI refresh */}
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+                <Link
+                  href="/progress"
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '8px 10px', borderRadius: 10,
+                    background: 'var(--amber-lt, rgba(253,203,110,.10))',
+                    borderLeft: '3px solid var(--amber, #FDCB6E)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <div style={{ color: 'var(--amber)', flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M8 2L3.5 8H7L6 12.5L10.5 6.5H7.2L8 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--dark)', lineHeight: 1.4 }}>{insightText}</div>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--pur-lt)', color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}>›</div>
+                </Link>
+                {/* AI Refresh button */}
+                <button
+                  onClick={e => { e.stopPropagation(); refreshAI(); }}
+                  disabled={refreshingAI}
+                  title="Refresh AI insights"
+                  style={{
+                    flexShrink: 0, width: 36, borderRadius: 10,
+                    border: '1px solid rgba(124,106,240,0.25)',
+                    background: refreshingAI ? 'rgba(124,106,240,0.18)' : 'rgba(124,106,240,0.10)',
+                    color: 'var(--purple)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: refreshingAI ? 'default' : 'pointer',
+                    fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+                    transition: 'background .15s',
+                  }}
+                >
+                  {refreshingAI ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3M4 12H2m2 0l2-2m12 2h2m-2 0l-2-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
             </>
           )}
 

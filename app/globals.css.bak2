@@ -1,0 +1,481 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════════════
+   ROOT / FOCUSED THEME (default — no data-theme needed)
+   Mirrors .phone.t-focused from PlanIQ_Prototype_v3.html
+══════════════════════════════════════════════════════════ */
+:root {
+  --bg:       #080E1A;
+  --bg2:      #0E1628;
+  --surf:     #0E1628;
+  --surf2:    #152036;
+  --surf3:    #1C2A44;
+  --white:    #FFFFFF;
+
+  --g-start:  #00C6FF;
+  --g-end:    #0066FF;
+  --gradient: linear-gradient(135deg, #00C6FF 0%, #0066FF 100%);
+  --gradient-soft: linear-gradient(135deg, rgba(0,198,255,.18) 0%, rgba(0,102,255,.12) 100%);
+
+  --purple:   #00C6FF;
+  --pur-d:    #0088DD;
+  --pur-lt:   rgba(0,198,255,.15);
+  --pur-m:    #00A8E8;
+  --coral:    #FF5C7A;  --coral-lt: rgba(255,92,122,.15);
+  --mint:     #00E5C0;  --mint-lt:  rgba(0,229,192,.15);
+  --amber:    #FFB830;  --amber-lt: rgba(255,184,48,.15);
+  --sky:      #4DC8FF;  --sky-lt:   rgba(77,200,255,.15);
+  --pink:     #FF80C0;  --pink-lt:  rgba(255,128,192,.15);
+  --green:    #00E5A0;  --green-lt: rgba(0,229,160,.15);
+
+  --dark:     #D6F0FF;
+  --mid:      #6A90B8;
+  --lite:     #2A4060;
+
+  --border:   rgba(0,198,255,.10);
+  --border2:  rgba(0,198,255,.20);
+
+  --card-sh:  0 4px 28px rgba(0,0,0,.45);
+  --card-sh2: 0 2px 14px rgba(0,0,0,.32);
+
+  --r:   22px;
+  --rmd: 16px;
+  --rsm: 12px;
+  --rxs:  8px;
+  --nav:  64px;
+
+  /* Derived aliases used throughout components */
+  --accent:   var(--purple);
+  --btn-bg:   var(--gradient);
+  --fab-bg:   var(--gradient);
+  --nav-bg:   rgba(8,14,26,0.97);
+
+  /* ── Glassmorphism tokens ── */
+  --glass-bg:      rgba(14, 22, 40, 0.55);
+  --glass-bg2:     rgba(21, 32, 54, 0.45);
+  --glass-border:  rgba(0, 198, 255, 0.14);
+  --glass-border2: rgba(0, 198, 255, 0.24);
+  --glass-blur:    blur(18px);
+  --glass-sh:      0 8px 32px rgba(0,0,0,.40), 0 1.5px 0 rgba(0,198,255,.10) inset;
+  --glass-sh2:     0 4px 16px rgba(0,0,0,.28), 0 1px 0 rgba(0,198,255,.08) inset;
+  --nav-glass:     rgba(8,14,26,0.70);
+  /* ── Chart tokens (default = focused theme) ── */
+  --chart-1:       #00C6FF;
+  --chart-2:       #0066FF;
+  --chart-3:       #00E5C0;
+  --chart-4:       #FFB830;
+  --chart-5:       #FF5C7A;
+  --chart-ok:      #00E5C0;
+  --chart-mid:     #00C6FF;
+  --chart-warn:    #FFB830;
+  --chart-full:    #FF5C7A;
+  --chart-empty:   rgba(0,198,255,0.10);
+  --chart-grid:    rgba(0,198,255,0.08);
+  --chart-axis:    rgba(255,255,255,0.25);
+  --chart-tooltip: rgba(14,22,40,0.92);
+}
+
+/* ══════════════════════════════════════════════════════════
+   OCEAN FOCUS — deep navy + electric cyan (replaces Focused & Clean)
+   Identity: technological, crisp, high-focus. Like a Bloomberg terminal.
+══════════════════════════════════════════════════════════ */
+body[data-theme="focused"] {
+  --bg:#080E1A; --bg2:#0E1628; --surf:#0E1628; --surf2:#152036; --surf3:#1C2A44;
+  --g-start:#00C6FF; --g-end:#0066FF;
+  --gradient:linear-gradient(135deg,#00C6FF 0%,#0066FF 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(0,198,255,.18) 0%,rgba(0,102,255,.12) 100%);
+  --purple:#00C6FF; --pur-d:#0088DD; --pur-lt:rgba(0,198,255,.15); --pur-m:#00A8E8;
+  --coral:#FF5C7A; --coral-lt:rgba(255,92,122,.15);
+  --mint:#00E5C0;  --mint-lt:rgba(0,229,192,.15);
+  --amber:#FFB830; --amber-lt:rgba(255,184,48,.15);
+  --sky:#4DC8FF;   --sky-lt:rgba(77,200,255,.15);
+  --green:#00E5A0; --green-lt:rgba(0,229,160,.15);
+  --dark:#D6F0FF; --mid:#6A90B8; --lite:#2A4060;
+  --border:rgba(0,198,255,.10); --border2:rgba(0,198,255,.20);
+  --card-sh:0 8px 32px rgba(0,0,0,.45); --card-sh2:0 4px 16px rgba(0,0,0,.30);
+  --nav-bg:rgba(8,14,26,0.70);
+  --accent:var(--purple);
+  --glass-bg:rgba(14,22,40,0.52); --glass-bg2:rgba(21,32,54,0.42);
+  --glass-border:rgba(0,198,255,0.14); --glass-border2:rgba(0,198,255,0.24);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.40),0 1px 0 rgba(0,198,255,.12) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.28),0 1px 0 rgba(0,198,255,.08) inset;
+  --nav-glass:rgba(8,14,26,0.68);
+  --chart-1:#00C6FF; --chart-2:#0066FF; --chart-3:#00E5C0; --chart-4:#FFB830; --chart-5:#FF5C7A;
+  --chart-ok:#00E5C0; --chart-mid:#00C6FF; --chart-warn:#FFB830; --chart-full:#FF5C7A;
+  --chart-empty:rgba(0,198,255,0.10); --chart-grid:rgba(0,198,255,0.08);
+  --chart-axis:rgba(255,255,255,0.25); --chart-tooltip:rgba(8,14,26,0.92);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DARK & SERIOUS — near-black + cool violet (deepest dark)
+   Identity: ultra-focused, midnight, no distractions.
+══════════════════════════════════════════════════════════ */
+body[data-theme="dark"] {
+  --bg:#05050F; --bg2:#0A0A18; --surf:#0A0A18; --surf2:#10101F; --surf3:#17172E;
+  --g-start:#9B8BFF; --g-end:#5B8FFF;
+  --gradient:linear-gradient(135deg,#9B8BFF 0%,#5B8FFF 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(155,139,255,.18) 0%,rgba(91,143,255,.12) 100%);
+  --purple:#9B8BFF; --pur-d:#7060E0; --pur-lt:rgba(155,139,255,.15); --pur-m:#7A6AE8;
+  --coral:#FF5577; --coral-lt:rgba(255,85,119,.15);
+  --mint:#33DDB8;  --mint-lt:rgba(51,221,184,.15);
+  --amber:#FFB020; --amber-lt:rgba(255,176,32,.15);
+  --sky:#5AABFF;   --sky-lt:rgba(90,171,255,.15);
+  --green:#22DD88; --green-lt:rgba(34,221,136,.15);
+  --dark:#E4E0FF; --mid:#5A5880; --lite:#282640;
+  --border:rgba(255,255,255,.06); --border2:rgba(155,139,255,.15);
+  --card-sh:0 8px 32px rgba(0,0,0,.60); --card-sh2:0 4px 16px rgba(0,0,0,.45);
+  --nav-bg:rgba(5,5,15,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(10,10,24,0.55); --glass-bg2:rgba(16,16,31,0.45);
+  --glass-border:rgba(155,139,255,0.12); --glass-border2:rgba(155,139,255,0.22);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.55),0 1px 0 rgba(155,139,255,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.40),0 1px 0 rgba(155,139,255,.07) inset;
+  --nav-glass:rgba(5,5,15,0.70);
+  --chart-1:#9B8BFF; --chart-2:#5B8FFF; --chart-3:#33DDB8; --chart-4:#FFB020; --chart-5:#FF5577;
+  --chart-ok:#33DDB8; --chart-mid:#9B8BFF; --chart-warn:#FFB020; --chart-full:#FF5577;
+  --chart-empty:rgba(155,139,255,0.10); --chart-grid:rgba(155,139,255,0.08);
+  --chart-axis:rgba(255,255,255,0.22); --chart-tooltip:rgba(5,5,15,0.94);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SOFT PROFESSIONAL — warm white + deep sapphire + teal pop
+   Identity: modern SaaS, calm but confident. Think Notion meets Linear.
+══════════════════════════════════════════════════════════ */
+body[data-theme="soft"] {
+  --bg:#F4F6FB; --bg2:#ECEFFE; --surf:#FFFFFF; --surf2:#F0F2FC; --surf3:#E6E9F8;
+  --g-start:#4A40D4; --g-end:#7B6FFF;
+  --gradient:linear-gradient(135deg,#4A40D4 0%,#7B6FFF 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(74,64,212,.12) 0%,rgba(123,111,255,.08) 100%);
+  --purple:#4A40D4; --pur-d:#3530A8; --pur-lt:rgba(74,64,212,.10); --pur-m:#6058E8;
+  --coral:#E83050; --coral-lt:rgba(232,48,80,.10);
+  --mint:#00A896;  --mint-lt:rgba(0,168,150,.10);
+  --amber:#D48A00; --amber-lt:rgba(212,138,0,.10);
+  --sky:#2E7DD4;   --sky-lt:rgba(46,125,212,.10);
+  --green:#008A60; --green-lt:rgba(0,138,96,.10);
+  --dark:#12106A; --mid:#4840A0; --lite:#9090CC;
+  --border:rgba(74,64,212,.12); --border2:rgba(74,64,212,.22);
+  --card-sh:0 8px 28px rgba(74,64,212,.14); --card-sh2:0 4px 14px rgba(74,64,212,.09);
+  --nav-bg:rgba(244,246,251,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(240,242,252,0.52);
+  --glass-border:rgba(74,64,212,0.14); --glass-border2:rgba(74,64,212,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(74,64,212,.14),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(74,64,212,.09),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(244,246,251,0.70);
+  --chart-1:#4A40D4; --chart-2:#7B6FFF; --chart-3:#00A896; --chart-4:#D48A00; --chart-5:#E83050;
+  --chart-ok:#00A896; --chart-mid:#4A40D4; --chart-warn:#D48A00; --chart-full:#E83050;
+  --chart-empty:rgba(74,64,212,0.08); --chart-grid:rgba(74,64,212,0.10);
+  --chart-axis:rgba(30,28,60,0.30); --chart-tooltip:rgba(244,246,251,0.96);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   COLORFUL PRO — warm white + bold coral-amber + teal accent
+   Identity: energetic, creative agency, vibrant but structured.
+══════════════════════════════════════════════════════════ */
+body[data-theme="colorful"] {
+  --bg:#FFFAF7; --bg2:#FFF3EC; --surf:#FFFFFF; --surf2:#FFF6F0; --surf3:#FFEEE4;
+  --g-start:#FF4560; --g-end:#FF8C00;
+  --gradient:linear-gradient(135deg,#FF4560 0%,#FF8C00 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(255,69,96,.12) 0%,rgba(255,140,0,.08) 100%);
+  --purple:#FF4560; --pur-d:#D42040; --pur-lt:#FFE8EC; --pur-m:#FF7080;
+  --coral:#FF4560; --coral-lt:#FFE8EC;
+  --mint:#00B8A8;  --mint-lt:rgba(0,184,168,.12);
+  --amber:#FF8C00; --amber-lt:rgba(255,140,0,.12);
+  --sky:#0078D4;   --sky-lt:rgba(0,120,212,.10);
+  --green:#00A060; --green-lt:rgba(0,160,96,.10);
+  --dark:#1A0A08; --mid:#6A3828; --lite:#C09080;
+  --border:rgba(255,69,96,.12); --border2:rgba(255,69,96,.22);
+  --card-sh:0 8px 28px rgba(255,69,96,.12); --card-sh2:0 4px 14px rgba(255,69,96,.08);
+  --nav-bg:rgba(255,250,247,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(255,246,240,0.52);
+  --glass-border:rgba(255,69,96,0.14); --glass-border2:rgba(255,69,96,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(255,69,96,.12),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(255,69,96,.08),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(255,250,247,0.70);
+  --chart-1:#FF4560; --chart-2:#FF8C00; --chart-3:#00B8A8; --chart-4:#8B5CF6; --chart-5:#E83050;
+  --chart-ok:#00B8A8; --chart-mid:#FF8C00; --chart-warn:#FF8C00; --chart-full:#FF4560;
+  --chart-empty:rgba(255,69,96,0.08); --chart-grid:rgba(255,69,96,0.10);
+  --chart-axis:rgba(60,30,20,0.28); --chart-tooltip:rgba(255,250,247,0.96);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MINIMAL EXECUTIVE — warm cream + charcoal ink + real gold
+   Identity: luxury finance, Bloomberg/WSJ editorial, premium corporate.
+══════════════════════════════════════════════════════════ */
+body[data-theme="minimal"] {
+  --bg:#FAFAF7; --bg2:#F4F3EE; --surf:#FFFFFF; --surf2:#F4F3EE; --surf3:#ECEAE2;
+  --g-start:#1C1C28; --g-end:#B8962E;
+  --gradient:linear-gradient(135deg,#1C1C28 0%,#B8962E 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(184,150,46,.14) 0%,rgba(184,150,46,.06) 100%);
+  --purple:#1C1C28; --pur-d:#0A0A14; --pur-lt:#EEEEF4; --pur-m:#3A3A50;
+  --coral:#B83030; --coral-lt:rgba(184,48,48,.08);
+  --mint:#2A6858;  --mint-lt:rgba(42,104,88,.08);
+  --amber:#B8962E; --amber-lt:rgba(184,150,46,.12);
+  --sky:#1A4A70;   --sky-lt:rgba(26,74,112,.08);
+  --green:#2A6840; --green-lt:rgba(42,104,64,.08);
+  --dark:#0A0A12; --mid:#505060; --lite:#A8A8B8;
+  --border:#E4E2D8; --border2:rgba(28,28,40,.16);
+  --card-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(184,150,46,.10) inset;
+  --card-sh2:0 2px 10px rgba(0,0,0,.05);
+  --nav-bg:rgba(250,250,247,0.75);
+  --accent:#B8962E;
+  --glass-bg:rgba(255,255,255,0.68); --glass-bg2:rgba(244,243,238,0.56);
+  --glass-border:rgba(184,150,46,0.16); --glass-border2:rgba(184,150,46,0.28);
+  --glass-blur:blur(16px);
+  --glass-sh:0 4px 20px rgba(0,0,0,.07),0 1px 0 rgba(255,255,255,.90) inset,0 -1px 0 rgba(184,150,46,.08) inset;
+  --glass-sh2:0 2px 10px rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.80) inset;
+  --nav-glass:rgba(250,250,247,0.72);
+  --chart-1:#B8962E; --chart-2:#1C1C28; --chart-3:#2A6858; --chart-4:#8A6020; --chart-5:#B83030;
+  --chart-ok:#2A6858; --chart-mid:#B8962E; --chart-warn:#8A6020; --chart-full:#B83030;
+  --chart-empty:rgba(184,150,46,0.08); --chart-grid:rgba(28,28,40,0.10);
+  --chart-axis:rgba(28,28,40,0.30); --chart-tooltip:rgba(250,250,247,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PLAYFUL PIXEL — dark teal + neon green + electric yellow
+   Identity: retro terminal, gamified productivity, dev culture.
+══════════════════════════════════════════════════════════ */
+body[data-theme="pixel"] {
+  --bg:#0E1A14; --bg2:#162210; --surf:#162210; --surf2:#1E2E18; --surf3:#263820;
+  --g-start:#00E878; --g-end:#C8F020;
+  --gradient:linear-gradient(135deg,#00E878 0%,#C8F020 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(0,232,120,.18) 0%,rgba(200,240,32,.12) 100%);
+  --purple:#00E878; --pur-d:#00A050; --pur-lt:rgba(0,232,120,.15); --pur-m:rgba(0,232,120,.40);
+  --coral:#FF4040; --coral-lt:rgba(255,64,64,.15);
+  --mint:#00E878;  --mint-lt:rgba(0,232,120,.12);
+  --amber:#C8F020; --amber-lt:rgba(200,240,32,.15);
+  --sky:#20D0FF;   --sky-lt:rgba(32,208,255,.12);
+  --green:#00E878; --green-lt:rgba(0,232,120,.15);
+  --dark:#C8F0D0; --mid:#60A070; --lite:#2A4030;
+  --border:rgba(0,232,120,.20); --border2:rgba(0,232,120,.38);
+  --card-sh:0 0 0 1px rgba(0,232,120,.28),0 8px 24px rgba(0,0,0,.45);
+  --card-sh2:0 0 0 1px rgba(0,232,120,.18),0 4px 12px rgba(0,0,0,.30);
+  --r:4px; --rmd:4px; --rsm:4px; --rxs:2px;
+  --nav-bg:rgba(14,26,20,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(22,34,16,0.55); --glass-bg2:rgba(30,46,24,0.45);
+  --glass-border:rgba(0,232,120,0.22); --glass-border2:rgba(0,232,120,0.38);
+  --glass-blur:blur(16px);
+  --glass-sh:0 0 0 1px rgba(0,232,120,.28),0 8px 24px rgba(0,0,0,.45),0 1px 0 rgba(0,232,120,.12) inset;
+  --glass-sh2:0 0 0 1px rgba(0,232,120,.18),0 4px 12px rgba(0,0,0,.30);
+  --nav-glass:rgba(14,26,20,0.70);
+  --chart-1:#00E878; --chart-2:#C8F020; --chart-3:#00BFFF; --chart-4:#FF9900; --chart-5:#FF4040;
+  --chart-ok:#00E878; --chart-mid:#C8F020; --chart-warn:#FF9900; --chart-full:#FF4040;
+  --chart-empty:rgba(0,232,120,0.08); --chart-grid:rgba(0,232,120,0.12);
+  --chart-axis:rgba(0,232,120,0.30); --chart-tooltip:rgba(14,26,20,0.94);
+  font-family:'Courier New',Courier,monospace;
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LADY PROFESSIONAL — warm ivory + deep berry + dusty mauve
+   Identity: high-end editorial, refined feminine, like a luxury planner.
+══════════════════════════════════════════════════════════ */
+body[data-theme="lady"] {
+  --bg:#FDF7F9; --bg2:#F8EEF3; --surf:#FFFFFF; --surf2:#F8EEF3; --surf3:#F0E0EA;
+  --g-start:#A0306A; --g-end:#C86898;
+  --gradient:linear-gradient(135deg,#A0306A 0%,#C86898 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(160,48,106,.12) 0%,rgba(200,104,152,.08) 100%);
+  --purple:#A0306A; --pur-d:#781848; --pur-lt:#FDEAF2; --pur-m:#C06090;
+  --coral:#C83848; --coral-lt:rgba(200,56,72,.10);
+  --mint:#5A9070;  --mint-lt:rgba(90,144,112,.10);
+  --amber:#C07830; --amber-lt:rgba(192,120,48,.10);
+  --sky:#5058A0;   --sky-lt:rgba(80,88,160,.10);
+  --green:#4A8858; --green-lt:rgba(74,136,88,.10);
+  --dark:#280818; --mid:#784860; --lite:#C8A0B8;
+  --border:#EDD8E4; --border2:rgba(160,48,106,.20);
+  --card-sh:0 8px 28px rgba(160,48,106,.12); --card-sh2:0 4px 14px rgba(160,48,106,.08);
+  --nav-bg:rgba(253,247,249,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.62); --glass-bg2:rgba(248,238,243,0.52);
+  --glass-border:rgba(160,48,106,0.14); --glass-border2:rgba(160,48,106,0.24);
+  --glass-blur:blur(18px);
+  --glass-sh:0 8px 28px rgba(160,48,106,.12),0 1px 0 rgba(255,255,255,.80) inset;
+  --glass-sh2:0 4px 14px rgba(160,48,106,.08),0 1px 0 rgba(255,255,255,.60) inset;
+  --nav-glass:rgba(253,247,249,0.70);
+  --chart-1:#A0306A; --chart-2:#C86898; --chart-3:#5A9070; --chart-4:#C07830; --chart-5:#C83848;
+  --chart-ok:#5A9070; --chart-mid:#A0306A; --chart-warn:#C07830; --chart-full:#C83848;
+  --chart-empty:rgba(160,48,106,0.08); --chart-grid:rgba(160,48,106,0.10);
+  --chart-axis:rgba(80,20,50,0.28); --chart-tooltip:rgba(253,247,249,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BASE RESET
+══════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Sora', 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s ease, color 0.2s ease;
+}
+
+/* pixel theme monospace override */
+body[data-theme="pixel"] {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   GLASSMORPHISM UTILITIES
+   Apply .glass or .glass-card to any element
+══════════════════════════════════════════════════════════ */
+
+/* Primary glass panel */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-sh);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Secondary / nested glass panel */
+.glass2 {
+  background: var(--glass-bg2);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-sh2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass card — rounded, use on dashboard cards, info panels */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border2);
+  border-radius: var(--rmd);
+  box-shadow: var(--glass-sh2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass nav bar */
+.glass-nav {
+  background: var(--nav-glass, var(--nav-bg));
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass header */
+.glass-header {
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Glass input */
+.glass-input {
+  background: var(--glass-bg2);
+  border: 1.5px solid var(--glass-border2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.glass-input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px var(--pur-lt);
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTILITY CLASSES — all use CSS vars so themes auto-apply
+══════════════════════════════════════════════════════════ */
+
+/* Gradient button */
+.btn-gradient {
+  background: var(--gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--rmd);
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .18s, transform .12s;
+}
+.btn-gradient:active { opacity: .88; transform: scale(.98); }
+
+/* Ghost button */
+.btn-ghost {
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--rmd);
+  color: var(--dark);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .18s;
+}
+.btn-ghost:active { background: rgba(255,255,255,.12); }
+
+/* Light-theme ghost override */
+body[data-theme="soft"]     .btn-ghost,
+body[data-theme="colorful"] .btn-ghost,
+body[data-theme="minimal"]  .btn-ghost,
+body[data-theme="lady"]     .btn-ghost {
+  background: rgba(0,0,0,0.05);
+}
+body[data-theme="soft"]     .btn-ghost:active,
+body[data-theme="colorful"] .btn-ghost:active,
+body[data-theme="minimal"]  .btn-ghost:active,
+body[data-theme="lady"]     .btn-ghost:active {
+  background: rgba(0,0,0,0.10);
+}
+
+/* Card */
+.card {
+  background: var(--surf);
+  border-radius: var(--rmd);
+  box-shadow: var(--card-sh2);
+  border: 1px solid var(--border);
+}
+
+/* Screen slide-in animation */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-in { animation: slideIn .28s cubic-bezier(.4,0,.2,1); }
+
+/* AI spin animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Pulse */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+.pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
