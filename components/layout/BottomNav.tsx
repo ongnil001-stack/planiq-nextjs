@@ -1,14 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import FocusHubSheet from '@/components/FocusHubSheet';
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [hubOpen, setHubOpen] = useState(false);
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/schedule/new' && pathname.startsWith(href + '/'));
+    pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
 
+  // ── Shared style helpers ─────────────────────────────────────────────────
   const NAV: React.CSSProperties = {
     position: 'fixed',
     bottom: 0, left: 0, right: 0,
@@ -17,11 +21,6 @@ export default function BottomNav() {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    /* 
-      Content zone: 64px of visible nav
-      Safe area: pushes bar clear of iPhone home indicator
-      Minimum floor of 20px so no device clips the bar 
-    */
     paddingTop: '10px',
     paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)',
     minHeight: 'calc(64px + max(env(safe-area-inset-bottom, 0px), 20px))',
@@ -49,85 +48,64 @@ export default function BottomNav() {
   });
 
   const ICO: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '28px',
-    height: '28px',
-    flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: '28px', height: '28px', flexShrink: 0,
   };
 
   const LBL: React.CSSProperties = {
-    fontSize: '10px',
-    fontWeight: 600,
-    letterSpacing: '.2px',
-    lineHeight: 1,
-    whiteSpace: 'nowrap',
-    fontFamily: 'inherit',
+    fontSize: '10px', fontWeight: 600,
+    letterSpacing: '.2px', lineHeight: 1,
+    whiteSpace: 'nowrap', fontFamily: 'inherit',
   };
 
   const BAR = (active: boolean): React.CSSProperties => ({
-    position: 'absolute',
-    top: '-10px',               /* sits on the nav border line */
-    left: '50%',
+    position: 'absolute', top: '-10px', left: '50%',
     transform: 'translateX(-50%)',
-    width: '24px',
-    height: '3px',
+    width: '24px', height: '3px',
     borderRadius: '0 0 3px 3px',
     background: 'var(--purple, #7C6AF0)',
     opacity: active ? 1 : 0,
     transition: 'opacity .18s ease',
   });
 
-  /* FAB column — flex:1 like every other item, button elevated */
   const FAB_COL: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px',
-    flex: 1,
-    minWidth: 0,
-    padding: '0 6px',
-    minHeight: '52px',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: '5px', flex: 1, minWidth: 0, padding: '0 6px',
+    minHeight: '52px', position: 'relative',
     WebkitTapHighlightColor: 'transparent',
-    position: 'relative',
+    background: 'none', border: 'none', cursor: 'pointer',
+    fontFamily: 'inherit',
   };
 
   const FAB_BTN: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    width: '52px',
-    height: '52px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, width: '48px', height: '48px',
     borderRadius: '50%',
-    marginTop: '-18px',         /* lifts FAB above bar top edge */
-    background: 'var(--gradient, linear-gradient(135deg,#7C6AF0 0%,#00C6FF 100%))',
+    marginTop: '-18px',
+    background: hubOpen
+      ? 'linear-gradient(135deg,#9B8FFF 0%,#40D8FF 100%)'
+      : 'var(--gradient, linear-gradient(135deg,#7C6AF0 0%,#00C6FF 100%))',
     boxShadow: [
-      '0 0 0 4px rgba(8,9,18,0.94)',   /* gap ring — matches nav bg */
+      '0 0 0 4px rgba(8,9,18,0.94)',
       '0 4px 20px rgba(124,106,240,0.55)',
       '0 2px 6px rgba(0,0,0,0.35)',
       'inset 0 1px 0 rgba(255,255,255,0.22)',
     ].join(', '),
-    textDecoration: 'none',
+    transition: 'transform .14s ease, box-shadow .14s ease',
   };
 
   const FAB_LBL: React.CSSProperties = {
     ...LBL,
-    color: 'rgba(255,255,255,0.40)',
+    color: hubOpen ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,0.40)',
   };
 
   return (
     <>
-      {/* 
-        Spacer — pushes page content up so nothing hides 
-        behind the nav bar (height matches nav min-height) 
-      */}
+      {/* Height spacer so page content doesn't hide under nav */}
       <div style={{
         height: 'calc(64px + max(env(safe-area-inset-bottom, 0px), 20px))',
-        flexShrink: 0,
-        pointerEvents: 'none',
+        flexShrink: 0, pointerEvents: 'none',
       }} aria-hidden />
 
       <nav style={NAV}>
@@ -160,15 +138,21 @@ export default function BottomNav() {
           <span style={LBL}>Schedule</span>
         </Link>
 
-        {/* ── FAB ── */}
-        <div style={FAB_COL}>
-          <Link href="/schedule/new" style={FAB_BTN} aria-label="Add">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        {/* ── Focus Hub FAB ── */}
+        <button
+          style={FAB_COL}
+          onClick={() => setHubOpen(true)}
+          aria-label="Focus Hub"
+        >
+          <span style={FAB_BTN}>
+            {/* Lightning bolt — signals AI/intelligence */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L4.09 12.11C3.69 12.59 4.04 13.33 4.67 13.33H11L10.5 21.5C10.47 22 11.13 22.22 11.42 21.81L20.24 10.25C20.61 9.75 20.25 9.04 19.63 9.04H13.5L13 2Z"
+                fill="white"/>
             </svg>
-          </Link>
-          <span style={FAB_LBL}>Add</span>
-        </div>
+          </span>
+          <span style={FAB_LBL}>Focus Hub</span>
+        </button>
 
         {/* ── Priorities ── */}
         <Link href="/ai-analysis" style={ITEM(isActive('/ai-analysis'))} aria-label="Priorities">
@@ -196,6 +180,9 @@ export default function BottomNav() {
         </Link>
 
       </nav>
+
+      {/* Focus Hub Sheet */}
+      <FocusHubSheet open={hubOpen} onClose={() => setHubOpen(false)} />
     </>
   );
 }
