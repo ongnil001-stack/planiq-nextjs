@@ -7,7 +7,7 @@
 //   smart_suggest    → conflict detection + best times (AddSchedule)
 //
 // Deploy:  supabase functions deploy analyze-schedule
-// Secret:  supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+// Secret:  supabase secrets set "ANTHROPIC KEY"=sk-ant-...
 // ═══════════════════════════════════════════════════════════
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -50,8 +50,8 @@ function fmtItem(s: ScheduleItem) {
 }
 
 async function callClaude(prompt: string, maxTokens = 1024): Promise<string> {
-  const key = Deno.env.get('ANTHROPIC_API_KEY');
-  if (!key) throw new Error('ANTHROPIC_API_KEY not set. Run: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...');
+  const key = Deno.env.get('ANTHROPIC KEY');
+  if (!key) throw new Error('ANTHROPIC KEY secret not set in Supabase dashboard.');
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
