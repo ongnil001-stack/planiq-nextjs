@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -68,7 +68,6 @@ const S = {
     borderBottom: '1px solid var(--glass-border, var(--border))',
   },
   scrl: {
-    flex: 1,
     overflowY: 'auto' as const,
     overflowX: 'hidden' as const,
     padding: '12px 18px 0',
@@ -99,6 +98,19 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
   const [prefs, setPrefs] = useState<DashboardFullPrefs | null>(null);
+  const hdrRef  = useRef<HTMLDivElement>(null);
+  const [hdrH, setHdrH] = useState(80);   // measured header height in px
+
+  // ── Measure real header height so scroll container never exceeds available space ──
+  useEffect(() => {
+    if (!hdrRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setHdrH(Math.round(e.contentRect.height));
+    });
+    ro.observe(hdrRef.current);
+    setHdrH(hdrRef.current.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
 
   const refreshPrefs = useCallback(() => {
     migrateFromV1();
@@ -742,7 +754,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       <style>{`@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}`}</style>
 
       {/* Header */}
-      <div style={S.hdr}>
+      <div ref={hdrRef} style={S.hdr}>
         {/* Greeting text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0, lineHeight: 1.2 }}>{GREETING()}, {firstName}</h2>
@@ -761,13 +773,14 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         </Link>
       </div>
 
-      {/* Scroll body */}
-      <div style={S.scrl}>
-        {/* Inner wrapper — only as tall as card content.
-            Bottom padding here = nav clearance, so scroll ends right after last card. */}
-        <div style={{
-          paddingBottom: 'calc(16px + 64px + max(env(safe-area-inset-bottom, 0px), 20px))',
-        }}>
+      {/* Scroll body — maxHeight dynamically = viewport - measured header - nav bar */}
+      <div style={{
+        ...S.scrl,
+        maxHeight: `calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom, 0px), 20px))`,
+      }}>
+        {/* Inner content — collapses to card heights only.
+            paddingBottom = small breathe gap above nav bar. */}
+        <div style={{ paddingBottom: '16px' }}>
           {cardOrder.map(key => {
             if (!isVisible(key)) return null;
             const renderer = cardRenderers[key];
