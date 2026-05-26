@@ -146,7 +146,6 @@ function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
       boxShadow:'0 1px 5px rgba(0,0,0,.07)',
       opacity: s.is_completed ? 0.5 : 1,
     }}>
-      {/* Title row */}
       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
         <TypeIcon type={s.type} />
         <span style={{
@@ -156,7 +155,6 @@ function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
         }}>{s.title}</span>
         {s.is_completed && <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>}
       </div>
-      {/* Meta row */}
       <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
         <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
           {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
@@ -176,20 +174,81 @@ function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
   );
 }
 
+// ── Activity detail card — for Activities panel and Monthly Log ────────────────
+function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Date; onClick: () => void }) {
+  const pColor  = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+  const startD  = new Date(s.start_time);
+  const endD    = s.end_time ? new Date(s.end_time) : null;
+  const desc    = (s as Schedule & { description?: string; notes?: string }).description
+               || (s as Schedule & { description?: string; notes?: string }).notes
+               || '';
+  const typeLabelMap: Record<string, string> = { task:'Task', reminder:'Reminder', block:'Block', event:'Event' };
+  const typeLabel = typeLabelMap[s.type] ?? s.type;
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width:'100%', textAlign:'left', background:'var(--surf)',
+        border:'1px solid var(--glass-border,var(--border))',
+        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+        borderRadius:12, padding:'10px 12px 10px 14px',
+        cursor:'pointer', fontFamily:'inherit',
+        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
+        opacity: s.is_completed ? 0.55 : 1,
+        display:'flex', flexDirection:'column', gap:5,
+        transition:'background .1s',
+      }}>
+      {/* Title + status */}
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <TypeIcon type={s.type} />
+        <span style={{
+          fontSize:13, fontWeight:700, color:'var(--dark)', flex:1,
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          textDecoration: s.is_completed ? 'line-through' : 'none',
+        }}>{s.title}</span>
+        {s.is_completed
+          ? <span style={{ fontSize:10, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>Done ✓</span>
+          : <span style={{ fontSize:9, fontWeight:800, color:pColor, background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`, padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0 }}>{s.priority}</span>
+        }
+      </div>
+      {/* Date + time */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {dayDate.toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
+        </span>
+        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+          {endD && !s.all_day ? ` – ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+        </span>
+        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+        <span style={{ fontSize:10, color:'var(--mid)' }}>{typeLabel}</span>
+      </div>
+      {/* Description / notes */}
+      {desc ? (
+        <div style={{ fontSize:11, color:'var(--mid)', opacity:0.8, lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
+          {desc}
+        </div>
+      ) : null}
+    </button>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CalendarClient({ initialSchedules }: { initialSchedules: Schedule[] }) {
   const today    = new Date();
   const supabase = createClient();
 
-  const [viewMode,    setViewMode]    = useState<ViewMode>('monthly');
-  const [viewDate,    setViewDate]    = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [selectedDay, setSelectedDay] = useState<number>(today.getDate());
-  const [holidays,    setHolidays]    = useState<Map<string, Holiday>>(new Map());
-  const [countryCode, setCountryCode] = useState('');
-  const [schedules,   setSchedules]   = useState<Schedule[]>(initialSchedules);
-  const [sheetOpen,   setSheetOpen]   = useState(false);
-  const [sheetTime,    setSheetTime]    = useState<string | undefined>(undefined);
-  const [monthlyTab,  setMonthlyTab]  = useState<'overview'|'busy'|'free'>('overview');
+  const [viewMode,   setViewMode]   = useState<ViewMode>('monthly');
+  const [viewDate,   setViewDate]   = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDay,setSelectedDay]= useState<number>(today.getDate());
+  const [holidays,   setHolidays]   = useState<Map<string, Holiday>>(new Map());
+  const [countryCode,setCountryCode]= useState('');
+  const [schedules,  setSchedules]  = useState<Schedule[]>(initialSchedules);
+  const [sheetOpen,  setSheetOpen]  = useState(false);
+  const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
+  const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
 
   const year        = viewDate.getFullYear();
   const month       = viewDate.getMonth();
@@ -216,18 +275,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     loadCountry();
   }, [year, month]);
 
-  // Refresh schedules — optionally fetch a just-inserted row by id first for instant display
+  // Refresh schedules
   const refreshSchedules = useCallback(async (newId?: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // If we have the new record's id, fetch it immediately and inject into state
-    // so it appears in the timeline before the full re-fetch completes
     if (newId) {
       const { data: newRow } = await supabase.from('schedules').select('*').eq('id', newId).single();
       if (newRow) {
         setSchedules(prev => {
-          // Replace if already exists, otherwise append
           const exists = prev.some(s => s.id === (newRow as Schedule).id);
           if (exists) return prev;
           return [...prev, newRow as Schedule].sort(
@@ -237,7 +293,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       }
     }
 
-    // Full re-fetch for the selected day's month (covers cross-month navigation in Daily view)
     const sd = new Date(year, month, selectedDay);
     const startOfMonth = new Date(sd.getFullYear(), sd.getMonth(), 1).toISOString();
     const endOfMonth   = new Date(sd.getFullYear(), sd.getMonth() + 1, 0, 23, 59, 59).toISOString();
@@ -263,6 +318,11 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     }
   });
 
+  // Monthly stats — computed top-level for fixed pills
+  const busyDayNums = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => (dayMap[d]?.length ?? 0) > 0);
+  const freeDayNums = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => !(dayMap[d]?.length));
+  const totalActs   = Object.values(dayMap).reduce((sum, arr) => sum + arr.length, 0);
+
   const selectedDate      = new Date(year, month, selectedDay);
   const selectedDateStr   = toDateStr(selectedDate);
   const selectedSchedules = dayMap[selectedDay] ?? [];
@@ -271,13 +331,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const isToday           = (d: number) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll timeline to current hour (or 8 AM) when daily view activates
+  // Auto-scroll timeline to current hour when daily view activates
   useEffect(() => {
     if (viewMode !== 'daily' || !timelineRef.current) return;
-    const hourHeight = 64; // px per hour row
+    const hourHeight = 64;
     const targetHour = isToday(selectedDay) ? Math.max(0, today.getHours() - 1) : 8;
-    const scrollTop  = targetHour * hourHeight;
-    timelineRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
+    timelineRef.current.scrollTo({ top: targetHour * hourHeight, behavior: 'smooth' });
   }, [viewMode, selectedDay]);
 
   function handleDayClick(d: number) {
@@ -291,7 +350,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setSheetOpen(true);
   }
 
-  // Navigation — direction depends on viewMode
   function navPrev() {
     if (viewMode === 'daily')   { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setSelectedDay(d.getDate()); }
     else if (viewMode === 'weekly') { const d = new Date(viewDate); d.setDate(d.getDate() - 7); setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); }
@@ -309,7 +367,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setSelectedDay(today.getDate());
   }
 
-  // Nav label
   const navLabel = (() => {
     if (viewMode === 'daily')   return selectedDate.toLocaleDateString('en-US', { weekday:'short', month:'long', day:'numeric', year:'numeric' });
     if (viewMode === 'weekly') {
@@ -322,21 +379,27 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     return `${MONTHS[month]} ${year}`;
   })();
 
-  // ── Weekly view data ────────────────────────────────────────────────────────
+  // Weekly view data
   const weekDays = (() => {
     const dow   = selectedDate.getDay();
     const start = new Date(selectedDate); start.setDate(selectedDate.getDate() - dow);
     return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
   })();
 
-  // ── Yearly view data ────────────────────────────────────────────────────────
-  // Count schedules per month in a given year
+  // Yearly view data
   const monthCounts = Array.from({ length: 12 }, (_, mo) =>
     schedules.filter(s => {
       const d = new Date(s.start_time);
       return d.getFullYear() === year && d.getMonth() === mo;
     }).length
   );
+
+  // Helper: navigate to a specific day in Daily view
+  function goToDay(d: number, m: number = month, y: number = year) {
+    setViewDate(new Date(y, m, 1));
+    setSelectedDay(d);
+    setViewMode('daily');
+  }
 
   return (
     <div className="page">
@@ -375,250 +438,372 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         <button className="nav-arrow" onClick={navNext}>›</button>
       </div>
 
+      {/* ── FIXED Monthly summary pills — outside scroll so they never move ── */}
+      {viewMode === 'monthly' && (
+        <div style={{
+          flexShrink:0, display:'flex', gap:8, padding:'10px 14px',
+          background:'var(--glass-bg2,var(--surf))',
+          borderBottom:'1px solid var(--glass-border,var(--border))',
+        }}>
+          {/* Busy Days */}
+          <button
+            onClick={() => setMonthlyTab(monthlyTab === 'busy' ? 'overview' : 'busy')}
+            style={{
+              flex:1, padding:'10px 6px', borderRadius:14,
+              background: monthlyTab === 'busy' ? 'rgba(255,107,138,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+              border: monthlyTab === 'busy' ? '1.5px solid rgba(255,107,138,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+              cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+            }}>
+            <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'busy' ? 'var(--coral,#FF6B8A)' : 'var(--dark)', lineHeight:1 }}>{busyDayNums.length}</div>
+            <div style={{ fontSize:9, fontWeight:700, color:'var(--coral,#FF6B8A)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Busy Days</div>
+          </button>
+
+          {/* Activities */}
+          <button
+            onClick={() => setMonthlyTab(monthlyTab === 'activities' ? 'overview' : 'activities')}
+            style={{
+              flex:1, padding:'10px 6px', borderRadius:14,
+              background: monthlyTab === 'activities' ? 'rgba(124,106,240,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+              border: monthlyTab === 'activities' ? '1.5px solid rgba(124,106,240,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+              cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+            }}>
+            <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'activities' ? 'var(--purple)' : 'var(--dark)', lineHeight:1 }}>{totalActs}</div>
+            <div style={{ fontSize:9, fontWeight:700, color:'var(--purple)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Activities</div>
+          </button>
+
+          {/* Free Days */}
+          <button
+            onClick={() => setMonthlyTab(monthlyTab === 'free' ? 'overview' : 'free')}
+            style={{
+              flex:1, padding:'10px 6px', borderRadius:14,
+              background: monthlyTab === 'free' ? 'rgba(45,212,191,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+              border: monthlyTab === 'free' ? '1.5px solid rgba(45,212,191,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+              cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+            }}>
+            <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'free' ? 'var(--mint,#2DD4BF)' : 'var(--dark)', lineHeight:1 }}>{freeDayNums.length}</div>
+            <div style={{ fontSize:9, fontWeight:700, color:'var(--mint,#2DD4BF)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Free Days</div>
+          </button>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT AREA
       ════════════════════════════════════════════════════════════ */}
       <div className="scroll-body" style={(viewMode === 'daily' || viewMode === 'weekly') ? { overflowY:'hidden', display:'flex', flexDirection:'column' } : undefined}>
 
         {/* ── MONTHLY VIEW ── */}
-        {viewMode === 'monthly' && (() => {
-          // Compute month stats
-          const busyDayNums  = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => dayMap[d]?.length > 0);
-          const freeDayNums  = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => !dayMap[d]?.length);
-          const totalActs    = Object.values(dayMap).reduce((sum, arr) => sum + arr.length, 0);
-          const busyCount    = busyDayNums.length;
-          const freeCount    = freeDayNums.length;
-
-          return (
-            <>
-              {/* ── Month snapshot pills ── */}
+        {viewMode === 'monthly' && (
+          <>
+            {/* ── Expandable: Busy Days ── */}
+            {monthlyTab === 'busy' && (
               <div style={{
-                display:'flex', gap:8, padding:'12px 14px 10px',
-                background:'var(--glass-bg2,var(--surf))',
-                borderBottom:'1px solid var(--glass-border,var(--border))',
-                flexShrink:0,
+                margin:'10px 14px 0', borderRadius:14,
+                background:'var(--glass-bg,rgba(255,255,255,.04))',
+                border:'1px solid rgba(255,107,138,.2)',
+                overflow:'hidden',
               }}>
-                {/* Busy Days pill */}
-                <button
-                  onClick={() => setMonthlyTab(monthlyTab === 'busy' ? 'overview' : 'busy')}
-                  style={{
-                    flex:1, padding:'10px 6px', borderRadius:14,
-                    background: monthlyTab === 'busy' ? 'rgba(255,107,138,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
-                    border: monthlyTab === 'busy' ? '1.5px solid rgba(255,107,138,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
-                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
-                  }}>
-                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'busy' ? 'var(--coral,#FF6B8A)' : 'var(--dark)', lineHeight:1 }}>{busyCount}</div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'var(--coral,#FF6B8A)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Busy Days</div>
-                </button>
-
-                {/* Total activities pill */}
-                <button
-                  onClick={() => setMonthlyTab('overview')}
-                  style={{
-                    flex:1, padding:'10px 6px', borderRadius:14,
-                    background: monthlyTab === 'overview' ? 'rgba(124,106,240,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
-                    border: monthlyTab === 'overview' ? '1.5px solid rgba(124,106,240,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
-                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
-                  }}>
-                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'overview' ? 'var(--purple)' : 'var(--dark)', lineHeight:1 }}>{totalActs}</div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'var(--purple)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Activities</div>
-                </button>
-
-                {/* Free Days pill */}
-                <button
-                  onClick={() => setMonthlyTab(monthlyTab === 'free' ? 'overview' : 'free')}
-                  style={{
-                    flex:1, padding:'10px 6px', borderRadius:14,
-                    background: monthlyTab === 'free' ? 'rgba(45,212,191,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
-                    border: monthlyTab === 'free' ? '1.5px solid rgba(45,212,191,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
-                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
-                  }}>
-                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'free' ? 'var(--mint,#2DD4BF)' : 'var(--dark)', lineHeight:1 }}>{freeCount}</div>
-                  <div style={{ fontSize:9, fontWeight:700, color:'var(--mint,#2DD4BF)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Free Days</div>
-                </button>
-              </div>
-
-              {/* ── Expandable panels (busy / free) ── */}
-              {monthlyTab === 'busy' && (
-                <div style={{
-                  margin:'10px 14px 0', borderRadius:14,
-                  background:'var(--glass-bg,rgba(255,255,255,.04))',
-                  border:'1px solid rgba(255,107,138,.2)',
-                  overflow:'hidden',
-                }}>
-                  <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
-                    <span style={{ fontSize:11, fontWeight:800, color:'var(--coral,#FF6B8A)', textTransform:'uppercase', letterSpacing:'.8px' }}>
-                      Occupied Dates — {MONTHS[month]} {year}
-                    </span>
-                  </div>
-                  {busyDayNums.length === 0 ? (
-                    <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No busy days this month</div>
-                  ) : (
-                    <div style={{ maxHeight:220, overflowY:'auto', padding:'8px 10px 10px' }}>
-                      {busyDayNums.map(d => {
-                        const dayDate = new Date(year, month, d);
-                        const evts    = dayMap[d] ?? [];
-                        const isT     = isToday(d);
-                        const isSel   = d === selectedDay;
-                        return (
-                          <button
-                            key={d}
-                            onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
-                            style={{
-                              width:'100%', textAlign:'left', background: isSel ? 'rgba(124,106,240,.12)' : 'transparent',
-                              border:'none', borderRadius:10, padding:'8px 10px', cursor:'pointer',
-                              marginBottom:2, fontFamily:'inherit', transition:'background .12s',
+                <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--coral,#FF6B8A)', textTransform:'uppercase', letterSpacing:'.8px' }}>
+                    Occupied Dates — {MONTHS[month]} {year}
+                  </span>
+                </div>
+                {busyDayNums.length === 0 ? (
+                  <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No busy days this month</div>
+                ) : (
+                  <div style={{ maxHeight:240, overflowY:'auto', overscrollBehavior:'contain', padding:'8px 10px 10px' }}>
+                    {busyDayNums.map(d => {
+                      const dayDate = new Date(year, month, d);
+                      const evts    = dayMap[d] ?? [];
+                      const isT     = isToday(d);
+                      const isSel   = d === selectedDay;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                          style={{
+                            width:'100%', textAlign:'left', background: isSel ? 'rgba(124,106,240,.12)' : 'transparent',
+                            border:'none', borderRadius:10, padding:'8px 10px', cursor:'pointer',
+                            marginBottom:2, fontFamily:'inherit', transition:'background .12s',
+                          }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <div style={{
+                              width:32, height:32, borderRadius:10, flexShrink:0,
+                              background: isT ? 'var(--purple)' : 'rgba(255,107,138,.15)',
+                              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
                             }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                              <div style={{
-                                width:32, height:32, borderRadius:10, flexShrink:0,
-                                background: isT ? 'var(--purple)' : 'rgba(255,107,138,.15)',
-                                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                              }}>
-                                <span style={{ fontSize:8, fontWeight:700, color: isT ? '#fff' : 'var(--coral,#FF6B8A)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
-                                <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1.1 }}>{d}</span>
-                              </div>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                                  {evts.slice(0,3).map(s => (
-                                    <span key={s.id} style={{
-                                      fontSize:10, fontWeight:600, color:'var(--dark)',
-                                      background:'var(--surf2,rgba(255,255,255,.06))',
-                                      border:'1px solid var(--glass-border,rgba(255,255,255,.08))',
-                                      borderRadius:6, padding:'2px 7px',
-                                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:110,
-                                    }}>{s.title}</span>
-                                  ))}
-                                  {evts.length > 3 && (
-                                    <span style={{ fontSize:10, color:'var(--mid)', padding:'2px 4px' }}>+{evts.length-3}</span>
-                                  )}
-                                </div>
-                              </div>
-                              <span style={{ fontSize:10, fontWeight:700, color:'var(--coral,#FF6B8A)', flexShrink:0 }}>{evts.length}</span>
+                              <span style={{ fontSize:8, fontWeight:700, color: isT ? '#fff' : 'var(--coral,#FF6B8A)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
+                              <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1.1 }}>{d}</span>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {monthlyTab === 'free' && (
-                <div style={{
-                  margin:'10px 14px 0', borderRadius:14,
-                  background:'var(--glass-bg,rgba(255,255,255,.04))',
-                  border:'1px solid rgba(45,212,191,.2)',
-                  overflow:'hidden',
-                }}>
-                  <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
-                    <span style={{ fontSize:11, fontWeight:800, color:'var(--mint,#2DD4BF)', textTransform:'uppercase', letterSpacing:'.8px' }}>
-                      Free Dates — {MONTHS[month]} {year}
-                    </span>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                                {evts.slice(0,3).map(s => (
+                                  <span key={s.id} style={{
+                                    fontSize:10, fontWeight:600, color:'var(--dark)',
+                                    background:'var(--surf2,rgba(255,255,255,.06))',
+                                    border:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                                    borderRadius:6, padding:'2px 7px',
+                                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:110,
+                                  }}>{s.title}</span>
+                                ))}
+                                {evts.length > 3 && (
+                                  <span style={{ fontSize:10, color:'var(--mid)', padding:'2px 4px' }}>+{evts.length-3}</span>
+                                )}
+                              </div>
+                            </div>
+                            <span style={{ fontSize:10, fontWeight:700, color:'var(--coral,#FF6B8A)', flexShrink:0 }}>{evts.length}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  {freeDayNums.length === 0 ? (
-                    <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No free days this month — you&apos;re fully booked!</div>
-                  ) : (
-                    <div style={{ padding:'10px 12px 12px', display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {freeDayNums.map(d => {
-                        const dayDate = new Date(year, month, d);
-                        const isT     = isToday(d);
-                        const isSel   = d === selectedDay;
-                        return (
-                          <button
-                            key={d}
-                            onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
-                            style={{
-                              width:42, height:42, borderRadius:10, border:'none', cursor:'pointer',
-                              background: isT ? 'var(--purple)' : isSel ? 'rgba(45,212,191,.18)' : 'rgba(45,212,191,.08)',
-                              fontFamily:'inherit', display:'flex', flexDirection:'column',
-                              alignItems:'center', justifyContent:'center', gap:1, transition:'all .12s',
+                )}
+              </div>
+            )}
+
+            {/* ── Expandable: Activities detail ── */}
+            {monthlyTab === 'activities' && (
+              <div style={{
+                margin:'10px 14px 0', borderRadius:14,
+                background:'var(--glass-bg,rgba(255,255,255,.04))',
+                border:'1px solid rgba(124,106,240,.2)',
+                overflow:'hidden',
+              }}>
+                <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'.8px' }}>
+                    All Activities — {MONTHS[month]} {year}
+                  </span>
+                  <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{totalActs} total</span>
+                </div>
+                {totalActs === 0 ? (
+                  <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No activities this month</div>
+                ) : (
+                  <div style={{ maxHeight:320, overflowY:'auto', overscrollBehavior:'contain', padding:'8px 10px 10px', display:'flex', flexDirection:'column', gap:6 }}>
+                    {busyDayNums.map(d => {
+                      const dayDate = new Date(year, month, d);
+                      const evts    = dayMap[d] ?? [];
+                      return (
+                        <div key={d}>
+                          {/* Date separator */}
+                          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, marginTop: d === busyDayNums[0] ? 0 : 6 }}>
+                            <div style={{
+                              display:'inline-flex', flexDirection:'column', alignItems:'center',
+                              background: isToday(d) ? 'var(--purple)' : 'rgba(124,106,240,.12)',
+                              borderRadius:8, padding:'3px 8px', flexShrink:0,
                             }}>
-                            <span style={{ fontSize:7, fontWeight:700, color: isT ? '#fff' : 'var(--mint,#2DD4BF)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
-                            <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1 }}>{d}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                              <span style={{ fontSize:7, fontWeight:800, color: isToday(d) ? '#fff' : 'var(--purple)', lineHeight:1, textTransform:'uppercase' }}>{DAYS_SHORT[dayDate.getDay()]}</span>
+                              <span style={{ fontSize:13, fontWeight:900, color: isToday(d) ? '#fff' : 'var(--purple)', lineHeight:1.1 }}>{d}</span>
+                            </div>
+                            <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                              {dayDate.toLocaleDateString('en-US',{ month:'long', year:'numeric' })}
+                            </span>
+                            <span style={{ fontSize:9, color:'var(--mid)', marginLeft:'auto' }}>{evts.length} item{evts.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          {/* Activity cards */}
+                          <div style={{ display:'flex', flexDirection:'column', gap:5, paddingLeft:4 }}>
+                            {evts.map(s => (
+                              <ActivityDetailCard
+                                key={s.id}
+                                s={s}
+                                dayDate={dayDate}
+                                onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Expandable: Free Days ── */}
+            {monthlyTab === 'free' && (
+              <div style={{
+                margin:'10px 14px 0', borderRadius:14,
+                background:'var(--glass-bg,rgba(255,255,255,.04))',
+                border:'1px solid rgba(45,212,191,.2)',
+                overflow:'hidden',
+              }}>
+                <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--mint,#2DD4BF)', textTransform:'uppercase', letterSpacing:'.8px' }}>
+                    Free Dates — {MONTHS[month]} {year}
+                  </span>
+                </div>
+                {freeDayNums.length === 0 ? (
+                  <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No free days this month — you&apos;re fully booked!</div>
+                ) : (
+                  <div style={{ padding:'10px 12px 12px', display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {freeDayNums.map(d => {
+                      const dayDate = new Date(year, month, d);
+                      const isT     = isToday(d);
+                      const isSel   = d === selectedDay;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                          style={{
+                            width:42, height:42, borderRadius:10, border:'none', cursor:'pointer',
+                            background: isT ? 'var(--purple)' : isSel ? 'rgba(45,212,191,.18)' : 'rgba(45,212,191,.08)',
+                            fontFamily:'inherit', display:'flex', flexDirection:'column',
+                            alignItems:'center', justifyContent:'center', gap:1, transition:'all .12s',
+                          }}>
+                          <span style={{ fontSize:7, fontWeight:700, color: isT ? '#fff' : 'var(--mint,#2DD4BF)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
+                          <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1 }}>{d}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Calendar grid ── */}
+            <div style={{ padding:'10px 8px 0', flexShrink:0 }}>
+              <div className="cal-grid header-row" style={{ paddingTop:0 }}>
+                {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
+              </div>
+              <div className="cal-grid">
+                {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const d        = i + 1;
+                  const dateStr  = toDateStr(new Date(year, month, d));
+                  const holiday  = holidays.get(dateStr);
+                  const events   = dayMap[d] ?? [];
+                  const hasDots  = events.length > 0;
+                  const active   = d === selectedDay;
+                  const todayDay = isToday(d);
+                  const isBusy   = hasDots;
+                  return (
+                    <button key={d}
+                      className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
+                      onClick={() => { handleDayClick(d); setMonthlyTab('overview'); }}
+                      title={holiday ? holiday.localName : undefined}>
+                      <span className="day-num">{d}</span>
+                      <div className="day-indicators">
+                        {holiday && <span className="h-dot" />}
+                        {isBusy && !holiday && (
+                          <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />
+                        )}
+                        {isBusy && events.length > 1 && (
+                          <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Selected day detail ── */}
+            <div className="day-panel">
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
+                    {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                  </div>
+                  <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
+                    {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  {selectedSchedules.length > 0 && (
+                    <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
+                      {selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}
+                    </span>
                   )}
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    style={{ padding:'7px 14px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(124,106,240,.3)' }}
+                  >+ Add</button>
+                </div>
+              </div>
+              {selectedHol && <HolidayBanner holiday={selectedHol} />}
+              {selectedSchedules.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'20px 0', color:'var(--mid)' }}>
+                  <p style={{ fontSize:12 }}>Nothing scheduled — free day ✦</p>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
                 </div>
               )}
+            </div>
 
-              {/* ── Calendar grid ── */}
-              <div style={{ padding:'10px 8px 0', flexShrink:0 }}>
-                {/* Day-of-week headers */}
-                <div className="cal-grid header-row" style={{ paddingTop:0 }}>
-                  {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
+            {/* ── Monthly Activity Log ── */}
+            {totalActs > 0 && (
+              <div style={{ padding:'0 16px 16px' }}>
+                {/* Section header */}
+                <div style={{
+                  display:'flex', alignItems:'center', gap:8,
+                  padding:'14px 0 10px',
+                  borderTop:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <rect x="1" y="3" width="14" height="12" rx="2.5" stroke="var(--purple)" strokeWidth="1.4"/>
+                    <path d="M1 7h14" stroke="var(--purple)" strokeWidth="1.4"/>
+                    <path d="M5 1v3M11 1v3" stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'.8px', flex:1 }}>
+                    Monthly Log — {MONTHS[month]} {year}
+                  </span>
+                  <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{totalActs} activities</span>
                 </div>
-                <div className="cal-grid">
-                  {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
-                  {Array.from({ length: daysInMonth }).map((_, i) => {
-                    const d        = i + 1;
-                    const dateStr  = toDateStr(new Date(year, month, d));
-                    const holiday  = holidays.get(dateStr);
-                    const events   = dayMap[d] ?? [];
-                    const hasDots  = events.length > 0;
-                    const active   = d === selectedDay;
-                    const todayDay = isToday(d);
-                    const isBusy   = hasDots;
+
+                {/* Activities grouped by date */}
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  {busyDayNums.map(d => {
+                    const dayDate = new Date(year, month, d);
+                    const evts    = dayMap[d] ?? [];
+                    const isT     = isToday(d);
                     return (
-                      <button key={d}
-                        className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
-                        onClick={() => { handleDayClick(d); setMonthlyTab('overview'); }}
-                        title={holiday ? holiday.localName : undefined}>
-                        <span className="day-num">{d}</span>
-                        <div className="day-indicators">
-                          {holiday && <span className="h-dot" />}
-                          {isBusy && !holiday && (
-                            <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />
-                          )}
-                          {isBusy && events.length > 1 && (
-                            <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />
-                          )}
+                      <div key={d}>
+                        {/* Date header row */}
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                          <div style={{
+                            width:36, height:36, borderRadius:10, flexShrink:0,
+                            background: isT ? 'var(--gradient)' : 'var(--pur-lt,rgba(124,106,240,.12))',
+                            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                            boxShadow: isT ? '0 2px 10px rgba(124,106,240,.3)' : 'none',
+                          }}>
+                            <span style={{ fontSize:7, fontWeight:800, color: isT ? '#fff' : 'var(--purple)', lineHeight:1, textTransform:'uppercase', letterSpacing:'.3px' }}>{DAYS_SHORT[dayDate.getDay()]}</span>
+                            <span style={{ fontSize:15, fontWeight:900, color: isT ? '#fff' : 'var(--purple)', lineHeight:1.1 }}>{d}</span>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>
+                              {dayDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                            </div>
+                            <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>
+                              {dayDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
+                              {' · '}{evts.length} item{evts.length !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => goToDay(d)}
+                            style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.1)', border:'none', borderRadius:8, padding:'4px 9px', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+                            Daily →
+                          </button>
                         </div>
-                      </button>
+
+                        {/* Event cards */}
+                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                          {evts.map(s => (
+                            <ActivityDetailCard
+                              key={s.id}
+                              s={s}
+                              dayDate={dayDate}
+                              onClick={() => goToDay(d)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* ── Selected day detail ── */}
-              <div className="day-panel">
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
-                      {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
-                    </div>
-                    <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
-                      {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
-                    </div>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    {selectedSchedules.length > 0 && (
-                      <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
-                        {selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setSheetOpen(true)}
-                      style={{ padding:'7px 14px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(124,106,240,.3)' }}
-                    >+ Add</button>
-                  </div>
-                </div>
-                {selectedHol && <HolidayBanner holiday={selectedHol} />}
-                {selectedSchedules.length === 0 ? (
-                  <div style={{ textAlign:'center', padding:'20px 0', color:'var(--mid)' }}>
-                    <p style={{ fontSize:12 }}>Nothing scheduled — free day ✦</p>
-                  </div>
-                ) : (
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
-                  </div>
-                )}
-              </div>
-            </>
-          );
-        })()}
+            )}
+          </>
+        )}
 
         {/* ── DAILY VIEW — 24-hour timeline ── */}
         {viewMode === 'daily' && (() => {
@@ -640,12 +825,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             return `${h - 12} PM`;
           }
 
-
-
           return (
             <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
 
-              {/* Day header — clean banner, no + Add button (tap a time slot instead) */}
+              {/* Day header */}
               <div style={{
                 flexShrink:0, padding:'14px 16px 12px',
                 borderBottom:'1px solid var(--glass-border,var(--border))',
@@ -667,7 +850,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                   <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
                     {selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}
                   </span>
-
                 </div>
               </div>
 
@@ -678,7 +860,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 </div>
               )}
 
-              {/* 24-hour timeline — scrollable, no ghost space at bottom */}
+              {/* 24-hour timeline */}
               <div ref={timelineRef} style={{
                 flex:1, overflowY:'auto', overscrollBehavior:'contain',
                 WebkitOverflowScrolling:'touch',
@@ -688,7 +870,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                   const isPast  = nowH >= 0 && h < nowH;
                   const isCurHr = nowH >= 0 && h === nowH;
                   const needlePct = isCurHr ? Math.round((nowM / 60) * 100) : 0;
-                  // Minimum 68px per row; grows to fit events
                   const rowH = Math.max(68, events.length * 80 + 20);
 
                   return (
@@ -705,7 +886,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         transition:'background .12s',
                       }}
                     >
-                      {/* Time label column */}
                       <div style={{
                         width:62, flexShrink:0,
                         paddingTop:13, paddingRight:10, paddingLeft:14,
@@ -714,12 +894,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         <span style={{
                           fontSize:10, fontWeight:700, lineHeight:1,
                           color: isCurHr ? 'var(--purple)' : 'var(--mid)',
-                          letterSpacing:'.3px', whiteSpace:'nowrap',
-                          display:'block',
+                          letterSpacing:'.3px', whiteSpace:'nowrap', display:'block',
                         }}>{fmtHour(h)}</span>
                       </div>
 
-                      {/* Lane */}
                       <div style={{
                         flex:1,
                         borderLeft:'1px solid var(--glass-border,rgba(255,255,255,.08))',
@@ -727,16 +905,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         padding: events.length ? '10px 14px 10px 12px' : '0 14px 0 12px',
                         display:'flex', flexDirection:'column', gap:6,
                       }}>
-                        {/* Hour rule line */}
                         <div style={{
                           position:'absolute', top:0, left:0, right:0, height:1,
                           background: isCurHr ? 'rgba(124,106,240,.45)' : 'rgba(255,255,255,.06)',
                           pointerEvents:'none',
                         }}/>
 
-
-
-                        {/* Current-time needle */}
                         {isCurHr && (
                           <div style={{
                             position:'absolute', top:`${needlePct}%`,
@@ -750,7 +924,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                           </div>
                         )}
 
-                        {/* Event blocks — stop clicks propagating so they don't re-open sheet with wrong time */}
                         {events.map(s => {
                           const startD = new Date(s.start_time);
                           const endD   = s.end_time ? new Date(s.end_time) : null;
@@ -766,16 +939,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                 borderRadius:10,
                                 background:'var(--surf)',
                                 border:`1px solid var(--glass-border,var(--border))`,
-                                borderLeftWidth:3,
-                                borderLeftColor:pColor,
-                                borderLeftStyle:'solid',
+                                borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
                                 boxShadow:'0 1px 6px rgba(0,0,0,.08)',
                                 opacity: s.is_completed ? 0.5 : 1,
-                                position:'relative',
-                                cursor:'default',
+                                position:'relative', cursor:'default',
                               }}
                             >
-                              {/* Title row */}
                               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                                 <TypeIcon type={s.type} />
                                 <span style={{
@@ -787,7 +956,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                   <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
                                 )}
                               </div>
-                              {/* Meta row */}
                               <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                                 <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
                                   {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
@@ -803,8 +971,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                   fontSize:9, fontWeight:800, color:pColor,
                                   background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
                                   padding:'1px 6px', borderRadius:5,
-                                  letterSpacing:'.4px', textTransform:'uppercase',
-                                  flexShrink:0,
+                                  letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
                                 }}>{s.priority}</span>
                               </div>
                             </div>
@@ -814,8 +981,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     </div>
                   );
                 })}
-
-                {/* Bottom padding — exactly one extra row height so 11 PM row has breathing room, no ghost space */}
                 <div style={{ height:32 }} />
               </div>
             </div>
@@ -825,7 +990,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {/* ── WEEKLY VIEW ── */}
         {viewMode === 'weekly' && (
           <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-            {/* 7-column day strip — tap once to select, tap selected to open Daily */}
             <div className="week-strip">
               {weekDays.map((d, i) => {
                 const isT   = d.toDateString() === today.toDateString();
@@ -837,7 +1001,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     className={`week-day-col${isSel ? ' sel' : ''}${isT ? ' today' : ''}`}
                     onClick={() => {
                       if (isSel) {
-                        // Second tap → drill into Daily view
                         setViewDate(new Date(d.getFullYear(), d.getMonth(), 1));
                         setSelectedDay(d.getDate());
                         setViewMode('daily');
@@ -854,8 +1017,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               })}
             </div>
 
-            {/* Scrollable events list — all 7 days always shown */}
-            <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', WebkitOverflowScrolling:'touch', padding:'0 16px 100px' }}>
+            {/* Scrollable events — no ghost padding */}
+            <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', WebkitOverflowScrolling:'touch', padding:'0 16px 16px' }}>
               {weekDays.map((d, i) => {
                 const ds   = toDateStr(d);
                 const hol  = holidays.get(ds);
@@ -864,7 +1027,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 const isSel = d.toDateString() === selectedDate.toDateString();
                 return (
                   <div key={i} style={{ marginTop: i === 0 ? 14 : 18 }}>
-                    {/* Day label row */}
                     <div style={{
                       display:'flex', alignItems:'center', gap:8, marginBottom:8,
                       paddingBottom:6,
@@ -883,7 +1045,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       >Daily →</button>
                     </div>
 
-                    {/* Holiday */}
                     {hol && (
                       <div className="week-holiday-row" style={{ marginBottom:6 }}>
                         <span className="whr-dot" />
@@ -892,7 +1053,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       </div>
                     )}
 
-                    {/* Events */}
                     {evts.length > 0 ? (
                       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                         {evts.map(s => <EventCard key={s.id} s={s} compact />)}
@@ -919,15 +1079,14 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding: '16px 14px 100px' }}>
+          <div style={{ padding: '16px 14px 16px' }}>
             <div className="year-grid">
               {Array.from({ length: 12 }, (_, mo) => {
-                const cnt    = monthCounts[mo];
+                const cnt        = monthCounts[mo];
                 const isThisMon  = mo === today.getMonth() && year === today.getFullYear();
-                const isSel  = mo === month;
-                const daysIn = new Date(year, mo + 1, 0).getDate();
-                const firstD = new Date(year, mo, 1).getDay();
-                // Mini calendar dots
+                const isSel      = mo === month;
+                const daysIn     = new Date(year, mo + 1, 0).getDate();
+                const firstD     = new Date(year, mo, 1).getDay();
                 const miniDayMap: Record<number, number> = {};
                 schedules.filter(s => {
                   const d = new Date(s.start_time);
@@ -945,7 +1104,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       <span className="ymc-name">{MONTHS_SH[mo]}</span>
                       {cnt > 0 && <span className="ymc-count">{cnt}</span>}
                     </div>
-                    {/* Mini 7-col grid */}
                     <div className="ymc-grid">
                       {Array.from({ length: firstD }).map((_, i) => <div key={`e${i}`} className="ymc-cell" />)}
                       {Array.from({ length: daysIn }, (_, i) => {
@@ -968,7 +1126,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
       </div>{/* end scroll-body */}
 
-      {/* Add Schedule sheet */}
       <AddScheduleSheet
         open={sheetOpen}
         selectedDate={selectedDate}
@@ -1024,19 +1181,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
         .cal-day.active .dot { background:rgba(255,255,255,.7) !important; }
 
-        /* ════ DAY PANEL (shared: monthly + daily) ════ */
-        .day-panel { padding:14px 16px 100px; }
-        .day-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .day-panel-title { font-size:15px; font-weight:700; color:var(--dark); }
-        .day-count { font-size:12px; color:var(--mid); }
-        .day-add-inline { padding:6px 14px; background:var(--gradient); border:none; border-radius:20px; color:#fff; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
-
-        /* Daily heading */
-        .daily-hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
-        .daily-dow { font-size:12px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.8px; }
-        .daily-date { font-size:20px; font-weight:800; color:var(--dark); letter-spacing:-.3px; margin-top:2px; }
-        .today-indicator { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--purple); margin-bottom:12px; }
-        .today-dot { width:7px; height:7px; border-radius:50%; background:var(--purple); flex-shrink:0; box-shadow:0 0 6px var(--purple); }
+        /* ════ DAY PANEL ════ */
+        .day-panel { padding:14px 16px 16px; }
 
         /* ════ WEEKLY ════ */
         .week-strip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 12px 0; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
@@ -1048,12 +1194,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .wdc-num  { font-size:15px; font-weight:600; color:var(--dark); line-height:1; }
         .wdc-cnt  { font-size:9px; font-weight:700; color:#fff; background:var(--purple); border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; }
 
-        .week-day-group { margin-top:18px; }
-        .week-day-label { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-        .wdl-name { font-size:12px; font-weight:700; color:var(--dark); }
-        .wdl-date { font-size:11px; color:var(--mid); }
-        .week-day-label.today .wdl-name { color:var(--purple); }
-        .today-pip { width:6px; height:6px; border-radius:50%; background:var(--purple); flex-shrink:0; }
         .week-holiday-row { display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.18); border-radius:10px; margin-bottom:6px; }
         .whr-dot { width:6px; height:6px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
         .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
@@ -1082,64 +1222,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .hol-name { font-size:13px; font-weight:700; color:var(--coral,#FF6B8A); }
         .hol-en   { font-size:10px; color:var(--mid); margin-top:1px; }
         .hol-tag  { font-size:10px; font-weight:700; color:var(--coral,#FF6B8A); background:rgba(255,107,107,.15); padding:3px 8px; border-radius:20px; white-space:nowrap; }
-
-        .event-list { display:flex; flex-direction:column; gap:8px; }
-        .event-item { background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-radius:14px; padding:14px 14px 14px 10px; display:flex; align-items:center; gap:10px; border:1px solid var(--glass-border,var(--border)); }
-        .event-item.compact { padding:10px 12px 10px 10px; border-radius:12px; }
-        .event-item.done { opacity:.45; }
-        .event-bar  { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; min-height:28px; }
-        .event-body { flex:1; min-width:0; }
-        .event-title { font-size:14px; font-weight:600; color:var(--dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .event-item.compact .event-title { font-size:13px; }
-        .event-meta  { font-size:11px; color:var(--mid); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .done-badge  { font-size:14px; color:var(--mint,#2DD4BF); font-weight:700; flex-shrink:0; }
-
-        .day-empty { text-align:center; padding:32px 0; color:var(--mid); font-size:13px; }
-        .empty-icon { margin:0 auto 12px; opacity:.35; display:flex; justify-content:center; }
-        .day-add-cta { display:inline-block; margin-top:12px; padding:10px 24px; background:var(--gradient); border-radius:12px; color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(124,106,240,.3); }
-        .no-country-hint { text-align:center; margin-top:16px; font-size:12px; color:var(--mid); }
-        .no-country-hint a { color:var(--purple); text-decoration:none; font-weight:600; }
-
-        /* ════ DAILY TIMELINE ════ */
-        .tl-day-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 16px 12px; border-bottom:1px solid var(--glass-border,var(--border)); background:var(--glass-bg2,rgba(255,255,255,.03)); }
-        .tl-day-left { display:flex; flex-direction:column; }
-        .tl-dow  { font-size:11px; font-weight:800; color:var(--purple); text-transform:uppercase; letter-spacing:1px; }
-        .tl-date { font-size:22px; font-weight:900; color:var(--dark); letter-spacing:-.4px; margin-top:2px; }
-        .tl-today-badge { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:var(--purple); background:rgba(124,106,240,.12); border:1px solid rgba(124,106,240,.22); padding:2px 9px; border-radius:20px; }
-        .tl-today-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); box-shadow:0 0 5px var(--purple); flex-shrink:0; }
-        .tl-count { font-size:11px; color:var(--mid); font-weight:600; }
-
-        /* Timeline scroll area */
-        .tl-wrap { display:flex; flex-direction:column; padding:0 0 8px; }
-
-        /* Each hour row */
-        .tl-row { display:flex; align-items:flex-start; min-height:52px; position:relative; }
-        .tl-row-past .tl-time-lbl { opacity:.35; }
-        .tl-row-past .tl-line { opacity:.25; }
-
-        /* Time label column */
-        .tl-time { width:58px; flex-shrink:0; padding:0 10px 0 14px; padding-top:10px; text-align:right; }
-        .tl-time-lbl { font-size:10px; font-weight:700; color:var(--mid); letter-spacing:.2px; white-space:nowrap; display:block; line-height:1; }
-        .tl-time-now { color:var(--purple) !important; font-weight:800; }
-
-        /* Lane column */
-        .tl-lane { flex:1; position:relative; border-left:1px solid var(--glass-border,rgba(255,255,255,.07)); min-height:52px; padding:8px 12px 8px 14px; }
-        .tl-line { position:absolute; top:0; left:0; right:0; height:1px; background:var(--glass-border,rgba(255,255,255,.07)); }
-        .tl-line-now { background:var(--purple) !important; opacity:.5; }
-        .tl-row-now .tl-lane { background:rgba(124,106,240,.03); }
-
-        /* Current time needle */
-        .tl-needle { position:absolute; left:-1px; right:0; display:flex; align-items:center; z-index:2; pointer-events:none; }
-        .tl-needle-dot { width:8px; height:8px; border-radius:50%; background:var(--purple); flex-shrink:0; margin-left:-4px; box-shadow:0 0 6px var(--purple); }
-        .tl-needle-line { flex:1; height:1.5px; background:var(--purple); opacity:.7; }
-
-        /* Event blocks inside a lane */
-        .tl-events { display:flex; flex-direction:column; gap:5px; }
-        .tl-event { position:relative; padding:8px 10px 8px 12px; border-radius:10px; border-left:3px solid var(--purple); background:var(--surf); border-top:1px solid var(--glass-border,var(--border)); border-right:1px solid var(--glass-border,var(--border)); border-bottom:1px solid var(--glass-border,var(--border)); display:flex; flex-direction:column; gap:3px; box-shadow:0 1px 6px rgba(0,0,0,.08); }
-        .tl-event.tl-done { opacity:.45; }
-        .tl-event-title { font-size:13px; font-weight:700; color:var(--dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .tl-event-meta  { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:10px; color:var(--mid); line-height:1.4; }
-        .tl-check { position:absolute; top:8px; right:10px; font-size:12px; color:var(--mint,#2DD4BF); font-weight:800; }
       `}</style>
     </div>
   );
