@@ -247,6 +247,32 @@ function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Dat
 }
 
 
+// ── DOW header — aligned with CalendarTrack cells ─────────────────────────────
+function CalDowHeader() {
+  const ref   = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const measure = () => setW(el.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el); return () => ro.disconnect();
+  }, []);
+  const GAP = 3, PAD = 10;
+  const cellSize = w > 0 ? Math.floor((w - PAD*2 - GAP*6) / 7) : 0;
+  return (
+    <div ref={ref} style={{ display:'flex', gap:GAP, padding:`6px ${PAD}px 2px`, background:'var(--glass-bg2,var(--surf))' }}>
+      {DAYS_SHORT.map(d => (
+        <div key={d} style={{
+          width: cellSize, flexShrink:0,
+          textAlign:'center', fontSize:10, fontWeight:700,
+          color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.5px',
+        }}>{d}</div>
+      ))}
+    </div>
+  );
+}
+
 // ── Fluid swipe calendar track ────────────────────────────────────────────────
 interface CalTrackProps {
   year: number; month: number;
@@ -262,66 +288,134 @@ function CalendarTrack({
   dayMapFn, holidaysFn, isToday,
   onDayClick, onMonthChange,
 }: CalTrackProps) {
+  const wrapRef  = useRef<HTMLDivElement>(null);
   const startX   = useRef<number | null>(null);
   const startY   = useRef<number | null>(null);
   const busy     = useRef(false);
-  const [offsetX, setOffsetX] = useState(0);   // live drag offset px
-  const [dir,     setDir]     = useState<'l'|'r'|null>(null); // swipe direction for commit animation
-  const [axis,    setAxis]    = useState<'h'|'v'|null>(null);
+  const [containerW, setContainerW] = useState(0);
+  const [offsetX,    setOffsetX]    = useState(0);
+  const [dir,        setDir]        = useState<'l'|'r'|null>(null);
+  const [axis,       setAxis]       = useState<'h'|'v'|null>(null);
 
-  // After month changes, clear dir so animation only plays once
+  // Measure container width reliably
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setContainerW(el.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Clear animation flag after month change
   const prevKey = useRef(`${year}-${month}`);
   useEffect(() => {
     const key = `${year}-${month}`;
     if (key !== prevKey.current) {
       prevKey.current = key;
-      const t = setTimeout(() => { setDir(null); busy.current = false; }, 300);
+      const t = setTimeout(() => { setDir(null); busy.current = false; }, 320);
       return () => clearTimeout(t);
     }
   }, [year, month]);
 
-  // Build a single month's grid cells (no wrapper div — caller wraps)
-  function cells(y: number, mo: number) {
+  // Compute cell size from container width
+  const GAP      = 3;
+  const PAD      = 10; // each side
+  const usable   = containerW - PAD * 2;
+  const cellSize = containerW > 0 ? Math.floor((usable - GAP * 6) / 7) : 0;
+
+  function renderGrid(y: number, mo: number) {
     const days  = new Date(y, mo + 1, 0).getDate();
     const first = new Date(y, mo, 1).getDay();
     const dMap  = dayMapFn(y, mo);
     const hMap  = holidaysFn(y, mo);
-    return (
-      <>
-        {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} />)}
-        {Array.from({ length: days }).map((_, i) => {
-          const d       = i + 1;
-          const dateStr = toDateStr(new Date(y, mo, d));
-          const hol     = hMap.get(dateStr);
-          const evts    = dMap[d] ?? [];
-          const active  = y === year && mo === month && d === selectedDay;
-          const todayD  = isToday(d, y, mo);
-          return (
-            <button
-              key={d}
-              className={[
-                'cal-day',
-                active  ? 'active'  : '',
-                todayD  ? 'today'   : '',
-                hol     ? 'holiday' : '',
-              ].filter(Boolean).join(' ')}
-              onClick={() => { if (y === year && mo === month) onDayClick(d); }}
-              title={hol?.localName}>
-              <span className="day-num">{d}</span>
-              <div className="day-indicators">
-                {hol && <span className="h-dot" />}
-                {!hol && evts[0] && <span className="dot" style={{ background: PRIORITY_COLORS[evts[0].priority] }} />}
-                {!hol && evts[1] && <span className="dot" style={{ background: PRIORITY_COLORS[evts[1].priority] }} />}
-              </div>
-            </button>
-          );
-        })}
-      </>
-    );
+
+    const items: React.ReactNode[] = [];
+    // Empty cells for offset
+    for (let i = 0; i < first; i++) {
+      items.push(<div key={`e${i}`} style={{ width: cellSize, height: cellSize }} />);
+    }
+    // Day cells
+    for (let i = 0; i < days; i++) {
+      const d       = i + 1;
+      const dateStr = toDateStr(new Date(y, mo, d));
+      const hol     = hMap.get(dateStr);
+      const evts    = dMap[d] ?? [];
+      const active  = y === year && mo === month && d === selectedDay;
+      const todayD  = isToday(d, y, mo);
+
+      // Build visual state styles inline — no CSS class size dependency
+      const cellBg  = active  ? 'var(--purple)'
+                    : todayD  ? 'rgba(124,106,240,.13)'
+                    : hol     ? 'rgba(255,107,107,.07)'
+                    : 'transparent';
+      const cellBox = todayD && !active ? '0 0 0 2px var(--purple)' : 'none';
+      const numCol  = active  ? '#fff'
+                    : todayD  ? 'var(--purple)'
+                    : hol     ? 'var(--coral,#FF6B8A)'
+                    : 'var(--dark)';
+      const numW    = active || todayD ? 800 : hol ? 700 : 500;
+
+      items.push(
+        <button
+          key={d}
+          onClick={() => { if (y === year && mo === month) onDayClick(d); }}
+          title={hol?.localName}
+          style={{
+            width: cellSize, height: cellSize,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 2,
+            borderRadius: Math.round(cellSize * 0.28),
+            background: cellBg,
+            boxShadow: cellBox,
+            border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit',
+            padding: 0,
+            flexShrink: 0,
+            transition: 'background .12s',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <span style={{
+            fontSize: Math.max(11, Math.round(cellSize * 0.34)),
+            fontWeight: numW,
+            color: numCol,
+            lineHeight: 1,
+            letterSpacing: active ? '-.3px' : '0',
+          }}>{d}</span>
+          {/* Dot indicators */}
+          {(hol || evts.length > 0) && (
+            <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 5 }}>
+              {hol && (
+                <span style={{
+                  width: active ? 4 : 5, height: active ? 4 : 5,
+                  borderRadius: '50%',
+                  background: active ? 'rgba(255,255,255,.85)' : 'var(--coral,#FF6B8A)',
+                  flexShrink: 0,
+                }} />
+              )}
+              {!hol && evts[0] && (
+                <span style={{
+                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
+                  background: active ? 'rgba(255,255,255,.75)' : PRIORITY_COLORS[evts[0].priority],
+                }} />
+              )}
+              {!hol && evts[1] && (
+                <span style={{
+                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
+                  background: active ? 'rgba(255,255,255,.55)' : PRIORITY_COLORS[evts[1].priority],
+                }} />
+              )}
+            </div>
+          )}
+        </button>
+      );
+    }
+    return items;
   }
 
-  const W = typeof window !== 'undefined' ? window.innerWidth : 390;
-  const THRESH = W * 0.28;
+  const THRESH = (containerW || 390) * 0.28;
 
   function onTS(e: React.TouchEvent) {
     if (busy.current) return;
@@ -340,8 +434,8 @@ function CalendarTrack({
     }
     if (axis === 'v') return;
     e.preventDefault();
-    const cap = W * 0.55, r = 0.32;
-    setOffsetX(Math.abs(dx) > cap ? Math.sign(dx)*(cap + (Math.abs(dx)-cap)*r) : dx);
+    const cap = (containerW || 390) * 0.55, r = 0.32;
+    setOffsetX(Math.abs(dx) > cap ? Math.sign(dx) * (cap + (Math.abs(dx) - cap) * r) : dx);
   }
   function onTE() {
     if (!startX.current) return;
@@ -351,31 +445,41 @@ function CalendarTrack({
     if (snap !== 0) {
       busy.current = true;
       setDir(snap < 0 ? 'r' : 'l');
-      setOffsetX(0);
-      setAxis(null);
-      onMonthChange(snap as -1|1);
+      setOffsetX(0); setAxis(null);
+      onMonthChange(snap as -1 | 1);
     } else {
       setOffsetX(0); setAxis(null);
     }
   }
 
-  // The grid gets a translateX during drag, or a CSS slide-in animation on month change
-  const gridStyle: React.CSSProperties = offsetX !== 0
+  const gridAnim: React.CSSProperties = offsetX !== 0
     ? { transform: `translateX(${offsetX}px)`, transition: 'none', willChange: 'transform' }
     : dir === 'l' ? { animation: 'calSlideL 280ms cubic-bezier(.25,.46,.45,.94) both' }
     : dir === 'r' ? { animation: 'calSlideR 280ms cubic-bezier(.25,.46,.45,.94) both' }
     : {};
 
+  // Grid container — use flexbox wrap so no CSS grid 1fr confusion
+  const gridStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: GAP,
+    padding: `4px ${PAD}px 6px`,
+    ...gridAnim,
+  };
+
   return (
     <div
-      style={{ overflow:'hidden' }}
+      ref={wrapRef}
+      style={{ overflow: 'hidden', touchAction: 'pan-y' }}
       onTouchStart={onTS}
       onTouchMove={onTM}
       onTouchEnd={onTE}
     >
-      <div key={`${year}-${month}`} className="cal-grid" style={gridStyle}>
-        {cells(year, month)}
-      </div>
+      {containerW > 0 && (
+        <div key={`${year}-${month}`} style={gridStyle}>
+          {renderGrid(year, month)}
+        </div>
+      )}
     </div>
   );
 }
@@ -823,10 +927,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
             {/* ── Calendar grid ── */}
             <div style={{ flexShrink:0, paddingTop:10 }}>
-              {/* Day-of-week header — outside swipe container so it never moves */}
-              <div className="cal-grid" style={{ paddingBottom:2 }}>
-                {DAYS_SHORT.map(dn => <div key={dn} className="dow">{dn}</div>)}
-              </div>
+              {/* Day-of-week header — uses CalDowHeader to stay aligned with CalendarTrack */}
+              <CalDowHeader />
               {/* Swipe track */}
               <CalendarTrack
                 year={year}
@@ -1365,12 +1467,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; position:relative; }
 
         /* ════ MONTHLY ════ */
-        /* ── Calendar grid ── */
-        @keyframes calSlideL { from{transform:translateX(100%);opacity:.3} to{transform:translateX(0);opacity:1} }
-        @keyframes calSlideR { from{transform:translateX(-100%);opacity:.3} to{transform:translateX(0);opacity:1} }
-        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:0 10px 6px; background:var(--glass-bg2,var(--surf)); }
-        .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:5px 0 3px; }
-        .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; }
+        /* ── Calendar grid keyframes ── */
+        @keyframes calSlideL { from{transform:translateX(105%);opacity:.25} to{transform:translateX(0);opacity:1} }
+        @keyframes calSlideR { from{transform:translateX(-105%);opacity:.25} to{transform:translateX(0);opacity:1} }
+        .cal-day { width:100%; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; min-height:0; }
         .cal-day:active { background:var(--pur-lt); }
         .cal-day.active { background:var(--purple) !important; }
         .cal-day.today:not(.active) { box-shadow:0 0 0 2px var(--purple); background:rgba(124,106,240,.10) !important; }
