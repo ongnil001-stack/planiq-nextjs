@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,13 +41,38 @@ function scoreColor(s: number) {
 function scoreLabel(s: number) {
   return s >= 80 ? 'Overloaded' : s >= 60 ? 'Moderate' : s >= 30 ? 'On Track' : 'Light';
 }
-function typeIcon(type: string) {
-  return type === 'priority' ? '🎯' : type === 'conflict' ? '⚠️' : type === 'suggestion' ? '💡' : '✅';
+function TypeIconSVG({ type }: { type: string }) {
+  if (type === 'priority') return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+    </svg>
+  );
+  if (type === 'conflict') return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 4L3 19h18L12 4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+      <path d="M12 10v4M12 17v.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+  if (type === 'suggestion') return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 3C9.24 3 7 5.24 7 8c0 1.85 1 3.47 2.5 4.37V15h5v-2.63C16 11.47 17 9.85 17 8c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+      <path d="M9.5 19h5M10.5 21h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+  // win / default — check circle
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+      <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SectionHeader({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
       <div style={{
@@ -54,7 +80,7 @@ function SectionHeader({ icon, title, sub }: { icon: string; title: string; sub?
         background:'var(--pur-lt, rgba(124,106,240,.15))',
         border:'1px solid rgba(124,106,240,.22)',
         display:'flex', alignItems:'center', justifyContent:'center',
-        fontSize:16,
+        color:'var(--purple)',
       }}>{icon}</div>
       <div>
         <p style={{ margin:0, fontSize:13, fontWeight:800, color:'var(--dark)', letterSpacing:'-.1px' }}>{title}</p>
@@ -396,7 +422,11 @@ export default function AIAnalysisPage() {
             {/* ── 1. TODAY'S INSIGHT ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>1 · Today&apos;s Insight</p>
-              <SectionHeader icon="🌅" title="Today's Insight"
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="13" r="5" stroke="currentColor" strokeWidth="1.8"/>
+                  <path d="M12 3v3M4.22 6.22l2.12 2.12M20 6.22l-2.12 2.12M2 13h3M19 13h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>} title="Today's Insight"
                 sub={new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })} />
 
               {todayBrief ? (
@@ -407,7 +437,7 @@ export default function AIAnalysisPage() {
                   {todayBrief.items.map((item, i) => (
                     <Card key={i} accent={item.accent}>
                       <div style={{ display:'flex', gap:10 }}>
-                        <span style={{ fontSize:16, lineHeight:1, marginTop:1 }}>{typeIcon(item.type)}</span>
+                        <span style={{ display:"flex", alignItems:"center", justifyContent:"center", color: item.accent ?? "var(--purple)", flexShrink:0, marginTop:1 }}><TypeIconSVG type={item.type} /></span>
                         <div style={{ flex:1, minWidth:0 }}>
                           <p style={{ margin:0, fontSize:13, fontWeight:700, color:item.accent, marginBottom:4 }}>{item.title}</p>
                           <p style={{ margin:0, fontSize:12, color:'var(--mid)', lineHeight:1.6 }}>{item.body}</p>
@@ -428,7 +458,10 @@ export default function AIAnalysisPage() {
             {/* ── 2. SCHEDULE RISKS ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>2 · Schedule Risks</p>
-              <SectionHeader icon="⚠️" title="Schedule Risks"
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 4L3 19h18L12 4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                  <path d="M12 10v4M12 16.5v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>} title="Schedule Risks"
                 sub={weeklyResult?.issues?.length ? `${weeklyResult.issues.length} issue${weeklyResult.issues.length !== 1 ? 's' : ''} detected` : 'No issues detected'} />
 
               {weeklyResult?.issues?.length ? (
@@ -457,7 +490,12 @@ export default function AIAnalysisPage() {
               ) : (
                 <Card>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ fontSize:20 }}>✅</span>
+                    <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--mint,#2DD4BF)' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                        <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
                     <p style={{ margin:0, fontSize:13, color:'var(--mid)' }}>
                       {weeklyResult ? 'No schedule risks detected — great planning!' : 'Run an analysis to check for schedule conflicts and overload'}
                     </p>
@@ -469,7 +507,11 @@ export default function AIAnalysisPage() {
             {/* ── 3. RECOMMENDED ACTIONS ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>3 · Recommended Actions</p>
-              <SectionHeader icon="💡" title="Recommended Actions"
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                  <path d="M16.24 7.76l-3.18 6.36-6.36 3.18 3.18-6.36 6.36-3.18z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                </svg>} title="Recommended Actions"
                 sub={weeklyResult?.recommendations?.length ? `${weeklyResult.recommendations.length} suggestions` : 'Powered by Claude AI'} />
 
               {weeklyResult?.recommendations?.length ? (
@@ -481,7 +523,11 @@ export default function AIAnalysisPage() {
                         background:'var(--pur-lt, rgba(124,106,240,.15))',
                         display:'flex', alignItems:'center', justifyContent:'center',
                         fontSize:16,
-                      }}>{rec.icon}</div>
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ margin:0, fontSize:13, fontWeight:700, color:'var(--dark)', marginBottom:4 }}>{rec.title}</p>
                         <p style={{ margin:0, fontSize:12, color:'var(--mid)', lineHeight:1.6 }}>{rec.detail}</p>
@@ -501,7 +547,13 @@ export default function AIAnalysisPage() {
             {/* ── 4. THIS WEEK'S FOCUS ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>4 · This Week&apos;s Focus</p>
-              <SectionHeader icon="📅" title="This Week's Focus"
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/>
+                  <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  <circle cx="8" cy="15" r="1" fill="currentColor"/>
+                  <circle cx="12" cy="15" r="1" fill="currentColor"/>
+                  <circle cx="16" cy="15" r="1" fill="currentColor"/>
+                </svg>} title="This Week's Focus"
                 sub={(() => { const n=new Date(); const s=new Date(n); s.setDate(n.getDate()-n.getDay()); const e=new Date(s); e.setDate(s.getDate()+6); return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${e.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`; })()} />
 
               {weekBrief ? (
@@ -512,7 +564,7 @@ export default function AIAnalysisPage() {
                   {weekBrief.items.map((item, i) => (
                     <Card key={i} accent={item.accent}>
                       <div style={{ display:'flex', gap:10 }}>
-                        <span style={{ fontSize:16, lineHeight:1, marginTop:1 }}>{typeIcon(item.type)}</span>
+                        <span style={{ display:"flex", alignItems:"center", justifyContent:"center", color: item.accent ?? "var(--purple)", flexShrink:0, marginTop:1 }}><TypeIconSVG type={item.type} /></span>
                         <div style={{ flex:1, minWidth:0 }}>
                           <p style={{ margin:0, fontSize:13, fontWeight:700, color:item.accent, marginBottom:4 }}>{item.title}</p>
                           <p style={{ margin:0, fontSize:12, color:'var(--mid)', lineHeight:1.6 }}>{item.body}</p>
@@ -533,7 +585,10 @@ export default function AIAnalysisPage() {
             {/* ── 5. PRODUCTIVITY NOTES ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>5 · Productivity Notes</p>
-              <SectionHeader icon="📊" title="Productivity Notes"
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 18L9 11l4 4 3-4 4 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4 21h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>} title="Productivity Notes"
                 sub="Workload score + AI summary" />
 
               {weeklyResult ? (

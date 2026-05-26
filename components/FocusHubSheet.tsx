@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Schedule } from '@/types/database';
 import { formatTime } from '@/lib/utils';
+import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ViewMode = 'today' | 'week';
@@ -65,7 +66,7 @@ function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResul
   } else {
     items.push({
       type: 'win', accent: '#00C896',
-      title: mode === 'today' ? 'All clear today! 🎉' : 'Clean week ahead!',
+      title: mode === 'today' ? 'All clear today' : 'Clean week ahead',
       body: mode === 'today' ? 'No pending items. Great time to plan ahead or take a breather.' : "No pending items this week. You're on top of things.",
     });
   }
@@ -241,6 +242,12 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     setMarking(null);
   }
 
+  async function deleteSchedule(id: string) {
+    const supabase = createClient();
+    await supabase.from('schedules').delete().eq('id', id);
+    setSchedules(prev => prev.filter(s => s.id !== id));
+  }
+
   const now          = new Date(), today = toDateStr(now);
   const todayItems   = schedules.filter(s => toDateStr(new Date(s.start_time)) === today)
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
@@ -400,7 +407,22 @@ export default function FocusHubSheet({ open, onClose }: Props) {
               {/* AI Brief */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <p style={{ ...T_SEC, marginBottom: 0 }}>
-                  {aiError ? '⚠ AI Brief (offline mode)' : '✦ AI Brief'}
+                  {aiError ? (
+                  <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2L12 6M12 18L12 22M4.93 4.93L7.76 7.76M16.24 16.24L19.07 19.07M2 12L6 12M18 12L22 12M4.93 19.07L7.76 16.24M16.24 7.76L19.07 4.93" stroke="rgba(255,200,0,.8)" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                    AI Brief · Offline
+                  </span>
+                ) : (
+                  <span style={{ display:'flex', alignItems:'center', gap:5 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3C12 3 9 7 9 10a3 3 0 006 0c0-3-3-7-3-7z" stroke="var(--purple)" strokeWidth="1.7" strokeLinejoin="round"/>
+                      <path d="M12 13v4M9 20h6" stroke="var(--purple)" strokeWidth="1.7" strokeLinecap="round"/>
+                    </svg>
+                    AI Brief
+                  </span>
+                )}
                 </p>
                 <button
                   onClick={() => fetchAiBrief(schedules, mode)}
@@ -427,7 +449,28 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 <div key={i} style={AI_CARD(item.accent)}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                     <span style={{ fontSize: '16px', lineHeight: 1, marginTop: '1px' }}>
-                      {item.type === 'priority' ? '🎯' : item.type === 'conflict' ? '⚠️' : item.type === 'suggestion' ? '💡' : '✅'}
+                      {item.type === 'priority' ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                        <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8"/>
+                        <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                      </svg>
+                    ) : item.type === 'conflict' ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 4L3 19h18L12 4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                        <path d="M12 10v4M12 16.5v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
+                    ) : item.type === 'suggestion' ? (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3C9.24 3 7 5.24 7 8c0 1.85 1 3.47 2.5 4.37V15h5v-2.63C16 11.47 17 9.85 17 8c0-2.76-2.24-5-5-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                        <path d="M9.5 19h5M10.5 21h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                        <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={AI_TITLE(item.accent)}>{item.title}</p>
@@ -444,40 +487,47 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                     {mode === 'today' ? "Today's Items" : 'Pending This Week'}
                   </p>
                   {displayItems.slice(0, 8).map(s => (
-                    <div key={s.id} style={S_ITEM}>
-                      <div style={{
-                        width: '3px', height: '36px', borderRadius: '2px', flexShrink: 0,
-                        background: PRIORITY_COLOR[s.priority] ?? 'var(--purple)',
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={S_TITLE(s.is_completed)}>{s.title}</p>
-                        <p style={S_META}>{formatTime(s.start_time)}<span style={{ marginLeft: '6px', opacity: .7 }}>{s.type}</span></p>
-                      </div>
-                      {!s.is_completed ? (
-                        <button onClick={() => markDone(s.id)} disabled={marking === s.id}
-                          style={{
-                            flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
-                            border: '1.5px solid rgba(0,200,150,0.40)',
-                            background: marking === s.id ? 'rgba(0,200,150,0.25)' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit',
-                          }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                            <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      ) : (
+                    <SwipeDeleteRow
+                      key={s.id}
+                      onDelete={() => deleteSchedule(s.id)}
+                      undoLabel={`"${s.title}" deleted`}
+                      borderRadius={10}
+                    >
+                      <div style={S_ITEM}>
                         <div style={{
-                          flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
-                          background: 'rgba(0,200,150,0.20)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                            <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
+                          width: '3px', height: '36px', borderRadius: '2px', flexShrink: 0,
+                          background: PRIORITY_COLOR[s.priority] ?? 'var(--purple)',
+                        }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={S_TITLE(s.is_completed)}>{s.title}</p>
+                          <p style={S_META}>{formatTime(s.start_time)}<span style={{ marginLeft: '6px', opacity: .7 }}>{s.type}</span></p>
                         </div>
-                      )}
-                    </div>
+                        {!s.is_completed ? (
+                          <button onClick={() => markDone(s.id)} disabled={marking === s.id}
+                            style={{
+                              flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
+                              border: '1.5px solid rgba(0,200,150,0.40)',
+                              background: marking === s.id ? 'rgba(0,200,150,0.25)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit',
+                            }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                              <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        ) : (
+                          <div style={{
+                            flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
+                            background: 'rgba(0,200,150,0.20)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                              <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </SwipeDeleteRow>
                   ))}
                   {displayItems.length > 8 && (
                     <p style={{ fontSize: '12px', color: 'var(--lite)', textAlign: 'center', marginTop: '4px' }}>

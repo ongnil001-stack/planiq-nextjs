@@ -1,4 +1,5 @@
 'use client';
+import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -159,6 +160,12 @@ export default function ProgressPage() {
   const card: React.CSSProperties = { background:'var(--surf)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,.07)', marginBottom:12 };
   const cardHdr: React.CSSProperties = { padding:'13px 16px 10px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:7 };
   const sectionTitle: React.CSSProperties = { fontSize:13, fontWeight:800, color:'var(--dark)' };
+
+  async function deleteCompleted(id: string) {
+    const supabase = createClient();
+    await supabase.from('schedules').delete().eq('id', id);
+    setCompletedList(prev => prev.filter(s => s.id !== id));
+  }
 
   return (
     <div style={{ height:'100dvh', overflow:'hidden', background:'var(--bg)', display:'flex', flexDirection:'column', fontFamily:'inherit', color:'var(--dark)' }}>
@@ -409,16 +416,23 @@ export default function ProgressPage() {
             {completedList.length === 0
               ? <div style={{ padding:'16px', fontSize:12, color:'var(--mid)', textAlign:'center', opacity:.6 }}>No completed tasks yet in the last 28 days.</div>
               : completedList.slice(0,8).map((s, i) => (
-                <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderBottom: i < Math.min(completedList.length,8)-1 ? '1px solid var(--border)' : 'none', opacity:.85 }}>
-                  <div style={{ width:20, height:20, borderRadius:'50%', background:'rgba(45,212,191,.12)', border:'1px solid rgba(45,212,191,.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <svg width="9" height="7" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <SwipeDeleteRow
+                  key={s.id}
+                  onDelete={() => deleteCompleted(s.id)}
+                  undoLabel={`"${s.title}" deleted`}
+                  borderRadius={0}
+                >
+                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderBottom: i < Math.min(completedList.length,8)-1 ? '1px solid var(--border)' : 'none', opacity:.85, background:'var(--surf)' }}>
+                    <div style={{ width:20, height:20, borderRadius:'50%', background:'rgba(45,212,191,.12)', border:'1px solid rgba(45,212,191,.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="9" height="7" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textDecoration:'line-through', opacity:.7 }}>{s.title}</div>
+                      <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
+                    </div>
+                    <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textDecoration:'line-through', opacity:.7 }}>{s.title}</div>
-                    <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
-                  </div>
-                  <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
-                </div>
+                </SwipeDeleteRow>
               ))
             }
           </div>
