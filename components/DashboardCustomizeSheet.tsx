@@ -66,6 +66,29 @@ interface Props {
   onSaved: () => void;
 }
 
+
+// Per-card icon bg/border tints — avoids color-mix(var()) which silently fails
+const CARD_ICON_BG: Record<string, string> = {
+  todayCard:        'rgba(124,106,240,.15)',
+  quickStats:       'rgba(0,198,255,.15)',
+  pinnedShortcuts:  'rgba(255,184,0,.15)',
+  performanceCard:  'rgba(0,220,160,.15)',
+  weeklySchedule:   'rgba(124,106,240,.15)',
+  workloadBalance:  'rgba(255,184,0,.15)',
+  aiPriorities:     'rgba(255,80,80,.15)',
+  upcomingTasks:    'rgba(160,160,180,.15)',
+};
+const CARD_ICON_BORDER: Record<string, string> = {
+  todayCard:        'rgba(124,106,240,.30)',
+  quickStats:       'rgba(0,198,255,.30)',
+  pinnedShortcuts:  'rgba(255,184,0,.30)',
+  performanceCard:  'rgba(0,220,160,.30)',
+  weeklySchedule:   'rgba(124,106,240,.30)',
+  workloadBalance:  'rgba(255,184,0,.30)',
+  aiPriorities:     'rgba(255,80,80,.30)',
+  upcomingTasks:    'rgba(160,160,180,.30)',
+};
+
 export default function DashboardCustomizeSheet({ open, onClose, onSaved }: Props) {
   const [prefs,       setPrefs]       = useState<DashboardFullPrefs | null>(null);
   const [hasChanges,  setHasChanges]  = useState(false);
@@ -333,8 +356,8 @@ export default function DashboardCustomizeSheet({ open, onClose, onSaved }: Prop
                     <div style={{
                       width:36, height:36, borderRadius:10, flexShrink:0,
                       display:'flex', alignItems:'center', justifyContent:'center',
-                      background: isOn ? `color-mix(in srgb, ${color} 15%, transparent)` : 'rgba(255,255,255,.04)',
-                      border:`1px solid ${isOn ? `color-mix(in srgb, ${color} 30%, transparent)` : 'rgba(255,255,255,.06)'}`,
+                      background: isOn ? (CARD_ICON_BG[card.key] ?? 'rgba(124,106,240,.15)') : 'rgba(255,255,255,.04)',
+                      border:`1px solid ${isOn ? (CARD_ICON_BORDER[card.key] ?? 'rgba(124,106,240,.30)') : 'rgba(255,255,255,.06)'}`,
                       transition:'all .15s',
                     }}>
                       <Ico d={CARD_ICONS[card.key]} size={15} stroke={isOn ? color : 'var(--mid)'} sw={1.5}/>
