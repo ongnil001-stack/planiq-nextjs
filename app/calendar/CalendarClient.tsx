@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Schedule } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/holidays';
@@ -187,6 +187,16 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const selectedHol       = holidays.get(selectedDateStr) ?? null;
   const countryInfo       = COUNTRIES.find(c => c.code === countryCode);
   const isToday           = (d: number) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+  const timelineRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll timeline to current hour (or 8 AM) when daily view activates
+  useEffect(() => {
+    if (viewMode !== 'daily' || !timelineRef.current) return;
+    const hourHeight = 64; // px per hour row
+    const targetHour = isToday(selectedDay) ? Math.max(0, today.getHours() - 1) : 8;
+    const scrollTop  = targetHour * hourHeight;
+    timelineRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
+  }, [viewMode, selectedDay]);
 
   function handleDayClick(d: number) {
     if (d === selectedDay) setSheetOpen(true);
@@ -344,11 +354,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {/* ── DAILY VIEW — 24-hour timeline ── */}
         {viewMode === 'daily' && (() => {
           const HOURS = Array.from({ length: 24 }, (_, i) => i);
-          const nowMin = isToday(selectedDay)
-            ? new Date().getHours() * 60 + new Date().getMinutes()
-            : -1;
+          const nowH  = isToday(selectedDay) ? today.getHours()   : -1;
+          const nowM  = isToday(selectedDay) ? today.getMinutes() : 0;
 
-          // Bucket events by their start-hour
           const byHour: Record<number, Schedule[]> = {};
           selectedSchedules.forEach(s => {
             const h = new Date(s.start_time).getHours();
@@ -356,108 +364,228 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             byHour[h].push(s);
           });
 
-          return (
-            <div style={{ display:'flex', flexDirection:'column', paddingBottom:100 }}>
+          function fmtHour(h: number) {
+            if (h === 0)  return '12 AM';
+            if (h < 12)   return `${h} AM`;
+            if (h === 12) return '12 PM';
+            return `${h - 12} PM`;
+          }
 
-              {/* ── Day header strip ── */}
-              <div className="tl-day-hdr">
-                <div className="tl-day-left">
-                  <div className="tl-dow">{DAYS_FULL[selectedDate.getDay()]}</div>
-                  <div className="tl-date">
+          // SVG type icon (inline, no emoji)
+          function TypeIcon({ type }: { type: string }) {
+            const col = type === 'task' ? 'var(--mint,#2DD4BF)' : type === 'reminder' ? 'var(--amber,#FDCB6E)' : type === 'block' ? 'var(--coral,#FF6B8A)' : 'var(--cyan,#00C6FF)';
+            if (type === 'task') return (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
+                <rect x="1" y="1" width="14" height="14" rx="3" stroke={col} strokeWidth="1.4"/>
+                <polyline points="4,8 7,11 12,5" stroke={col} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            );
+            if (type === 'reminder') return (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
+                <path d="M8 2a4 4 0 014 4v3l1 1v1H3v-1l1-1V6a4 4 0 014-4z" stroke={col} strokeWidth="1.4" strokeLinejoin="round"/>
+                <path d="M6.5 13a1.5 1.5 0 003 0" stroke={col} strokeWidth="1.4"/>
+              </svg>
+            );
+            if (type === 'block') return (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
+                <circle cx="8" cy="8" r="6" stroke={col} strokeWidth="1.4"/>
+                <path d="M4 4l8 8" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            );
+            // event (default)
+            return (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
+                <rect x="1" y="3" width="14" height="12" rx="2.5" stroke={col} strokeWidth="1.4"/>
+                <path d="M1 7h14" stroke={col} strokeWidth="1.4"/>
+                <path d="M5 1v3M11 1v3" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            );
+          }
+
+          return (
+            <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+
+              {/* Day header */}
+              <div style={{
+                flexShrink:0, padding:'14px 16px 12px',
+                borderBottom:'1px solid var(--glass-border,var(--border))',
+                background:'var(--glass-bg2,rgba(255,255,255,.03))',
+                display:'flex', alignItems:'flex-start', justifyContent:'space-between',
+              }}>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1.2px' }}>
+                    {DAYS_FULL[selectedDate.getDay()]}
+                  </div>
+                  <div style={{ fontSize:24, fontWeight:900, color:'var(--dark)', letterSpacing:'-.5px', marginTop:2, lineHeight:1 }}>
                     {selectedDate.getDate()} {MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                   </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
                     {isToday(selectedDay) && (
-                      <span className="tl-today-badge">
-                        <span className="tl-today-dot" />Today
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.22)', padding:'3px 10px', borderRadius:20 }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--purple)', boxShadow:'0 0 5px var(--purple)', flexShrink:0, display:'inline-block' }}/>
+                        Today
                       </span>
                     )}
-                    <span className="tl-count">{selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}</span>
+                    <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
+                      {selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
-                <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
+                <button
+                  onClick={() => setSheetOpen(true)}
+                  style={{ padding:'8px 16px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0, marginTop:4, boxShadow:'0 2px 10px rgba(124,106,240,.35)' }}
+                >+ Add</button>
               </div>
 
-              {/* Holiday banner */}
+              {/* Holiday */}
               {selectedHol && (
-                <div style={{ padding:'0 14px 10px' }}>
+                <div style={{ padding:'8px 14px 0', flexShrink:0 }}>
                   <HolidayBanner holiday={selectedHol} />
                 </div>
               )}
 
-              {/* ── 24-hour timeline ── */}
-              <div className="tl-wrap">
-                {HOURS.map(h => {
-                  const events   = byHour[h] ?? [];
-                  const label    = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
-                  const isPast   = nowMin >= 0 && h * 60 + 59 < nowMin;
-                  const isCurHr  = nowMin >= 0 && h === Math.floor(nowMin / 60);
-                  const nowPct   = isCurHr ? Math.round(((nowMin % 60) / 60) * 100) : 0;
-                  const isOffHr  = events.length === 0;
+              {/* 24-hour timeline — scrollable */}
+              <div ref={timelineRef} style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain' }}>
+                <div style={{ paddingBottom:100 }}>
+                  {HOURS.map(h => {
+                    const events  = byHour[h] ?? [];
+                    const isPast  = nowH >= 0 && h < nowH;
+                    const isCurHr = nowH >= 0 && h === nowH;
+                    const needlePct = isCurHr ? Math.round((nowM / 60) * 100) : 0;
+                    const hourH   = Math.max(64, events.length * 76 + 24);
 
-                  return (
-                    <div key={h} className={`tl-row${isCurHr ? ' tl-row-now' : ''}${isPast ? ' tl-row-past' : ''}`}>
-                      {/* Time label */}
-                      <div className="tl-time">
-                        <span className={`tl-time-lbl${isCurHr ? ' tl-time-now' : ''}`}>{label}</span>
-                      </div>
+                    return (
+                      <div key={h} style={{
+                        display:'flex', alignItems:'stretch',
+                        minHeight: hourH,
+                        opacity: isPast ? 0.55 : 1,
+                        background: isCurHr ? 'rgba(124,106,240,.04)' : 'transparent',
+                      }}>
 
-                      {/* Divider + current-time needle */}
-                      <div className="tl-lane">
-                        <div className={`tl-line${isCurHr ? ' tl-line-now' : ''}`} />
-                        {isCurHr && (
-                          <div className="tl-needle" style={{ top: `${nowPct}%` }}>
-                            <div className="tl-needle-dot" />
-                            <div className="tl-needle-line" />
-                          </div>
-                        )}
+                        {/* Time label */}
+                        <div style={{
+                          width:60, flexShrink:0,
+                          paddingTop:12, paddingRight:10, paddingLeft:14,
+                          textAlign:'right',
+                        }}>
+                          <span style={{
+                            fontSize:10, fontWeight:700, lineHeight:1,
+                            color: isCurHr ? 'var(--purple)' : 'var(--mid)',
+                            letterSpacing:'.2px', whiteSpace:'nowrap',
+                            display:'block',
+                          }}>{fmtHour(h)}</span>
+                        </div>
 
-                        {/* Events in this hour */}
-                        {events.length > 0 && (
-                          <div className="tl-events">
-                            {events.map(s => {
-                              const startD = new Date(s.start_time);
-                              const endD   = s.end_time ? new Date(s.end_time) : null;
-                              const loc    = (s as Schedule & { location?: string }).location;
-                              return (
-                                <div key={s.id}
-                                  className={`tl-event${s.is_completed ? ' tl-done' : ''}`}
-                                  style={{ borderLeftColor: PRIORITY_COLORS[s.priority] }}
-                                >
-                                  <div className="tl-event-title">{s.title}</div>
-                                  <div className="tl-event-meta">
-                                    <span>{TYPE_ICONS[s.type]}</span>
-                                    <span>
-                                      {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
-                                      {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
-                                    </span>
-                                    {loc && <span>· {loc}</span>}
-                                  </div>
-                                  {s.is_completed && <span className="tl-check">✓</span>}
+                        {/* Lane */}
+                        <div style={{
+                          flex:1, borderLeft:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                          position:'relative', padding:'8px 14px 8px 14px',
+                          display:'flex', flexDirection:'column', gap:6,
+                        }}>
+                          {/* Hour rule */}
+                          <div style={{
+                            position:'absolute', top:0, left:0, right:0, height:1,
+                            background: isCurHr ? 'rgba(124,106,240,.4)' : 'var(--glass-border,rgba(255,255,255,.06))',
+                          }}/>
+
+                          {/* Current-time needle */}
+                          {isCurHr && (
+                            <div style={{
+                              position:'absolute', top:`${needlePct}%`,
+                              left:-1, right:0,
+                              display:'flex', alignItems:'center',
+                              zIndex:3, pointerEvents:'none',
+                              transform:'translateY(-50%)',
+                            }}>
+                              <div style={{ width:9, height:9, borderRadius:'50%', background:'var(--purple)', flexShrink:0, marginLeft:-4.5, boxShadow:'0 0 8px var(--purple)' }}/>
+                              <div style={{ flex:1, height:1.5, background:'var(--purple)', opacity:.8 }}/>
+                            </div>
+                          )}
+
+                          {/* Events */}
+                          {events.map(s => {
+                            const startD = new Date(s.start_time);
+                            const endD   = s.end_time ? new Date(s.end_time) : null;
+                            const loc    = (s as Schedule & { location?: string }).location;
+                            const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+                            return (
+                              <div key={s.id} style={{
+                                display:'flex', flexDirection:'column', gap:4,
+                                padding:'8px 10px 8px 12px',
+                                borderRadius:10,
+                                borderLeft:`3px solid ${pColor}`,
+                                background:'var(--surf)',
+                                border:`1px solid var(--glass-border,var(--border))`,
+                                borderLeftWidth:3,
+                                borderLeftColor:pColor,
+                                borderLeftStyle:'solid',
+                                boxShadow:'0 1px 6px rgba(0,0,0,.08)',
+                                opacity: s.is_completed ? 0.5 : 1,
+                                position:'relative',
+                              }}>
+                                {/* Title row */}
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                  <TypeIcon type={s.type} />
+                                  <span style={{
+                                    fontSize:13, fontWeight:700, color:'var(--dark)',
+                                    flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                                    textDecoration: s.is_completed ? 'line-through' : 'none',
+                                  }}>{s.title}</span>
+                                  {s.is_completed && (
+                                    <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
+                                  )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                                {/* Meta row */}
+                                <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                  <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                                    {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+                                    {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+                                  </span>
+                                  {loc && (
+                                    <>
+                                      <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+                                      <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{loc}</span>
+                                    </>
+                                  )}
+                                  <span style={{
+                                    fontSize:9, fontWeight:800, color:pColor,
+                                    background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
+                                    padding:'1px 6px', borderRadius:5,
+                                    letterSpacing:'.4px', textTransform:'uppercase',
+                                    flexShrink:0,
+                                  }}>{s.priority}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Empty state overlay — shown when no events at all */}
+              {/* Empty state */}
               {selectedSchedules.length === 0 && (
-                <div className="day-empty" style={{ marginTop:-200 }}>
-                  <div className="empty-icon">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <div style={{
+                  position:'absolute', top:'50%', left:'50%',
+                  transform:'translate(-50%,-50%)',
+                  textAlign:'center', color:'var(--mid)', pointerEvents:'none',
+                  width:'100%',
+                }}>
+                  <div style={{ opacity:.3, marginBottom:12, display:'flex', justifyContent:'center' }}>
+                    <svg width="44" height="44" viewBox="0 0 40 40" fill="none">
                       <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
                       <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
                       <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
                       <path d="M14 26h12M14 22h8" stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round"/>
                     </svg>
                   </div>
-                  <p>Nothing scheduled</p>
-                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+                  <p style={{ fontSize:13, marginBottom:12 }}>Nothing scheduled for this day</p>
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    style={{ pointerEvents:'all', padding:'10px 24px', background:'var(--gradient)', border:'none', borderRadius:12, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 14px rgba(124,106,240,.3)' }}
+                  >+ Add Schedule</button>
                 </div>
               )}
             </div>
@@ -611,7 +739,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .nav-arrow:active { background:var(--surf2); }
 
         /* ── Scrollable body ── */
-        .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+        .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; position:relative; }
 
         /* ════ MONTHLY ════ */
         .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2,var(--surf)); }
