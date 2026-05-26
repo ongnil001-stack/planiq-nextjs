@@ -260,6 +260,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [sheetOpen,  setSheetOpen]  = useState(false);
   const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
   const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
   const [editOpen,   setEditOpen]   = useState(false);
   const [editSched,  setEditSched]  = useState<Schedule | undefined>(undefined);
 
@@ -318,7 +319,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   }, [year, month, selectedDay]);
 
   // Reset monthly tab when navigating months
-  useEffect(() => { setMonthlyTab('overview'); }, [year, month]);
+  useEffect(() => { setMonthlyTab('overview'); setExpandedDays(new Set()); }, [year, month]);
 
   // Build day map
   const dayMap: Record<number, Schedule[]> = {};
@@ -773,52 +774,84 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                   <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{totalActs} activities</span>
                 </div>
 
-                {/* Activities grouped by date */}
-                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Activities grouped by date — collapsed by default */}
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {busyDayNums.map(d => {
-                    const dayDate = new Date(year, month, d);
-                    const evts    = dayMap[d] ?? [];
-                    const isT     = isToday(d);
+                    const dayDate  = new Date(year, month, d);
+                    const evts     = dayMap[d] ?? [];
+                    const isT      = isToday(d);
+                    const expanded = expandedDays.has(d);
+                    function toggleDay() {
+                      setExpandedDays(prev => {
+                        const next = new Set(prev);
+                        if (next.has(d)) next.delete(d); else next.add(d);
+                        return next;
+                      });
+                    }
                     return (
-                      <div key={d}>
-                        {/* Date header row */}
-                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                      <div key={d} style={{
+                        borderRadius:14,
+                        background: isT
+                          ? 'linear-gradient(135deg,rgba(124,106,240,.18) 0%,rgba(45,212,191,.10) 100%)'
+                          : 'var(--glass-bg,rgba(255,255,255,.04))',
+                        border: isT
+                          ? '1.5px solid rgba(124,106,240,.45)'
+                          : '1px solid var(--glass-border,rgba(255,255,255,.08))',
+                        boxShadow: isT ? '0 0 0 1px rgba(124,106,240,.12), 0 3px 14px rgba(124,106,240,.15)' : 'none',
+                        overflow:'hidden',
+                        transition:'box-shadow .15s',
+                      }}>
+                        {/* Tap-to-expand date row */}
+                        <button
+                          onClick={toggleDay}
+                          style={{
+                            width:'100%', textAlign:'left', background:'transparent',
+                            border:'none', padding:'11px 14px', cursor:'pointer',
+                            fontFamily:'inherit', display:'flex', alignItems:'center', gap:10,
+                          }}>
+                          {/* Date chip */}
                           <div style={{
-                            width:36, height:36, borderRadius:10, flexShrink:0,
+                            width:38, height:38, borderRadius:10, flexShrink:0,
                             background: isT ? 'var(--gradient)' : 'var(--pur-lt,rgba(124,106,240,.12))',
                             display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                            boxShadow: isT ? '0 2px 10px rgba(124,106,240,.3)' : 'none',
+                            boxShadow: isT ? '0 2px 8px rgba(124,106,240,.35)' : 'none',
                           }}>
                             <span style={{ fontSize:7, fontWeight:800, color: isT ? '#fff' : 'var(--purple)', lineHeight:1, textTransform:'uppercase', letterSpacing:'.3px' }}>{DAYS_SHORT[dayDate.getDay()]}</span>
                             <span style={{ fontSize:15, fontWeight:900, color: isT ? '#fff' : 'var(--purple)', lineHeight:1.1 }}>{d}</span>
                           </div>
+                          {/* Date label */}
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>
-                              {dayDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ fontSize:13, fontWeight:700, color: isT ? 'var(--purple)' : 'var(--dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                {dayDate.toLocaleDateString('en-US',{ weekday:'long', month:'short', day:'numeric' })}
+                              </span>
+                              {isT && (
+                                <span style={{ fontSize:8, fontWeight:900, color:'#fff', background:'var(--purple)', borderRadius:5, padding:'2px 6px', letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0, boxShadow:'0 1px 5px rgba(124,106,240,.4)' }}>TODAY</span>
+                              )}
                             </div>
                             <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>
-                              {dayDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
-                              {' · '}{evts.length} item{evts.length !== 1 ? 's' : ''}
+                              {evts.length} item{evts.length !== 1 ? 's' : ''}
                             </div>
                           </div>
-                          <button
-                            onClick={() => goToDay(d)}
-                            style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.1)', border:'none', borderRadius:8, padding:'4px 9px', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
-                            Daily →
-                          </button>
-                        </div>
+                          {/* Chevron */}
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform .2s', opacity:.5 }}>
+                            <path d="M4 6l4 4 4-4" stroke="var(--dark)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
 
-                        {/* Event cards */}
-                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                          {evts.map(s => (
-                            <ActivityDetailCard
-                              key={s.id}
-                              s={s}
-                              dayDate={dayDate}
-                              onClick={() => openEditSheet(s)}
-                            />
-                          ))}
-                        </div>
+                        {/* Expanded event cards */}
+                        {expanded && (
+                          <div style={{ padding:'0 10px 10px', display:'flex', flexDirection:'column', gap:5 }}>
+                            {evts.map(s => (
+                              <ActivityDetailCard
+                                key={s.id}
+                                s={s}
+                                dayDate={dayDate}
+                                onClick={() => openEditSheet(s)}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
