@@ -248,6 +248,10 @@ function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Dat
 
 
 // ── Fluid swipe calendar track ────────────────────────────────────────────────
+// Strategy: single grid rendered at a time. On swipe-commit the key changes and
+// a CSS slide-in animation plays. During drag, the grid translates live via
+// an inline transform. No flex track, no width measurement needed — the grid
+// uses the natural width of its parent (the scroll-body) and repeat(7,1fr).
 interface CalTrackProps {
   year: number; month: number;
   selectedDay: number;
@@ -258,34 +262,28 @@ interface CalTrackProps {
   onMonthChange: (delta: -1 | 1) => void;
 }
 function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday, onDayClick, onMonthChange }: CalTrackProps) {
-  const outerRef   = useRef<HTMLDivElement>(null);
-  const startX     = useRef<number | null>(null);
-  const startY     = useRef<number | null>(null);
-  const animRef    = useRef(false);
-  const [panelW,   setPanelW]   = useState(0);   // measured container width in px
+  const startX  = useRef<number | null>(null);
+  const startY  = useRef<number | null>(null);
+  const animRef = useRef(false);
   const [dragX,    setDragX]    = useState(0);
-  const [animating,setAnimating]= useState(false);
+  const [slideDir, setSlideDir] = useState<'left'|'right'|null>(null);
   const [locked,   setLocked]   = useState<'h'|'v'|null>(null);
 
-  // Measure the container width once on mount (and on resize)
+  // Reset slide animation after it plays
   useEffect(() => {
-    const el = outerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      setPanelW(entries[0].contentRect.width);
-    });
-    ro.observe(el);
-    setPanelW(el.getBoundingClientRect().width);
-    return () => ro.disconnect();
-  }, []);
+    if (slideDir !== null) {
+      const t = setTimeout(() => { setSlideDir(null); animRef.current = false; }, 320);
+      return () => clearTimeout(t);
+    }
+  }, [year, month, slideDir]);
 
   function renderGrid(y: number, mo: number) {
-    const days   = new Date(y, mo + 1, 0).getDate();
-    const first  = new Date(y, mo, 1).getDay();
-    const dMap   = dayMapFn(y, mo);
-    const hMap   = holidaysFn(y, mo);
+    const days  = new Date(y, mo + 1, 0).getDate();
+    const first = new Date(y, mo, 1).getDay();
+    const dMap  = dayMapFn(y, mo);
+    const hMap  = holidaysFn(y, mo);
     return (
-      <div className="cal-grid">
+      <>
         {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} />)}
         {Array.from({ length: days }).map((_, i) => {
           const d       = i + 1;
@@ -309,16 +307,11 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
             </button>
           );
         })}
-      </div>
+      </>
     );
   }
 
-  const prevY  = month === 0 ? year - 1 : year;
-  const prevMo = month === 0 ? 11 : month - 1;
-  const nextY  = month === 11 ? year + 1 : year;
-  const nextMo = month === 11 ? 0 : month + 1;
-
-  const W         = panelW || (typeof window !== 'undefined' ? window.innerWidth : 390);
+  const W         = typeof window !== 'undefined' ? window.innerWidth : 390;
   const THRESHOLD = W * 0.28;
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -341,10 +334,11 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
     }
     if (locked === 'v') return;
     e.preventDefault();
-    const resist = 0.38;
-    const cap    = W * 0.68;
+    // Rubber-band: full drag up to 60% width, then resist
+    const cap    = W * 0.60;
+    const resist = 0.35;
     setDragX(Math.abs(dx) > cap
-      ? (dx > 0 ? 1 : -1) * (cap * (1 - resist) + (Math.abs(dx) - cap) * resist)
+      ? (dx > 0 ? 1 : -1) * (cap + (Math.abs(dx) - cap) * resist)
       : dx);
   }
 
@@ -353,54 +347,39 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
     startX.current = null;
     if (locked !== 'h' || animRef.current) { setDragX(0); setLocked(null); return; }
     const snap = dragX > THRESHOLD ? -1 : dragX < -THRESHOLD ? 1 : 0;
-    animRef.current = true;
-    setAnimating(true);
     if (snap !== 0) {
-      setDragX(snap < 0 ? W * 1.05 : -W * 1.05);
-      setTimeout(() => {
-        onMonthChange(snap as -1 | 1);
-        // Reset without animation flash
-        setAnimating(false);
-        setDragX(0);
-        setLocked(null);
-        animRef.current = false;
-      }, 230);
+      animRef.current = true;
+      const dir: 'left'|'right' = snap < 0 ? 'right' : 'left';
+      setDragX(0);
+      setSlideDir(dir);
+      onMonthChange(snap as -1 | 1);
     } else {
       setDragX(0);
-      setTimeout(() => {
-        setAnimating(false);
-        setLocked(null);
-        animRef.current = false;
-      }, 300);
     }
+    setLocked(null);
   }
 
-  const transition = animating ? 'transform 230ms cubic-bezier(.25,.46,.45,.94)' : 'none';
+  // During drag: translate the grid live
+  const dragStyle = dragX !== 0 ? { transform: `translateX(${dragX}px)`, transition:'none' } : {};
 
-  // Don't render the track until we have a measured width — avoids layout flash
-  if (panelW === 0) {
-    return <div ref={outerRef} style={{ minHeight: 160 }} />;
-  }
+  // On month change: play slide-in animation via CSS class
+  const animClass = slideDir === 'left'  ? ' slide-in-left'
+                  : slideDir === 'right' ? ' slide-in-right'
+                  : '';
 
   return (
     <div
-      ref={outerRef}
-      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none', width:'100%' }}
+      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none', padding:'0 8px 4px' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 3-panel track: panels are exact pixel width of measured container */}
-      <div style={{
-        display:'flex',
-        width: panelW * 3,
-        transform:`translateX(${-panelW + dragX}px)`,
-        transition,
-        willChange:'transform',
-      }}>
-        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(prevY, prevMo)}</div>
-        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(year, month)}</div>
-        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(nextY, nextMo)}</div>
+      <div
+        key={`${year}-${month}`}
+        className={`cal-grid${animClass}`}
+        style={dragStyle}
+      >
+        {renderGrid(year, month)}
       </div>
     </div>
   );
@@ -849,7 +828,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
             {/* ── Calendar grid — fluid swipe track ── */}
             <div style={{ padding:'10px 0 0', flexShrink:0 }}>
-              <div className="cal-grid header-row" style={{ paddingTop:0, padding:'0 8px' }}>
+              <div className="cal-grid header-row" style={{ paddingTop:0, padding:'0 8px 2px' }}>
                 {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
               </div>
               <CalendarTrack
@@ -1403,6 +1382,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         /* ════ MONTHLY ════ */
         .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2,var(--surf)); }
+        @keyframes slideInLeft  { from { transform:translateX(100%); opacity:.4; } to { transform:translateX(0); opacity:1; } }
+        @keyframes slideInRight { from { transform:translateX(-100%); opacity:.4; } to { transform:translateX(0); opacity:1; } }
+        .cal-grid.slide-in-left  { animation: slideInLeft  280ms cubic-bezier(.25,.46,.45,.94) both; }
+        .cal-grid.slide-in-right { animation: slideInRight 280ms cubic-bezier(.25,.46,.45,.94) both; }
         .header-row { padding-top:8px; }
         .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:4px 0; }
         .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; }
