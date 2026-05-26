@@ -258,12 +258,26 @@ interface CalTrackProps {
   onMonthChange: (delta: -1 | 1) => void;
 }
 function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday, onDayClick, onMonthChange }: CalTrackProps) {
-  const trackRef   = useRef<HTMLDivElement>(null);
+  const outerRef   = useRef<HTMLDivElement>(null);
   const startX     = useRef<number | null>(null);
   const startY     = useRef<number | null>(null);
+  const animRef    = useRef(false);
+  const [panelW,   setPanelW]   = useState(0);   // measured container width in px
   const [dragX,    setDragX]    = useState(0);
   const [animating,setAnimating]= useState(false);
-  const [locked,   setLocked]   = useState<'h'|'v'|null>(null); // axis lock
+  const [locked,   setLocked]   = useState<'h'|'v'|null>(null);
+
+  // Measure the container width once on mount (and on resize)
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      setPanelW(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    setPanelW(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
 
   function renderGrid(y: number, mo: number) {
     const days   = new Date(y, mo + 1, 0).getDate();
@@ -304,10 +318,11 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
   const nextY  = month === 11 ? year + 1 : year;
   const nextMo = month === 11 ? 0 : month + 1;
 
-  const W = typeof window !== 'undefined' ? window.innerWidth : 390;
-  const THRESHOLD = W * 0.30; // 30% of screen width
+  const W         = panelW || (typeof window !== 'undefined' ? window.innerWidth : 390);
+  const THRESHOLD = W * 0.28;
 
   function handleTouchStart(e: React.TouchEvent) {
+    if (animRef.current) return;
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
     setLocked(null);
@@ -315,68 +330,77 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (startX.current === null || animating) return;
+    if (startX.current === null || animRef.current) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - (startY.current ?? 0);
-    // Determine axis lock on first significant move
     if (locked === null) {
       if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
         setLocked(Math.abs(dx) > Math.abs(dy) ? 'h' : 'v');
       }
       return;
     }
-    if (locked === 'v') return; // let vertical scroll proceed
-    e.preventDefault();        // only block scroll when horizontal
-    // Rubber-band at edges: resist if dragging too far
-    const resist = 0.35;
-    setDragX(Math.abs(dx) > W * 0.65 ? (dx > 0 ? 1 : -1) * W * 0.65 * resist + (dx - (dx > 0 ? 1 : -1) * W * 0.65) * resist : dx);
+    if (locked === 'v') return;
+    e.preventDefault();
+    const resist = 0.38;
+    const cap    = W * 0.68;
+    setDragX(Math.abs(dx) > cap
+      ? (dx > 0 ? 1 : -1) * (cap * (1 - resist) + (Math.abs(dx) - cap) * resist)
+      : dx);
   }
 
   function handleTouchEnd() {
     if (startX.current === null) return;
     startX.current = null;
-    if (locked !== 'h' || animating) { setDragX(0); setLocked(null); return; }
+    if (locked !== 'h' || animRef.current) { setDragX(0); setLocked(null); return; }
     const snap = dragX > THRESHOLD ? -1 : dragX < -THRESHOLD ? 1 : 0;
+    animRef.current = true;
+    setAnimating(true);
     if (snap !== 0) {
-      setAnimating(true);
-      setDragX(snap < 0 ? W : -W); // fly off screen
+      setDragX(snap < 0 ? W * 1.05 : -W * 1.05);
       setTimeout(() => {
         onMonthChange(snap as -1 | 1);
+        // Reset without animation flash
+        setAnimating(false);
         setDragX(0);
+        setLocked(null);
+        animRef.current = false;
+      }, 230);
+    } else {
+      setDragX(0);
+      setTimeout(() => {
         setAnimating(false);
         setLocked(null);
-      }, 220);
-    } else {
-      // Bounce back
-      setAnimating(true);
-      setDragX(0);
-      setTimeout(() => { setAnimating(false); setLocked(null); }, 280);
+        animRef.current = false;
+      }, 300);
     }
   }
 
-  const transition = (animating || dragX === 0) ? 'transform 220ms cubic-bezier(.25,.46,.45,.94)' : 'none';
+  const transition = animating ? 'transform 230ms cubic-bezier(.25,.46,.45,.94)' : 'none';
+
+  // Don't render the track until we have a measured width — avoids layout flash
+  if (panelW === 0) {
+    return <div ref={outerRef} style={{ minHeight: 160 }} />;
+  }
 
   return (
     <div
-      ref={trackRef}
-      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none' }}
+      ref={outerRef}
+      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none', width:'100%' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 3-panel sliding track */}
+      {/* 3-panel track: panels are exact pixel width of measured container */}
       <div style={{
-        display:'flex', width:'300%',
-        transform:`translateX(calc(-33.333% + ${dragX}px))`,
+        display:'flex',
+        width: panelW * 3,
+        transform:`translateX(${-panelW + dragX}px)`,
         transition,
         willChange:'transform',
       }}>
-        {/* Previous month */}
-        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(prevY, prevMo)}</div>
-        {/* Current month */}
-        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(year, month)}</div>
-        {/* Next month */}
-        <div style={{ width:'33.333%', flexShrink:0, padding:'0 8px' }}>{renderGrid(nextY, nextMo)}</div>
+        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(prevY, prevMo)}</div>
+        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(year, month)}</div>
+        <div style={{ width: panelW, flexShrink:0 }}>{renderGrid(nextY, nextMo)}</div>
       </div>
     </div>
   );
