@@ -5,41 +5,41 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import BottomNav from '@/components/layout/BottomNav';
 
-// ── helpers ────────────────────────────────────────────────────────────────────
-function startOfDay(d: Date) {
-  const r = new Date(d); r.setHours(0,0,0,0); return r;
-}
-function addDays(d: Date, n: number) {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+// ── helpers ───────────────────────────────────────────────────────────────────
+function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function startOfDay(d: Date)         { const r = new Date(d); r.setHours(0,0,0,0); return r; }
+function isoDate(d: Date)            { return d.toISOString().slice(0,10); }
+const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY3  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-const DAY_LABELS = ['S','M','T','W','T','F','S'];
-const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
+interface Schedule {
+  id: string; title: string; start_time: string; end_time: string;
+  priority: string; is_completed: boolean;
+}
 interface DayBucket { date: string; planned: number; done: number; }
-interface WeekSummary { weekLabel: string; planned: number; done: number; rate: number; }
+interface WeekSummary { label: string; planned: number; done: number; rate: number; }
 
 export default function ProgressPage() {
   const router   = useRouter();
   const supabase = createClient();
 
-  const [loading,      setLoading]      = useState(true);
-  const [days,         setDays]         = useState<DayBucket[]>([]);
-  const [weeks,        setWeeks]        = useState<WeekSummary[]>([]);
-  const [streak,       setStreak]       = useState(0);
-  const [totalDone,    setTotalDone]    = useState(0);
-  const [totalPlanned, setTotalPlanned] = useState(0);
-  const [tab,          setTab]          = useState<'week'|'month'>('week');
+  const [loading,       setLoading]       = useState(true);
+  const [days,          setDays]          = useState<DayBucket[]>([]);
+  const [weeks,         setWeeks]         = useState<WeekSummary[]>([]);
+  const [streak,        setStreak]        = useState(0);
+  const [totalDone,     setTotalDone]     = useState(0);
+  const [totalPlanned,  setTotalPlanned]  = useState(0);
+  const [completedList, setCompletedList] = useState<Schedule[]>([]);
+  const [overdueList,   setOverdueList]   = useState<Schedule[]>([]);
+  const [pendingList,   setPendingList]   = useState<Schedule[]>([]);
+  const [tab,           setTab]           = useState<'week'|'month'|'activity'>('week');
 
   const hdrRef = useRef<HTMLDivElement>(null);
-  const [hdrH, setHdrH] = useState(80);
+  const [hdrH, setHdrH] = useState(84);
 
   useEffect(() => {
     if (!hdrRef.current) return;
-    const ro = new ResizeObserver(entries => {
-      for (const e of entries) setHdrH(Math.round(e.contentRect.height));
-    });
+    const ro = new ResizeObserver(e => { for (const x of e) setHdrH(Math.round(x.contentRect.height)); });
     ro.observe(hdrRef.current);
     setHdrH(hdrRef.current.offsetHeight);
     return () => ro.disconnect();
@@ -50,80 +50,103 @@ export default function ProgressPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
 
-      const today = startOfDay(new Date());
+      const now   = new Date();
+      const today = startOfDay(now);
       const from  = addDays(today, -27);
 
-      const { data: schedules } = await supabase
+      const { data: rows } = await supabase
         .from('schedules')
-        .select('start_time, is_done')
+        .select('id, title, start_time, end_time, priority, is_completed')
         .eq('user_id', user.id)
         .gte('start_time', from.toISOString())
-        .lte('start_time', addDays(today, 1).toISOString())
         .order('start_time', { ascending: true });
 
-      // Build 28-day bucket map
-      const bucketMap: Record<string, DayBucket> = {};
+      const schedules: Schedule[] = rows ?? [];
+
+      // ── Day buckets (28 days) ──
+      const map: Record<string, DayBucket> = {};
       for (let i = 0; i < 28; i++) {
         const d = isoDate(addDays(from, i));
-        bucketMap[d] = { date: d, planned: 0, done: 0 };
+        map[d] = { date: d, planned: 0, done: 0 };
       }
-      (schedules ?? []).forEach(s => {
-        const d = s.start_time.slice(0, 10);
-        if (bucketMap[d]) {
-          bucketMap[d].planned++;
-          if (s.is_done) bucketMap[d].done++;
-        }
+      schedules.forEach(s => {
+        const d = s.start_time.slice(0,10);
+        if (map[d]) { map[d].planned++; if (s.is_completed) map[d].done++; }
       });
-      const dayList = Object.values(bucketMap);
+      const dayList = Object.values(map);
       setDays(dayList);
 
-      // 4-week summaries
+      // ── 4-week summaries ──
       const wks: WeekSummary[] = [];
       for (let w = 0; w < 4; w++) {
         const wStart = addDays(from, w * 7);
         const wEnd   = addDays(wStart, 6);
-        const slice  = dayList.slice(w * 7, w * 7 + 7);
-        const planned = slice.reduce((a, b) => a + b.planned, 0);
-        const done    = slice.reduce((a, b) => a + b.done,    0);
-        wks.push({
-          weekLabel: `${MONTH_NAMES[wStart.getMonth()]} ${wStart.getDate()}–${wEnd.getDate()}`,
-          planned, done,
-          rate: planned > 0 ? Math.round((done / planned) * 100) : 0,
-        });
+        const sl     = dayList.slice(w * 7, w * 7 + 7);
+        const p = sl.reduce((a,b) => a + b.planned, 0);
+        const d = sl.reduce((a,b) => a + b.done,    0);
+        wks.push({ label: `${MONTH[wStart.getMonth()]} ${wStart.getDate()}–${wEnd.getDate()}`, planned: p, done: d, rate: p > 0 ? Math.round((d/p)*100) : 0 });
       }
       setWeeks(wks);
 
-      const tp = dayList.reduce((a, b) => a + b.planned, 0);
-      const td = dayList.reduce((a, b) => a + b.done,    0);
-      setTotalPlanned(tp);
-      setTotalDone(td);
+      const tp = dayList.reduce((a,b) => a + b.planned, 0);
+      const td = dayList.reduce((a,b) => a + b.done,    0);
+      setTotalPlanned(tp); setTotalDone(td);
 
-      // Streak — consecutive days (going backwards) with ≥1 done
+      // ── Streak (consecutive days going backwards with ≥1 done) ──
       let s = 0;
       for (let i = dayList.length - 1; i >= 0; i--) {
         if (dayList[i].done > 0) s++; else break;
       }
       setStreak(s);
+
+      // ── Activity lists ──
+      const todayIso = isoDate(today);
+      setCompletedList(schedules.filter(s => s.is_completed).slice(-20).reverse());
+      setOverdueList(schedules.filter(s =>
+        !s.is_completed && s.end_time && new Date(s.end_time) < now
+      ).reverse());
+      setPendingList(schedules.filter(s =>
+        !s.is_completed && (!s.end_time || new Date(s.end_time) >= now)
+      ).slice(0, 10));
+
       setLoading(false);
     }
     load();
   }, []);
 
+  // ── Derived ───────────────────────────────────────────────────────────────
   const thisWeekDays    = days.slice(-7);
-  const thisWeekPlanned = thisWeekDays.reduce((a, b) => a + b.planned, 0);
-  const thisWeekDone    = thisWeekDays.reduce((a, b) => a + b.done,    0);
-  const thisWeekRate    = thisWeekPlanned > 0 ? Math.round((thisWeekDone / thisWeekPlanned) * 100) : 0;
-  const overallRate     = totalPlanned    > 0 ? Math.round((totalDone    / totalPlanned)    * 100) : 0;
+  const thisWeekPlanned = thisWeekDays.reduce((a,b) => a + b.planned, 0);
+  const thisWeekDone    = thisWeekDays.reduce((a,b) => a + b.done,    0);
+  const thisWeekRate    = thisWeekPlanned > 0 ? Math.round((thisWeekDone/thisWeekPlanned)*100) : 0;
+  const overallRate     = totalPlanned    > 0 ? Math.round((totalDone/totalPlanned)*100)       : 0;
   const maxBar          = Math.max(...days.map(d => d.planned), 1);
+  const todayIso        = isoDate(new Date());
 
-  function scoreLabel(rate: number) {
-    if (rate >= 90) return { label:'Excellent',  color:'var(--mint,#2DD4BF)' };
-    if (rate >= 70) return { label:'On Track',   color:'var(--cyan,#00C6FF)' };
-    if (rate >= 50) return { label:'Average',    color:'var(--amber,#FDCB6E)' };
-    return                 { label:'Needs Work', color:'var(--coral,#FF6B8A)' };
+  // Productivity score: blend of this-week rate (60%) + streak factor (40%)
+  const streakFactor  = Math.min(streak * 5, 40);
+  const prodScore     = Math.round(thisWeekRate * 0.6 + streakFactor);
+
+  function scoreColor(r: number) {
+    if (r >= 80) return 'var(--mint,#2DD4BF)';
+    if (r >= 60) return 'var(--cyan,#00C6FF)';
+    if (r >= 40) return 'var(--amber,#FDCB6E)';
+    return 'var(--coral,#FF6B8A)';
   }
-  const weekScore = scoreLabel(thisWeekRate);
-  const todayIso  = isoDate(new Date());
+  function scoreLabel(r: number) {
+    if (r >= 80) return 'Excellent';
+    if (r >= 60) return 'On Track';
+    if (r >= 40) return 'Average';
+    return 'Needs Work';
+  }
+  function formatTime(iso: string) {
+    return new Date(iso).toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true });
+  }
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return `${MONTH[d.getMonth()]} ${d.getDate()}`;
+  }
+  const PCOL: Record<string,string> = { critical:'#FF6B8A', high:'#FDCB6E', medium:'var(--cyan,#00C6FF)', low:'var(--mid)', normal:'var(--mid)' };
 
   if (loading) return (
     <div style={{ minHeight:'100dvh', background:'var(--bg,#080E1A)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -132,134 +155,143 @@ export default function ProgressPage() {
     </div>
   );
 
+  // ── Shared sub-styles ─────────────────────────────────────────────────────
+  const card: React.CSSProperties = { background:'var(--surf)', border:'1px solid var(--border)', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,.07)', marginBottom:12 };
+  const cardHdr: React.CSSProperties = { padding:'13px 16px 10px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:7 };
+  const sectionTitle: React.CSSProperties = { fontSize:13, fontWeight:800, color:'var(--dark)' };
+
   return (
     <div style={{ height:'100dvh', overflow:'hidden', background:'var(--bg)', display:'flex', flexDirection:'column', fontFamily:'inherit', color:'var(--dark)' }}>
 
-      {/* Header */}
-      <div ref={hdrRef} style={{
-        flexShrink:0,
-        padding:'max(env(safe-area-inset-top,0px),14px) 22px 16px',
-        background:'var(--glass-bg,var(--surf))',
-        backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)',
-        borderBottom:'1px solid var(--glass-border,var(--border))',
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-      }}>
+      {/* ── Header ── */}
+      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),14px) 20px 14px', background:'var(--glass-bg,var(--surf))', backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)', borderBottom:'1px solid var(--glass-border,var(--border))', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, letterSpacing:'-.4px', color:'var(--dark)' }}>Progress</div>
-          <div style={{ fontSize:12, color:'var(--mid)', marginTop:2 }}>Your last 28 days</div>
+          <div style={{ fontSize:12, color:'var(--mid)', marginTop:1 }}>Last 28 days · {totalDone} tasks completed</div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:12, background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.25)' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C12 2 7 7 7 12a5 5 0 0010 0c0-3-2-6-2-6s-1 2-2 2c-1 0-1-1-1-2z" stroke="var(--purple)" strokeWidth="1.7" strokeLinejoin="round"/>
-          </svg>
-          <span style={{ fontSize:13, fontWeight:800, color:'var(--purple)' }}>{streak}</span>
-          <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>day streak</span>
+        {/* Streak + score pills */}
+        <div style={{ display:'flex', flexDirection:'column', gap:5, alignItems:'flex-end' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.22)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2 7 7 7 12a5 5 0 0010 0c0-3-2-6-2-6s-1 2-2 2c-1 0-1-1-1-2z" stroke="var(--purple)" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+            <span style={{ fontSize:12, fontWeight:800, color:'var(--purple)' }}>{streak}</span>
+            <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>streak</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:`rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.12)`, border:`1px solid rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.25)` }}>
+            <span style={{ fontSize:12, fontWeight:800, color:scoreColor(prodScore) }}>{prodScore}</span>
+            <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>score</span>
+          </div>
         </div>
       </div>
 
-      {/* Scrollable body */}
-      <div style={{
-        flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'16px 18px 0',
-        maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))`,
-      }}>
+      {/* ── Scrollable body ── */}
+      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'14px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
       <div style={{ paddingBottom:'16px' }}>
 
-        {/* Stat pills */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
+        {/* ── Stat pills row ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
           {[
-            { label:'This Week', value:`${thisWeekDone}/${thisWeekPlanned}`, sub:'tasks done',  color:'var(--purple)' },
-            { label:'Rate',      value:`${thisWeekRate}%`,                   sub:weekScore.label, color:weekScore.color },
-            { label:'28 Days',   value:`${totalDone}`,                       sub:'completed',   color:'var(--cyan,#00C6FF)' },
-          ].map(stat => (
-            <div key={stat.label} style={{ padding:'12px 10px', borderRadius:14, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 2px 8px rgba(0,0,0,.08)' }}>
-              <div style={{ fontSize:10, color:'var(--mid)', fontWeight:600, marginBottom:4 }}>{stat.label}</div>
-              <div style={{ fontSize:20, fontWeight:800, color:stat.color, letterSpacing:'-.5px' }}>{stat.value}</div>
-              <div style={{ fontSize:10, color:'var(--mid)', marginTop:2 }}>{stat.sub}</div>
+            { label:'Done',    value:String(totalDone),         color:'var(--mint,#2DD4BF)' },
+            { label:'Pending', value:String(pendingList.length), color:'var(--cyan,#00C6FF)' },
+            { label:'Overdue', value:String(overdueList.length), color: overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)' },
+            { label:'Rate',    value:`${overallRate}%`,          color:scoreColor(overallRate) },
+          ].map(st => (
+            <div key={st.label} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
+              <div style={{ fontSize:17, fontWeight:900, color:st.color, letterSpacing:'-.4px' }}>{st.value}</div>
+              <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>{st.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Tab toggle */}
-        <div style={{ display:'flex', background:'var(--surf2,rgba(255,255,255,.04))', border:'1px solid var(--border)', borderRadius:12, padding:3, marginBottom:16 }}>
-          {(['week','month'] as const).map(t => (
+        {/* ── Productivity score bar ── */}
+        <div style={{ ...card, padding:'14px 16px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)' }}>Productivity Score</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:18, fontWeight:900, color:scoreColor(prodScore) }}>{prodScore}</span>
+              <span style={{ fontSize:11, fontWeight:700, color:scoreColor(prodScore), background:`rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.12)`, padding:'2px 8px', borderRadius:6 }}>{scoreLabel(prodScore)}</span>
+            </div>
+          </div>
+          <div style={{ height:8, borderRadius:4, background:'rgba(124,106,240,.10)', overflow:'hidden' }}>
+            <div style={{ height:'100%', borderRadius:4, width:`${prodScore}%`, background:`linear-gradient(90deg,var(--purple,#7C6AF0),${scoreColor(prodScore)})`, transition:'width .5s ease' }}/>
+          </div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+            <span style={{ fontSize:10, color:'var(--mid)' }}>This week: {thisWeekRate}% completion</span>
+            <span style={{ fontSize:10, color:'var(--mid)' }}>Streak: {streak} days</span>
+          </div>
+        </div>
+
+        {/* ── Tab toggle ── */}
+        <div style={{ display:'flex', background:'var(--surf2,rgba(255,255,255,.04))', border:'1px solid var(--border)', borderRadius:12, padding:3, marginBottom:12 }}>
+          {(['week','month','activity'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              flex:1, padding:'8px 0', borderRadius:9, border:'none', cursor:'pointer',
-              fontFamily:'inherit', fontSize:12, fontWeight:700,
+              flex:1, padding:'8px 4px', borderRadius:9, border:'none', cursor:'pointer',
+              fontFamily:'inherit', fontSize:11, fontWeight:700,
               background: tab === t ? 'var(--purple,#7C6AF0)' : 'transparent',
               color: tab === t ? '#fff' : 'var(--mid)', transition:'all .15s',
             }}>
-              {t === 'week' ? 'This Week' : '4 Weeks'}
+              {t === 'week' ? 'This Week' : t === 'month' ? '4 Weeks' : 'Activity'}
             </button>
           ))}
         </div>
 
-        {/* ── THIS WEEK ── */}
+        {/* ══ THIS WEEK tab ══ */}
         {tab === 'week' && (<>
-
-          {/* Day bars */}
-          <div style={{ background:'var(--surf)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 16px 14px', boxShadow:'0 2px 12px rgba(0,0,0,.07)', marginBottom:14 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)', marginBottom:14 }}>Daily Completion</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:80 }}>
+          {/* Bar chart */}
+          <div style={{ ...card, padding:'16px 14px 12px' }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)', marginBottom:14 }}>Daily Completion</div>
+            <div style={{ display:'flex', alignItems:'flex-end', gap:5, height:72 }}>
               {thisWeekDays.map((d) => {
                 const dayDate = new Date(d.date + 'T12:00:00');
-                const dayIdx  = dayDate.getDay();
-                const barH    = d.planned > 0 ? Math.max(8, Math.round((d.planned / maxBar) * 72)) : 4;
-                const pct     = d.planned > 0 ? Math.round((d.done / d.planned) * 100) : 0;
+                const barH    = d.planned > 0 ? Math.max(8, Math.round((d.planned / maxBar) * 64)) : 3;
+                const pct     = d.planned > 0 ? Math.round((d.done/d.planned)*100) : 0;
                 const isToday = d.date === todayIso;
                 return (
-                  <div key={d.date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                  <div key={d.date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
                     <div style={{ width:'100%', position:'relative', height:barH, borderRadius:6, overflow:'hidden', background:'rgba(124,106,240,.10)' }}>
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background: pct >= 100 ? 'var(--mint,#2DD4BF)' : 'var(--purple,#7C6AF0)', borderRadius:6, transition:'height .3s ease' }}/>
+                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background: pct>=100?'var(--mint,#2DD4BF)':'var(--purple,#7C6AF0)', borderRadius:6, transition:'height .3s ease' }}/>
                     </div>
-                    <span style={{ fontSize:9, fontWeight:700, color: isToday ? 'var(--purple)' : 'var(--mid)' }}>{DAY_LABELS[dayIdx]}</span>
+                    <span style={{ fontSize:9, fontWeight:700, color:isToday?'var(--purple)':'var(--mid)' }}>{DAY3[dayDate.getDay()].slice(0,1)}</span>
                   </div>
                 );
               })}
             </div>
-            <div style={{ display:'flex', gap:14, marginTop:12 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)' }}/>
-                <span style={{ fontSize:10, color:'var(--mid)' }}>In progress</span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:8, height:8, borderRadius:2, background:'var(--mint,#2DD4BF)' }}/>
-                <span style={{ fontSize:10, color:'var(--mid)' }}>All done</span>
-              </div>
+            <div style={{ display:'flex', gap:12, marginTop:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}><div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)' }}/><span style={{ fontSize:10, color:'var(--mid)' }}>Partial</span></div>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}><div style={{ width:8, height:8, borderRadius:2, background:'var(--mint,#2DD4BF)' }}/><span style={{ fontSize:10, color:'var(--mid)' }}>Complete</span></div>
             </div>
           </div>
 
-          {/* Day breakdown list */}
-          <div style={{ background:'var(--surf)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,.07)', marginBottom:14 }}>
-            <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid var(--border)', fontSize:13, fontWeight:700, color:'var(--dark)' }}>Day Breakdown</div>
+          {/* Day breakdown */}
+          <div style={{ ...card }}>
+            <div style={cardHdr}>
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="15" rx="3" stroke="var(--purple)" strokeWidth="1.5"/><path d="M2 8h16" stroke="var(--purple)" strokeWidth="1.5"/><path d="M6 5V2m8 3V2" stroke="var(--purple)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <span style={sectionTitle}>Day Breakdown</span>
+            </div>
             {thisWeekDays.map((d, i) => {
-              const dayDate = new Date(d.date + 'T12:00:00');
-              const dayName = dayDate.toLocaleDateString('en-US', { weekday:'short' });
-              const dateNum = dayDate.getDate();
-              const rate    = d.planned > 0 ? Math.round((d.done / d.planned) * 100) : null;
+              const dd      = new Date(d.date + 'T12:00:00');
+              const rate    = d.planned > 0 ? Math.round((d.done/d.planned)*100) : null;
               const isToday = d.date === todayIso;
-              const sc      = rate !== null ? scoreLabel(rate) : null;
+              const sc      = rate !== null ? scoreColor(rate) : 'var(--mid)';
               return (
-                <div key={d.date} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 16px', borderBottom: i < thisWeekDays.length-1 ? '1px solid var(--border)' : 'none', background: isToday ? 'rgba(124,106,240,.05)' : 'transparent' }}>
-                  <div style={{ width:38, textAlign:'center', flexShrink:0 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color: isToday ? 'var(--purple)' : 'var(--mid)', textTransform:'uppercase' }}>{dayName}</div>
-                    <div style={{ fontSize:16, fontWeight:800, color: isToday ? 'var(--purple)' : 'var(--dark)' }}>{dateNum}</div>
+                <div key={d.date} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 16px', borderBottom: i < 6 ? '1px solid var(--border)' : 'none', background: isToday ? 'rgba(124,106,240,.04)' : 'transparent' }}>
+                  <div style={{ width:40, flexShrink:0, textAlign:'center' }}>
+                    <div style={{ fontSize:9, fontWeight:800, color:isToday?'var(--purple)':'var(--mid)', textTransform:'uppercase', letterSpacing:'.4px' }}>{DAY3[dd.getDay()]}</div>
+                    <div style={{ fontSize:17, fontWeight:900, color:isToday?'var(--purple)':'var(--dark)' }}>{dd.getDate()}</div>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     {d.planned > 0 ? (<>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                        <span style={{ fontSize:11, color:'var(--mid)' }}>{d.done} of {d.planned} tasks</span>
-                        {sc && <span style={{ fontSize:11, fontWeight:700, color:sc.color }}>{rate}%</span>}
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                        <span style={{ fontSize:11, color:'var(--mid)' }}>{d.done}/{d.planned} tasks</span>
+                        <span style={{ fontSize:11, fontWeight:800, color:sc }}>{rate}%</span>
                       </div>
-                      <div style={{ height:5, borderRadius:3, background:'rgba(124,106,240,.12)', overflow:'hidden' }}>
-                        <div style={{ height:'100%', borderRadius:3, width:`${rate}%`, background: rate! >= 100 ? 'var(--mint,#2DD4BF)' : 'var(--purple,#7C6AF0)', transition:'width .4s ease' }}/>
+                      <div style={{ height:5, borderRadius:3, background:'rgba(124,106,240,.10)', overflow:'hidden' }}>
+                        <div style={{ height:'100%', borderRadius:3, width:`${rate}%`, background: rate!>=100?'var(--mint,#2DD4BF)':'var(--purple,#7C6AF0)', transition:'width .4s ease' }}/>
                       </div>
-                    </>) : (
-                      <span style={{ fontSize:11, color:'var(--mid)', fontStyle:'italic' }}>No tasks scheduled</span>
-                    )}
+                    </>) : <span style={{ fontSize:11, color:'var(--mid)', opacity:.6, fontStyle:'italic' }}>No tasks scheduled</span>}
                   </div>
                   {d.done > 0 && d.done >= d.planned && d.planned > 0 && (
-                    <div style={{ width:24, height:24, borderRadius:'50%', background:'rgba(45,212,191,.15)', border:'1px solid rgba(45,212,191,.35)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="11" height="9" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(45,212,191,.15)', border:'1px solid rgba(45,212,191,.35)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="10" height="8" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
                   )}
                 </div>
@@ -268,83 +300,149 @@ export default function ProgressPage() {
           </div>
         </>)}
 
-        {/* ── 4 WEEKS ── */}
+        {/* ══ 4 WEEKS tab ══ */}
         {tab === 'month' && (<>
-
-          {/* 28-day sparkline */}
-          <div style={{ background:'var(--surf)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 16px 14px', boxShadow:'0 2px 12px rgba(0,0,0,.07)', marginBottom:14 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)', marginBottom:4 }}>28-Day Trend</div>
-            <div style={{ fontSize:11, color:'var(--mid)', marginBottom:14 }}>{totalDone} completed of {totalPlanned} planned</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:60 }}>
+          {/* Sparkline */}
+          <div style={{ ...card, padding:'16px 14px 12px' }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)', marginBottom:4 }}>28-Day Trend</div>
+            <div style={{ fontSize:11, color:'var(--mid)', marginBottom:12 }}>{totalDone} of {totalPlanned} tasks completed</div>
+            <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:56 }}>
               {days.map((d) => {
-                const barH  = d.planned > 0 ? Math.max(4, Math.round((d.planned / maxBar) * 56)) : 2;
-                const pct   = d.planned > 0 ? Math.round((d.done / d.planned) * 100) : 0;
+                const barH  = d.planned > 0 ? Math.max(4, Math.round((d.planned/maxBar)*52)) : 2;
+                const pct   = d.planned > 0 ? Math.round((d.done/d.planned)*100) : 0;
                 const isToday = d.date === todayIso;
                 return (
-                  <div key={d.date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
+                  <div key={d.date} style={{ flex:1 }}>
                     <div style={{ width:'100%', position:'relative', height:barH, borderRadius:3, background:'rgba(124,106,240,.08)' }}>
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background: isToday ? 'var(--cyan,#00C6FF)' : pct >= 100 ? 'var(--mint,#2DD4BF)' : 'var(--purple,#7C6AF0)', borderRadius:3 }}/>
+                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background:isToday?'var(--cyan,#00C6FF)':pct>=100?'var(--mint,#2DD4BF)':'var(--purple,#7C6AF0)', borderRadius:3 }}/>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
-              {weeks.map(w => <span key={w.weekLabel} style={{ fontSize:9, color:'var(--mid)', fontWeight:600 }}>{w.weekLabel.split('–')[0].trim()}</span>)}
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:7 }}>
+              {weeks.map(w => <span key={w.label} style={{ fontSize:9, color:'var(--mid)', fontWeight:600 }}>{w.label.split('–')[0].trim()}</span>)}
             </div>
           </div>
 
-          {/* Week cards — most recent first */}
+          {/* Week cards */}
           {[...weeks].reverse().map((w, i) => {
-            const sc = scoreLabel(w.rate);
-            const isThisWeek = i === 0;
+            const sc = scoreColor(w.rate);
+            const isNow = i === 0;
             return (
-              <div key={w.weekLabel} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', marginBottom:10, background: isThisWeek ? 'rgba(124,106,240,.07)' : 'var(--surf)', border:`1.5px solid ${isThisWeek ? 'rgba(124,106,240,.25)' : 'var(--border)'}`, borderRadius:14, boxShadow:'0 2px 8px rgba(0,0,0,.06)' }}>
+              <div key={w.label} style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 14px', marginBottom:8, background:isNow?'rgba(124,106,240,.07)':'var(--surf)', border:`1.5px solid ${isNow?'rgba(124,106,240,.25)':'var(--border)'}`, borderRadius:14, boxShadow:'0 2px 8px rgba(0,0,0,.05)' }}>
+                {/* Ring */}
                 <div style={{ position:'relative', width:44, height:44, flexShrink:0 }}>
                   <svg width="44" height="44" viewBox="0 0 44 44">
                     <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(124,106,240,.12)" strokeWidth="4"/>
-                    <circle cx="22" cy="22" r="18" fill="none" stroke={sc.color} strokeWidth="4"
-                      strokeDasharray={`${Math.round(w.rate * 1.131)} 113.1`}
-                      strokeLinecap="round" transform="rotate(-90 22 22)"/>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke={sc} strokeWidth="4"
+                      strokeDasharray={`${Math.round(w.rate*1.131)} 113.1`} strokeLinecap="round" transform="rotate(-90 22 22)"/>
                   </svg>
-                  <span style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:sc.color }}>{w.rate}%</span>
+                  <span style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:900, color:sc }}>{w.rate}%</span>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <span style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>{w.weekLabel}</span>
-                    {isThisWeek && <span style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.25)', borderRadius:4, padding:'1px 6px' }}>NOW</span>}
+                    <span style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>{w.label}</span>
+                    {isNow && <span style={{ fontSize:9, fontWeight:800, color:'var(--purple)', background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.25)', borderRadius:4, padding:'1px 6px' }}>NOW</span>}
                   </div>
-                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>{w.done} of {w.planned} tasks · <span style={{ color:sc.color, fontWeight:700 }}>{sc.label}</span></div>
-                  {w.planned > 0 && (
-                    <div style={{ height:4, borderRadius:2, background:'rgba(124,106,240,.10)', overflow:'hidden', marginTop:6 }}>
-                      <div style={{ height:'100%', borderRadius:2, width:`${w.rate}%`, background:sc.color, transition:'width .4s ease' }}/>
-                    </div>
-                  )}
+                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>{w.done} done · {w.planned} planned · <span style={{ color:sc, fontWeight:700 }}>{scoreLabel(w.rate)}</span></div>
+                  {w.planned > 0 && <div style={{ height:4, borderRadius:2, background:'rgba(124,106,240,.10)', overflow:'hidden', marginTop:6 }}><div style={{ height:'100%', borderRadius:2, width:`${w.rate}%`, background:sc, transition:'width .4s ease' }}/></div>}
                 </div>
               </div>
             );
           })}
         </>)}
 
-        {/* Insight footer */}
-        <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'13px 14px', borderRadius:14, marginTop:4, background:'rgba(124,106,240,.07)', border:'1px solid rgba(124,106,240,.18)' }}>
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, marginTop:1 }}>
+        {/* ══ ACTIVITY tab ══ */}
+        {tab === 'activity' && (<>
+
+          {/* Overdue */}
+          {overdueList.length > 0 && (
+            <div style={{ ...card }}>
+              <div style={cardHdr}>
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/><path d="M10 6v4.5l2.5 2" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <span style={{ ...sectionTitle, color:'var(--coral,#FF6B8A)' }}>Overdue</span>
+                <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, color:'var(--coral,#FF6B8A)', background:'rgba(255,107,138,.12)', padding:'2px 8px', borderRadius:6 }}>{overdueList.length}</span>
+              </div>
+              {overdueList.slice(0,5).map((s, i) => (
+                <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderBottom: i < Math.min(overdueList.length,5)-1 ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ width:7, height:7, borderRadius:'50%', flexShrink:0, background:'var(--coral,#FF6B8A)' }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.title}</div>
+                    <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
+                  </div>
+                  <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pending */}
+          <div style={{ ...card }}>
+            <div style={cardHdr}>
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/><path d="M10 6v4h4" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <span style={sectionTitle}>Pending</span>
+              <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, color:'var(--cyan,#00C6FF)', background:'rgba(0,198,255,.12)', padding:'2px 8px', borderRadius:6 }}>{pendingList.length}</span>
+            </div>
+            {pendingList.length === 0
+              ? <div style={{ padding:'16px', fontSize:12, color:'var(--mid)', textAlign:'center', opacity:.6 }}>No pending tasks — you&apos;re all clear!</div>
+              : pendingList.slice(0,6).map((s, i) => (
+                <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderBottom: i < Math.min(pendingList.length,6)-1 ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ width:7, height:7, borderRadius:'50%', flexShrink:0, background:PCOL[s.priority]||'var(--mid)' }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.title}</div>
+                    <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
+                  </div>
+                  <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
+                </div>
+              ))
+            }
+          </div>
+
+          {/* Completed */}
+          <div style={{ ...card }}>
+            <div style={cardHdr}>
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--mint,#2DD4BF)" strokeWidth="1.5"/><polyline points="6.5,10 9,12.5 13.5,7.5" stroke="var(--mint,#2DD4BF)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={sectionTitle}>Completed</span>
+              <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, color:'var(--mint,#2DD4BF)', background:'rgba(45,212,191,.12)', padding:'2px 8px', borderRadius:6 }}>{completedList.length}</span>
+            </div>
+            {completedList.length === 0
+              ? <div style={{ padding:'16px', fontSize:12, color:'var(--mid)', textAlign:'center', opacity:.6 }}>No completed tasks yet in the last 28 days.</div>
+              : completedList.slice(0,8).map((s, i) => (
+                <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', borderBottom: i < Math.min(completedList.length,8)-1 ? '1px solid var(--border)' : 'none', opacity:.85 }}>
+                  <div style={{ width:20, height:20, borderRadius:'50%', background:'rgba(45,212,191,.12)', border:'1px solid rgba(45,212,191,.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="9" height="7" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textDecoration:'line-through', opacity:.7 }}>{s.title}</div>
+                    <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
+                  </div>
+                  <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
+                </div>
+              ))
+            }
+          </div>
+        </>)}
+
+        {/* ── Insight footer ── */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px', borderRadius:14, marginTop:2, background:'rgba(124,106,240,.07)', border:'1px solid rgba(124,106,240,.18)' }}>
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0, marginTop:1 }}>
             <path d="M10 3v2m0 10v2M3 10h2m10 0h2M5.6 5.6l1.2 1.2m6.4 6.4 1.2 1.2M5.6 14.4l1.2-1.2m6.4-6.4 1.2-1.2M10 7a3 3 0 100 6 3 3 0 000-6z" stroke="var(--purple)" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <div style={{ fontSize:12, color:'var(--mid)', lineHeight:1.6 }}>
             {totalPlanned === 0
-              ? <><strong style={{ color:'var(--purple)' }}>No data yet.</strong> Add tasks to your Schedule and start tracking your progress here.</>
+              ? <><strong style={{ color:'var(--purple)' }}>No data yet.</strong> Add tasks to your Schedule — they&apos;ll show up here once you start completing them.</>
+              : overdueList.length > 0
+              ? <><strong style={{ color:'var(--purple)' }}>Heads up.</strong> You have {overdueList.length} overdue {overdueList.length === 1 ? 'item' : 'items'}. Switch to the Activity tab to review and reschedule them.</>
               : overallRate >= 80
-              ? <><strong style={{ color:'var(--purple)' }}>Great momentum.</strong> You&apos;re completing over {overallRate}% of your planned tasks. Keep it up.</>
-              : overallRate >= 50
-              ? <><strong style={{ color:'var(--purple)' }}>Good progress.</strong> You&apos;re getting through {overallRate}% of your plan. A small daily push can lift that significantly.</>
-              : <><strong style={{ color:'var(--purple)' }}>Room to grow.</strong> You&apos;re at {overallRate}% over 28 days. Try scheduling fewer tasks and completing them fully.</>
+              ? <><strong style={{ color:'var(--purple)' }}>Great momentum.</strong> {overallRate}% completion over 28 days. You&apos;re building a strong habit.</>
+              : <><strong style={{ color:'var(--purple)' }}>Keep going.</strong> You&apos;re at {overallRate}% over 28 days. Completing even one more task a day will push you into the top tier.</>
             }
           </div>
         </div>
 
       </div>{/* inner */}
-      </div>{/* scroll body */}
+      </div>{/* scroll */}
 
       <BottomNav />
     </div>

@@ -341,52 +341,128 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
           </>
         )}
 
-        {/* ── DAILY VIEW ── */}
-        {viewMode === 'daily' && (
-          <div className="day-panel" style={{ paddingTop: 16 }}>
-            {/* Date heading */}
-            <div className="daily-hdr">
-              <div>
-                <div className="daily-dow">{DAYS_FULL[selectedDate.getDay()]}</div>
-                <div className="daily-date">
-                  {MONTHS[selectedDate.getMonth()]} {selectedDate.getDate()}, {selectedDate.getFullYear()}
+        {/* ── DAILY VIEW — 24-hour timeline ── */}
+        {viewMode === 'daily' && (() => {
+          const HOURS = Array.from({ length: 24 }, (_, i) => i);
+          const nowMin = isToday(selectedDay)
+            ? new Date().getHours() * 60 + new Date().getMinutes()
+            : -1;
+
+          // Bucket events by their start-hour
+          const byHour: Record<number, Schedule[]> = {};
+          selectedSchedules.forEach(s => {
+            const h = new Date(s.start_time).getHours();
+            if (!byHour[h]) byHour[h] = [];
+            byHour[h].push(s);
+          });
+
+          return (
+            <div style={{ display:'flex', flexDirection:'column', paddingBottom:100 }}>
+
+              {/* ── Day header strip ── */}
+              <div className="tl-day-hdr">
+                <div className="tl-day-left">
+                  <div className="tl-dow">{DAYS_FULL[selectedDate.getDay()]}</div>
+                  <div className="tl-date">
+                    {selectedDate.getDate()} {MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6 }}>
+                    {isToday(selectedDay) && (
+                      <span className="tl-today-badge">
+                        <span className="tl-today-dot" />Today
+                      </span>
+                    )}
+                    <span className="tl-count">{selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}</span>
+                  </div>
                 </div>
+                <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
               </div>
-              <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
+
+              {/* Holiday banner */}
+              {selectedHol && (
+                <div style={{ padding:'0 14px 10px' }}>
+                  <HolidayBanner holiday={selectedHol} />
+                </div>
+              )}
+
+              {/* ── 24-hour timeline ── */}
+              <div className="tl-wrap">
+                {HOURS.map(h => {
+                  const events   = byHour[h] ?? [];
+                  const label    = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+                  const isPast   = nowMin >= 0 && h * 60 + 59 < nowMin;
+                  const isCurHr  = nowMin >= 0 && h === Math.floor(nowMin / 60);
+                  const nowPct   = isCurHr ? Math.round(((nowMin % 60) / 60) * 100) : 0;
+                  const isOffHr  = events.length === 0;
+
+                  return (
+                    <div key={h} className={`tl-row${isCurHr ? ' tl-row-now' : ''}${isPast ? ' tl-row-past' : ''}`}>
+                      {/* Time label */}
+                      <div className="tl-time">
+                        <span className={`tl-time-lbl${isCurHr ? ' tl-time-now' : ''}`}>{label}</span>
+                      </div>
+
+                      {/* Divider + current-time needle */}
+                      <div className="tl-lane">
+                        <div className={`tl-line${isCurHr ? ' tl-line-now' : ''}`} />
+                        {isCurHr && (
+                          <div className="tl-needle" style={{ top: `${nowPct}%` }}>
+                            <div className="tl-needle-dot" />
+                            <div className="tl-needle-line" />
+                          </div>
+                        )}
+
+                        {/* Events in this hour */}
+                        {events.length > 0 && (
+                          <div className="tl-events">
+                            {events.map(s => {
+                              const startD = new Date(s.start_time);
+                              const endD   = s.end_time ? new Date(s.end_time) : null;
+                              const loc    = (s as Schedule & { location?: string }).location;
+                              return (
+                                <div key={s.id}
+                                  className={`tl-event${s.is_completed ? ' tl-done' : ''}`}
+                                  style={{ borderLeftColor: PRIORITY_COLORS[s.priority] }}
+                                >
+                                  <div className="tl-event-title">{s.title}</div>
+                                  <div className="tl-event-meta">
+                                    <span>{TYPE_ICONS[s.type]}</span>
+                                    <span>
+                                      {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+                                      {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+                                    </span>
+                                    {loc && <span>· {loc}</span>}
+                                  </div>
+                                  {s.is_completed && <span className="tl-check">✓</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Empty state overlay — shown when no events at all */}
+              {selectedSchedules.length === 0 && (
+                <div className="day-empty" style={{ marginTop:-200 }}>
+                  <div className="empty-icon">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                      <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
+                      <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
+                      <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
+                      <path d="M14 26h12M14 22h8" stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <p>Nothing scheduled</p>
+                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+                </div>
+              )}
             </div>
-
-            {/* Today indicator */}
-            {isToday(selectedDay) && (
-              <div className="today-indicator">
-                <span className="today-dot" />
-                <span>Today</span>
-              </div>
-            )}
-
-            {/* Holiday */}
-            {selectedHol && <HolidayBanner holiday={selectedHol} />}
-
-            {/* Schedule list */}
-            {selectedSchedules.length === 0 ? (
-              <div className="day-empty">
-                <div className="empty-icon">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
-                    <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
-                    <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
-                    <path d="M14 26h12M14 22h8" stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <p>Nothing scheduled for this day</p>
-                <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
-              </div>
-            ) : (
-              <div className="event-list timeline">
-                {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
-              </div>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── WEEKLY VIEW ── */}
         {viewMode === 'weekly' && (
@@ -516,7 +592,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .page { height:100dvh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); overflow:hidden; }
 
         /* ── Header ── */
-        .pg-header { padding:52px 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .pg-header { padding:max(env(safe-area-inset-top,0px),14px) 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
         .today-btn { padding:6px 14px; background:var(--glass-bg2,rgba(255,255,255,.07)); border:1px solid var(--glass-border,rgba(255,255,255,.10)); border-radius:20px; color:var(--purple); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .14s; flex-shrink:0; }
@@ -630,6 +706,47 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .day-add-cta { display:inline-block; margin-top:12px; padding:10px 24px; background:var(--gradient); border-radius:12px; color:#fff; font-size:13px; font-weight:700; border:none; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(124,106,240,.3); }
         .no-country-hint { text-align:center; margin-top:16px; font-size:12px; color:var(--mid); }
         .no-country-hint a { color:var(--purple); text-decoration:none; font-weight:600; }
+
+        /* ════ DAILY TIMELINE ════ */
+        .tl-day-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 16px 12px; border-bottom:1px solid var(--glass-border,var(--border)); background:var(--glass-bg2,rgba(255,255,255,.03)); }
+        .tl-day-left { display:flex; flex-direction:column; }
+        .tl-dow  { font-size:11px; font-weight:800; color:var(--purple); text-transform:uppercase; letter-spacing:1px; }
+        .tl-date { font-size:22px; font-weight:900; color:var(--dark); letter-spacing:-.4px; margin-top:2px; }
+        .tl-today-badge { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:var(--purple); background:rgba(124,106,240,.12); border:1px solid rgba(124,106,240,.22); padding:2px 9px; border-radius:20px; }
+        .tl-today-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); box-shadow:0 0 5px var(--purple); flex-shrink:0; }
+        .tl-count { font-size:11px; color:var(--mid); font-weight:600; }
+
+        /* Timeline scroll area */
+        .tl-wrap { display:flex; flex-direction:column; padding:0 0 8px; }
+
+        /* Each hour row */
+        .tl-row { display:flex; align-items:flex-start; min-height:52px; position:relative; }
+        .tl-row-past .tl-time-lbl { opacity:.35; }
+        .tl-row-past .tl-line { opacity:.25; }
+
+        /* Time label column */
+        .tl-time { width:58px; flex-shrink:0; padding:0 10px 0 14px; padding-top:10px; text-align:right; }
+        .tl-time-lbl { font-size:10px; font-weight:700; color:var(--mid); letter-spacing:.2px; white-space:nowrap; display:block; line-height:1; }
+        .tl-time-now { color:var(--purple) !important; font-weight:800; }
+
+        /* Lane column */
+        .tl-lane { flex:1; position:relative; border-left:1px solid var(--glass-border,rgba(255,255,255,.07)); min-height:52px; padding:8px 12px 8px 14px; }
+        .tl-line { position:absolute; top:0; left:0; right:0; height:1px; background:var(--glass-border,rgba(255,255,255,.07)); }
+        .tl-line-now { background:var(--purple) !important; opacity:.5; }
+        .tl-row-now .tl-lane { background:rgba(124,106,240,.03); }
+
+        /* Current time needle */
+        .tl-needle { position:absolute; left:-1px; right:0; display:flex; align-items:center; z-index:2; pointer-events:none; }
+        .tl-needle-dot { width:8px; height:8px; border-radius:50%; background:var(--purple); flex-shrink:0; margin-left:-4px; box-shadow:0 0 6px var(--purple); }
+        .tl-needle-line { flex:1; height:1.5px; background:var(--purple); opacity:.7; }
+
+        /* Event blocks inside a lane */
+        .tl-events { display:flex; flex-direction:column; gap:5px; }
+        .tl-event { position:relative; padding:8px 10px 8px 12px; border-radius:10px; border-left:3px solid var(--purple); background:var(--surf); border-top:1px solid var(--glass-border,var(--border)); border-right:1px solid var(--glass-border,var(--border)); border-bottom:1px solid var(--glass-border,var(--border)); display:flex; flex-direction:column; gap:3px; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+        .tl-event.tl-done { opacity:.45; }
+        .tl-event-title { font-size:13px; font-weight:700; color:var(--dark); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tl-event-meta  { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:10px; color:var(--mid); line-height:1.4; }
+        .tl-check { position:absolute; top:8px; right:10px; font-size:12px; color:var(--mint,#2DD4BF); font-weight:800; }
       `}</style>
     </div>
   );
