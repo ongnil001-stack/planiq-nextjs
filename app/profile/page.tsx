@@ -52,6 +52,8 @@ export default function ProfilePage() {
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
+  const hdrRef = useRef<HTMLDivElement>(null);
+  const [hdrH, setHdrH] = useState(90);
 
   // ── Lock body scroll when any modal/sheet is open ──
   useEffect(() => {
@@ -100,6 +102,17 @@ export default function ProfilePage() {
     }
     load();
     setActiveTheme(getSavedTheme());
+  }, []);
+
+  // Measure header height for ghost-scroll prevention
+  useEffect(() => {
+    if (!hdrRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setHdrH(Math.round(e.contentRect.height));
+    });
+    ro.observe(hdrRef.current);
+    setHdrH(hdrRef.current.offsetHeight);
+    return () => ro.disconnect();
   }, []);
 
   function openEdit() {
@@ -201,7 +214,7 @@ export default function ProfilePage() {
     <div className={s.profWrap}>
 
       {/* ── Static Header — always clean, never collapses ── */}
-      <div className={s.profHdr}>
+      <div ref={hdrRef} className={s.profHdr}>
         {/* Avatar */}
         <div className={s.profAvWrap}>
           {avatarSrc ? (
@@ -258,7 +271,13 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Scrollable body ── */}
-      <div className={s.profBody}>
+      <div
+        className={s.profBody}
+        style={{
+          maxHeight: `calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom, 0px), 20px))`,
+        }}
+      >
+      <div style={{ paddingBottom: '16px' }}>
 
         {/* Appearance */}
         <div className={s.sh}><div className={s.shT}>
@@ -394,7 +413,7 @@ export default function ProfilePage() {
         </div>
 
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
-        <div style={{ height: 32 }} />
+      </div>{/* inner */}
       </div>
 
       {/* ── Edit Profile Bottom Sheet ── */}

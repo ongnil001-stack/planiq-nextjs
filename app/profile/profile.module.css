@@ -13,7 +13,7 @@
   background: var(--glass-bg, var(--surf));
   backdrop-filter: var(--glass-blur, blur(18px));
   -webkit-backdrop-filter: var(--glass-blur, blur(18px));
-  padding: 52px 22px 20px;
+  padding: max(env(safe-area-inset-top, 0px), 14px) 22px 20px;
   text-align: center;
   flex-shrink: 0;
   border-bottom: 1px solid var(--glass-border, var(--border));
@@ -174,7 +174,7 @@
 .btnSave:disabled { opacity: .6; cursor: not-allowed; }
 
 /* Body */
-.profBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 90px; }
+.profBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 0; }
 .sh { margin-bottom: 10px; margin-top: 16px; }
 .shT {
   font-size: 12px; font-weight: 700; color: var(--mid);
