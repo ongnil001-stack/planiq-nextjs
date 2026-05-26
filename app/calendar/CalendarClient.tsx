@@ -130,6 +130,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [countryCode, setCountryCode] = useState('');
   const [schedules,   setSchedules]   = useState<Schedule[]>(initialSchedules);
   const [sheetOpen,   setSheetOpen]   = useState(false);
+  const [sheetTime,    setSheetTime]    = useState<string | undefined>(undefined);
 
   const year        = viewDate.getFullYear();
   const month       = viewDate.getMonth();
@@ -199,8 +200,14 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   }, [viewMode, selectedDay]);
 
   function handleDayClick(d: number) {
-    if (d === selectedDay) setSheetOpen(true);
+    if (d === selectedDay) { setSheetTime(undefined); setSheetOpen(true); }
     else setSelectedDay(d);
+  }
+
+  function openSheetAtHour(h: number) {
+    const hh = String(h).padStart(2, '0');
+    setSheetTime(`${hh}:00`);
+    setSheetOpen(true);
   }
 
   // Navigation — direction depends on viewMode
@@ -290,7 +297,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       {/* ════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT AREA
       ════════════════════════════════════════════════════════════ */}
-      <div className="scroll-body">
+      <div className="scroll-body" style={viewMode === 'daily' ? { overflowY:'hidden', display:'flex', flexDirection:'column' } : undefined}>
 
         {/* ── MONTHLY VIEW (default) ── */}
         {viewMode === 'monthly' && (
@@ -405,36 +412,32 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
           return (
             <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
 
-              {/* Day header */}
+              {/* Day header — clean banner, no + Add button (tap a time slot instead) */}
               <div style={{
                 flexShrink:0, padding:'14px 16px 12px',
                 borderBottom:'1px solid var(--glass-border,var(--border))',
                 background:'var(--glass-bg2,rgba(255,255,255,.03))',
-                display:'flex', alignItems:'flex-start', justifyContent:'space-between',
               }}>
-                <div>
-                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1.2px' }}>
-                    {DAYS_FULL[selectedDate.getDay()]}
-                  </div>
-                  <div style={{ fontSize:24, fontWeight:900, color:'var(--dark)', letterSpacing:'-.5px', marginTop:2, lineHeight:1 }}>
-                    {selectedDate.getDate()} {MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
-                    {isToday(selectedDay) && (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.22)', padding:'3px 10px', borderRadius:20 }}>
-                        <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--purple)', boxShadow:'0 0 5px var(--purple)', flexShrink:0, display:'inline-block' }}/>
-                        Today
-                      </span>
-                    )}
-                    <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
-                      {selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+                <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1.2px' }}>
+                  {DAYS_FULL[selectedDate.getDay()]}
                 </div>
-                <button
-                  onClick={() => setSheetOpen(true)}
-                  style={{ padding:'8px 16px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0, marginTop:4, boxShadow:'0 2px 10px rgba(124,106,240,.35)' }}
-                >+ Add</button>
+                <div style={{ fontSize:26, fontWeight:900, color:'var(--dark)', letterSpacing:'-.5px', marginTop:2, lineHeight:1 }}>
+                  {selectedDate.getDate()} {MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
+                  {isToday(selectedDay) && (
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.22)', padding:'3px 10px', borderRadius:20 }}>
+                      <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--purple)', boxShadow:'0 0 5px var(--purple)', flexShrink:0, display:'inline-block' }}/>
+                      Today
+                    </span>
+                  )}
+                  <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
+                    {selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}
+                  </span>
+                  <span style={{ fontSize:10, color:'var(--mid)', opacity:0.6, marginLeft:'auto' }}>
+                    Tap any hour to add
+                  </span>
+                </div>
               </div>
 
               {/* Holiday */}
@@ -444,76 +447,101 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 </div>
               )}
 
-              {/* 24-hour timeline — scrollable */}
-              <div ref={timelineRef} style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain' }}>
-                <div style={{ paddingBottom:100 }}>
-                  {HOURS.map(h => {
-                    const events  = byHour[h] ?? [];
-                    const isPast  = nowH >= 0 && h < nowH;
-                    const isCurHr = nowH >= 0 && h === nowH;
-                    const needlePct = isCurHr ? Math.round((nowM / 60) * 100) : 0;
-                    const hourH   = Math.max(64, events.length * 76 + 24);
+              {/* 24-hour timeline — scrollable, no ghost space at bottom */}
+              <div ref={timelineRef} style={{
+                flex:1, overflowY:'auto', overscrollBehavior:'contain',
+                WebkitOverflowScrolling:'touch',
+              }}>
+                {HOURS.map(h => {
+                  const events  = byHour[h] ?? [];
+                  const isPast  = nowH >= 0 && h < nowH;
+                  const isCurHr = nowH >= 0 && h === nowH;
+                  const needlePct = isCurHr ? Math.round((nowM / 60) * 100) : 0;
+                  // Minimum 68px per row; grows to fit events
+                  const rowH = Math.max(68, events.length * 80 + 20);
 
-                    return (
-                      <div key={h} style={{
+                  return (
+                    <div
+                      key={h}
+                      onClick={() => openSheetAtHour(h)}
+                      style={{
                         display:'flex', alignItems:'stretch',
-                        minHeight: hourH,
+                        minHeight: rowH,
                         opacity: isPast ? 0.55 : 1,
-                        background: isCurHr ? 'rgba(124,106,240,.04)' : 'transparent',
+                        background: isCurHr ? 'rgba(124,106,240,.045)' : 'transparent',
+                        cursor:'pointer',
+                        WebkitTapHighlightColor:'rgba(124,106,240,.08)',
+                        transition:'background .12s',
+                      }}
+                    >
+                      {/* Time label column */}
+                      <div style={{
+                        width:62, flexShrink:0,
+                        paddingTop:13, paddingRight:10, paddingLeft:14,
+                        textAlign:'right', pointerEvents:'none',
                       }}>
+                        <span style={{
+                          fontSize:10, fontWeight:700, lineHeight:1,
+                          color: isCurHr ? 'var(--purple)' : 'var(--mid)',
+                          letterSpacing:'.3px', whiteSpace:'nowrap',
+                          display:'block',
+                        }}>{fmtHour(h)}</span>
+                      </div>
 
-                        {/* Time label */}
+                      {/* Lane */}
+                      <div style={{
+                        flex:1,
+                        borderLeft:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                        position:'relative',
+                        padding: events.length ? '10px 14px 10px 12px' : '0 14px 0 12px',
+                        display:'flex', flexDirection:'column', gap:6,
+                      }}>
+                        {/* Hour rule line */}
                         <div style={{
-                          width:60, flexShrink:0,
-                          paddingTop:12, paddingRight:10, paddingLeft:14,
-                          textAlign:'right',
-                        }}>
-                          <span style={{
-                            fontSize:10, fontWeight:700, lineHeight:1,
-                            color: isCurHr ? 'var(--purple)' : 'var(--mid)',
-                            letterSpacing:'.2px', whiteSpace:'nowrap',
-                            display:'block',
-                          }}>{fmtHour(h)}</span>
-                        </div>
+                          position:'absolute', top:0, left:0, right:0, height:1,
+                          background: isCurHr ? 'rgba(124,106,240,.45)' : 'rgba(255,255,255,.06)',
+                          pointerEvents:'none',
+                        }}/>
 
-                        {/* Lane */}
-                        <div style={{
-                          flex:1, borderLeft:'1px solid var(--glass-border,rgba(255,255,255,.08))',
-                          position:'relative', padding:'8px 14px 8px 14px',
-                          display:'flex', flexDirection:'column', gap:6,
-                        }}>
-                          {/* Hour rule */}
+                        {/* "+" hint on hover/press when row is empty */}
+                        {events.length === 0 && (
                           <div style={{
-                            position:'absolute', top:0, left:0, right:0, height:1,
-                            background: isCurHr ? 'rgba(124,106,240,.4)' : 'var(--glass-border,rgba(255,255,255,.06))',
-                          }}/>
+                            position:'absolute', top:'50%', left:'50%',
+                            transform:'translate(-50%,-50%)',
+                            fontSize:10, fontWeight:700, color:'var(--mid)',
+                            opacity:0.18, letterSpacing:'.5px', pointerEvents:'none',
+                            userSelect:'none',
+                          }}>+</div>
+                        )}
 
-                          {/* Current-time needle */}
-                          {isCurHr && (
-                            <div style={{
-                              position:'absolute', top:`${needlePct}%`,
-                              left:-1, right:0,
-                              display:'flex', alignItems:'center',
-                              zIndex:3, pointerEvents:'none',
-                              transform:'translateY(-50%)',
-                            }}>
-                              <div style={{ width:9, height:9, borderRadius:'50%', background:'var(--purple)', flexShrink:0, marginLeft:-4.5, boxShadow:'0 0 8px var(--purple)' }}/>
-                              <div style={{ flex:1, height:1.5, background:'var(--purple)', opacity:.8 }}/>
-                            </div>
-                          )}
+                        {/* Current-time needle */}
+                        {isCurHr && (
+                          <div style={{
+                            position:'absolute', top:`${needlePct}%`,
+                            left:-1, right:0,
+                            display:'flex', alignItems:'center',
+                            zIndex:3, pointerEvents:'none',
+                            transform:'translateY(-50%)',
+                          }}>
+                            <div style={{ width:9, height:9, borderRadius:'50%', background:'var(--purple)', flexShrink:0, marginLeft:-4.5, boxShadow:'0 0 8px var(--purple)' }}/>
+                            <div style={{ flex:1, height:1.5, background:'var(--purple)', opacity:.85 }}/>
+                          </div>
+                        )}
 
-                          {/* Events */}
-                          {events.map(s => {
-                            const startD = new Date(s.start_time);
-                            const endD   = s.end_time ? new Date(s.end_time) : null;
-                            const loc    = (s as Schedule & { location?: string }).location;
-                            const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
-                            return (
-                              <div key={s.id} style={{
+                        {/* Event blocks — stop clicks propagating so they don't re-open sheet with wrong time */}
+                        {events.map(s => {
+                          const startD = new Date(s.start_time);
+                          const endD   = s.end_time ? new Date(s.end_time) : null;
+                          const loc    = (s as Schedule & { location?: string }).location;
+                          const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+                          return (
+                            <div
+                              key={s.id}
+                              onClick={e => e.stopPropagation()}
+                              style={{
                                 display:'flex', flexDirection:'column', gap:4,
                                 padding:'8px 10px 8px 12px',
                                 borderRadius:10,
-                                borderLeft:`3px solid ${pColor}`,
                                 background:'var(--surf)',
                                 border:`1px solid var(--glass-border,var(--border))`,
                                 borderLeftWidth:3,
@@ -522,72 +550,52 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                                 boxShadow:'0 1px 6px rgba(0,0,0,.08)',
                                 opacity: s.is_completed ? 0.5 : 1,
                                 position:'relative',
-                              }}>
-                                {/* Title row */}
-                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                  <TypeIcon type={s.type} />
-                                  <span style={{
-                                    fontSize:13, fontWeight:700, color:'var(--dark)',
-                                    flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                                    textDecoration: s.is_completed ? 'line-through' : 'none',
-                                  }}>{s.title}</span>
-                                  {s.is_completed && (
-                                    <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
-                                  )}
-                                </div>
-                                {/* Meta row */}
-                                <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                                  <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-                                    {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
-                                    {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
-                                  </span>
-                                  {loc && (
-                                    <>
-                                      <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
-                                      <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{loc}</span>
-                                    </>
-                                  )}
-                                  <span style={{
-                                    fontSize:9, fontWeight:800, color:pColor,
-                                    background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
-                                    padding:'1px 6px', borderRadius:5,
-                                    letterSpacing:'.4px', textTransform:'uppercase',
-                                    flexShrink:0,
-                                  }}>{s.priority}</span>
-                                </div>
+                                cursor:'default',
+                              }}
+                            >
+                              {/* Title row */}
+                              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                <TypeIcon type={s.type} />
+                                <span style={{
+                                  fontSize:13, fontWeight:700, color:'var(--dark)',
+                                  flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                                  textDecoration: s.is_completed ? 'line-through' : 'none',
+                                }}>{s.title}</span>
+                                {s.is_completed && (
+                                  <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
+                                )}
                               </div>
-                            );
-                          })}
-                        </div>
+                              {/* Meta row */}
+                              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                                  {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+                                  {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+                                </span>
+                                {loc && (
+                                  <>
+                                    <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+                                    <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{loc}</span>
+                                  </>
+                                )}
+                                <span style={{
+                                  fontSize:9, fontWeight:800, color:pColor,
+                                  background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
+                                  padding:'1px 6px', borderRadius:5,
+                                  letterSpacing:'.4px', textTransform:'uppercase',
+                                  flexShrink:0,
+                                }}>{s.priority}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+                  );
+                })}
 
-              {/* Empty state */}
-              {selectedSchedules.length === 0 && (
-                <div style={{
-                  position:'absolute', top:'50%', left:'50%',
-                  transform:'translate(-50%,-50%)',
-                  textAlign:'center', color:'var(--mid)', pointerEvents:'none',
-                  width:'100%',
-                }}>
-                  <div style={{ opacity:.3, marginBottom:12, display:'flex', justifyContent:'center' }}>
-                    <svg width="44" height="44" viewBox="0 0 40 40" fill="none">
-                      <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
-                      <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
-                      <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
-                      <path d="M14 26h12M14 22h8" stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-                  <p style={{ fontSize:13, marginBottom:12 }}>Nothing scheduled for this day</p>
-                  <button
-                    onClick={() => setSheetOpen(true)}
-                    style={{ pointerEvents:'all', padding:'10px 24px', background:'var(--gradient)', border:'none', borderRadius:12, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 4px 14px rgba(124,106,240,.3)' }}
-                  >+ Add Schedule</button>
-                </div>
-              )}
+                {/* Bottom padding — exactly one extra row height so 11 PM row has breathing room, no ghost space */}
+                <div style={{ height:32 }} />
+              </div>
             </div>
           );
         })()}
@@ -709,7 +717,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         open={sheetOpen}
         selectedDate={selectedDate}
         countryCode={countryCode}
-        onClose={() => setSheetOpen(false)}
+        initialTime={sheetTime}
+        onClose={() => { setSheetOpen(false); setSheetTime(undefined); }}
         onSaved={refreshSchedules}
       />
 

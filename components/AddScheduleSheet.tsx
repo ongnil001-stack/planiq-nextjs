@@ -205,13 +205,14 @@ interface Props {
   open: boolean;
   selectedDate: Date;
   countryCode: string;
+  initialTime?: string;   // e.g. "14:00" — pre-fills start time when sheet opens
   onClose: () => void;
   onSaved: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AddScheduleSheet({ open, selectedDate, countryCode, onClose, onSaved }: Props) {
+export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, onClose, onSaved }: Props) {
   const supabase = createClient();
 
   const [title,         setTitle]         = useState('');
@@ -257,7 +258,8 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, onCl
   useEffect(() => {
     if (open) {
       setTitle(''); setType('task'); setPriority('medium');
-      setStartTime('09:00'); setEndTime('09:30'); setEndTouched(false);
+      const t0 = initialTime ?? '09:00';
+      setStartTime(t0); setEndTime(addMinutes(t0, 30)); setEndTouched(false);
       setAllDay(false); setSchedLocation(''); setNotes('');
       setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
       setSaving(false); setSaveError(null);
