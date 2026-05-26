@@ -245,6 +245,62 @@ Rules:
   return parseJson(raw);
 }
 
+
+// ─── Action: reschedule_suggest ───────────────────────────────────────────────
+
+async function rescheduleSuggest(schedules: ScheduleItem[]) {
+  if (schedules.length < 2) {
+    return { optimizations: [], summary: 'Not enough schedule data to suggest optimizations.' };
+  }
+
+  const scheduleText = schedules
+    .filter(s => !s.is_completed)
+    .map(s => {
+      const start = new Date(s.start_time);
+      const end   = s.end_time ? new Date(s.end_time) : null;
+      const dur   = end ? Math.round((end.getTime() - start.getTime()) / 60000) : 60;
+      return `ID:${s.id} | [${s.priority.toUpperCase()}] ${s.type} "${s.title}" | ${start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} ${start.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}${end ? ` → ${end.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}` : ''} (${dur}min)`;
+    })
+    .join('\n');
+
+  const prompt = `You are PlanIQ's Smart Reschedule AI. Analyze these schedule items and identify specific, concrete moves that would reduce overload, fix conflicts, and improve time balance.
+
+PENDING SCHEDULE ITEMS:
+${scheduleText}
+
+Your job: identify 2-4 specific items that should be moved to a better time slot. For each, provide the exact schedule ID, current time, and a specific suggested new time on a different or less-loaded day.
+
+Respond ONLY with valid JSON — no markdown, no extra text:
+{
+  "optimizations": [
+    {
+      "schedule_id": "<exact ID from the list above>",
+      "schedule_title": "<title of the item>",
+      "current_day": "<e.g. Monday>",
+      "current_time": "<HH:MM 24h>",
+      "current_date": "<YYYY-MM-DD>",
+      "suggested_day": "<e.g. Tuesday>",
+      "suggested_time": "<HH:MM 24h — specific slot, not vague>",
+      "suggested_date": "<YYYY-MM-DD — must be same week>",
+      "reason": "<1 sentence: why this move helps, referencing actual schedule data>",
+      "impact": "<1 short phrase: what improves, e.g. 'Frees up Monday morning'>",
+      "confidence": "high|medium|low"
+    }
+  ],
+  "summary": "<1 sentence overview of the optimization opportunity>"
+}
+
+Rules:
+- Only suggest moves for items that genuinely benefit from moving (overloaded days, conflicts, late-night scheduling of daytime tasks)
+- suggested_date must be a real date in the same week as the item
+- suggested_time must be a realistic working-hours slot (07:00–21:00) that is not already occupied
+- If the schedule looks well-balanced, return 0-1 optimizations and say so in the summary
+- Do not suggest moving completed items`;
+
+  const raw = await callClaude(prompt, 1000);
+  return parseJson(raw);
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -290,6 +346,9 @@ serve(async (req: Request) => {
     } else if (action === 'smart_suggest') {
       if (!body.proposed) throw new Error('smart_suggest requires a "proposed" schedule object');
       result = await smartSuggest(body.schedules ?? [], body.proposed);
+
+    } else if (action === 'reschedule_suggest') {
+      result = await rescheduleSuggest(body.schedules ?? []);
 
     } else {
       // weekly_analysis (default)

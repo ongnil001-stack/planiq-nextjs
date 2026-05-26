@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import BottomNav from '@/components/layout/BottomNav';
+import SmartReschedulePanel from '@/components/SmartReschedulePanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WeeklyResult {
@@ -95,6 +96,12 @@ function SkeletonCard() {
   );
 }
 
+interface ExistingSchedule {
+  id: string; title: string; type: string; priority: string;
+  start_time: string; end_time: string | null;
+  all_day: boolean; is_completed: boolean;
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AIAnalysisPage() {
   const router = useRouter();
@@ -107,6 +114,7 @@ export default function AIAnalysisPage() {
   const [lastRun,      setLastRun]        = useState<string | null>(null);
   const [schedCount,   setSchedCount]     = useState(0);
   const [initLoading,  setInitLoading]    = useState(true);
+  const [weekSchedules, setWeekSchedules] = useState<ExistingSchedule[]>([]);
 
   // ── Load last saved analysis on mount ──────────────────────────────────────
   useEffect(() => {
@@ -140,6 +148,17 @@ export default function AIAnalysisPage() {
         .gte('start_time', wStart.toISOString())
         .lte('start_time', wEnd.toISOString());
       setSchedCount(count ?? 0);
+
+      // Store week schedules for SmartReschedulePanel
+      const { data: scheds2 } = await supabase.from('schedules').select('*')
+        .eq('user_id', user!.id)
+        .gte('start_time', wStart.toISOString())
+        .lte('start_time', wEnd.toISOString());
+      setWeekSchedules((scheds2 ?? []).map(s => ({
+        id: s.id, title: s.title, type: s.type, priority: s.priority,
+        start_time: s.start_time, end_time: s.end_time,
+        all_day: s.all_day ?? false, is_completed: s.is_completed,
+      })));
       setInitLoading(false);
     }
     init();
@@ -173,6 +192,7 @@ export default function AIAnalysisPage() {
       start_time: s.start_time, end_time: s.end_time,
       all_day: s.all_day ?? false, is_completed: s.is_completed,
     }));
+    setWeekSchedules(schedules);
 
     // Fire all 3 in parallel
     try {
@@ -337,6 +357,32 @@ export default function AIAnalysisPage() {
 
         {!analyzing && (
           <>
+            {/* ── 0. SMART RESCHEDULE ── */}
+            <div style={SECTION}>
+              <p style={SEC_LABEL}>0 · Smart Reschedule</p>
+              <SmartReschedulePanel
+                schedules={weekSchedules}
+                onApplied={() => {
+                  // Refresh week schedules after a move is applied
+                  supabase.auth.getUser().then(({ data: { user } }) => {
+                    if (!user) return;
+                    const n = new Date();
+                    const ws = new Date(n); ws.setDate(n.getDate()-n.getDay()); ws.setHours(0,0,0,0);
+                    const we = new Date(ws); we.setDate(ws.getDate()+6); we.setHours(23,59,59,999);
+                    supabase.from('schedules').select('*')
+                      .eq('user_id', user.id)
+                      .gte('start_time', ws.toISOString())
+                      .lte('start_time', we.toISOString())
+                      .then(({ data }) => setWeekSchedules((data ?? []).map(s => ({
+                        id: s.id, title: s.title, type: s.type, priority: s.priority,
+                        start_time: s.start_time, end_time: s.end_time,
+                        all_day: s.all_day ?? false, is_completed: s.is_completed,
+                      }))));
+                  });
+                }}
+              />
+            </div>
+
             {/* ── 1. TODAY'S INSIGHT ── */}
             <div style={SECTION}>
               <p style={SEC_LABEL}>1 · Today&apos;s Insight</p>
