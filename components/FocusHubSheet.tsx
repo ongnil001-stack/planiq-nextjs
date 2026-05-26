@@ -175,6 +175,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
           },
           body: JSON.stringify({
             action: 'daily_brief',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             mode: viewMode,
             schedules: scheduleData.map(s => ({
               id: s.id,

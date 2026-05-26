@@ -40,13 +40,21 @@ interface ProposedSchedule {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtItem(s: ScheduleItem) {
-  const start = new Date(s.start_time).toLocaleString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-  const end  = s.end_time ? ` → ${new Date(s.end_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : '';
-  const done = s.is_completed ? ' [DONE]' : '';
+function fmtItem(s: ScheduleItem, tz = 'UTC') {
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: tz,
+  };
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: tz };
+  const start = new Date(s.start_time).toLocaleString('en-US', opts);
+  const end   = s.end_time ? ` → ${new Date(s.end_time).toLocaleTimeString('en-US', timeOpts)}` : '';
+  const done  = s.is_completed ? ' [DONE]' : '';
   return `• [${s.priority.toUpperCase()}] ${s.type}: "${s.title}" @ ${start}${end}${done}`;
+}
+
+/** Format a UTC ISO date string to a local date string (YYYY-MM-DD) in the given timezone */
+function localDateStr(isoStr: string, tz = 'UTC'): string {
+  return new Date(isoStr).toLocaleDateString('en-CA', { timeZone: tz }); // 'en-CA' gives YYYY-MM-DD
 }
 
 async function callClaude(prompt: string, maxTokens = 1024): Promise<string> {
@@ -85,12 +93,12 @@ function parseJson(raw: string): unknown {
 
 // ─── Action: weekly_analysis ──────────────────────────────────────────────────
 
-async function weeklyAnalysis(schedules: ScheduleItem[], dateRange: { from: string; to: string }) {
+async function weeklyAnalysis(schedules: ScheduleItem[], dateRange: { from: string; to: string }, tz = 'UTC') {
   if (!schedules.length) {
     return { workload_score: 0, summary: 'No schedules found for this period.', recommendations: [], issues: [] };
   }
 
-  const scheduleText = schedules.map(fmtItem).join('\n');
+  const scheduleText = schedules.map(s => fmtItem(s, tz)).join('\n');
   const completed = schedules.filter(s => s.is_completed).length;
 
   const prompt = `You are PlanIQ's AI Schedule Advisor. Analyze this weekly schedule and provide actionable insights.
@@ -123,16 +131,16 @@ Focus on: overloading, conflicts, high-priority clustering, missing breaks, task
 
 // ─── Action: daily_brief ──────────────────────────────────────────────────────
 
-async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 'today') {
+async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 'today', tz = 'UTC') {
   const now     = new Date();
-  const today   = now.toISOString().slice(0, 10);
-  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const today   = localDateStr(now.toISOString(), tz);          // local date in user's tz
+  const dayName = now.toLocaleDateString('en-US', { weekday: 'long', timeZone: tz });
 
   let inScope: ScheduleItem[];
   let scopeLabel: string;
 
   if (mode === 'today') {
-    inScope    = schedules.filter(s => s.start_time.slice(0, 10) === today);
+    inScope    = schedules.filter(s => localDateStr(s.start_time, tz) === today);
     scopeLabel = `today (${dayName}, ${today})`;
   } else {
     const weekStart = new Date(now);
@@ -142,7 +150,7 @@ async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 't
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
     inScope    = schedules.filter(s => { const d = new Date(s.start_time); return d >= weekStart && d <= weekEnd; });
-    scopeLabel = `this week (${weekStart.toDateString()} - ${weekEnd.toDateString()})`;
+    scopeLabel = `this week (${weekStart.toLocaleDateString('en-US', { timeZone: tz })} - ${weekEnd.toLocaleDateString('en-US', { timeZone: tz })})`;
   }
 
   if (!inScope.length) {
@@ -159,7 +167,7 @@ async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 't
 
   const pending   = inScope.filter(s => !s.is_completed);
   const completed = inScope.filter(s => s.is_completed);
-  const scheduleText = inScope.map(fmtItem).join('\n');
+  const scheduleText = inScope.map(s => fmtItem(s, tz)).join('\n');
 
   const prompt = `You are PlanIQ's AI Focus Advisor. Generate a motivating, actionable daily brief for ${scopeLabel}.
 
@@ -195,7 +203,7 @@ Rules:
 
 // ─── Action: smart_suggest ────────────────────────────────────────────────────
 
-async function smartSuggest(existingSchedules: ScheduleItem[], proposed: ProposedSchedule) {
+async function smartSuggest(existingSchedules: ScheduleItem[], proposed: ProposedSchedule, tz = 'UTC') {
   if (!proposed.start_time) {
     return { has_conflicts: false, conflicts: [], suggestions: [{ text: 'Choose a start time to check for conflicts.', reason: '' }], best_times: [] };
   }
@@ -205,11 +213,12 @@ async function smartSuggest(existingSchedules: ScheduleItem[], proposed: Propose
     ? new Date(proposed.end_time)
     : new Date(proposedStart.getTime() + (proposed.duration_minutes ?? 60) * 60000);
 
-  const sameDay     = existingSchedules.filter(s => s.start_time.slice(0, 10) === proposed.start_time.slice(0, 10));
-  const scheduleText = sameDay.length ? sameDay.map(fmtItem).join('\n') : '(no other items scheduled on this day)';
+  const proposedLocalDate = localDateStr(proposed.start_time, tz);
+  const sameDay     = existingSchedules.filter(s => localDateStr(s.start_time, tz) === proposedLocalDate);
+  const scheduleText = sameDay.length ? sameDay.map(s => fmtItem(s, tz)).join('\n') : '(no other items scheduled on this day)';
 
-  const startStr = proposedStart.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const endStr   = proposedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const startStr = proposedStart.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const endStr   = proposedEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: tz });
 
   const prompt = `You are PlanIQ's Smart Schedule AI. Check if the proposed item conflicts with existing schedules and suggest better alternatives.
 
@@ -248,7 +257,7 @@ Rules:
 
 // ─── Action: reschedule_suggest ───────────────────────────────────────────────
 
-async function rescheduleSuggest(schedules: ScheduleItem[]) {
+async function rescheduleSuggest(schedules: ScheduleItem[], tz = 'UTC') {
   if (schedules.length < 2) {
     return { optimizations: [], summary: 'Not enough schedule data to suggest optimizations.' };
   }
@@ -259,7 +268,7 @@ async function rescheduleSuggest(schedules: ScheduleItem[]) {
       const start = new Date(s.start_time);
       const end   = s.end_time ? new Date(s.end_time) : null;
       const dur   = end ? Math.round((end.getTime() - start.getTime()) / 60000) : 60;
-      return `ID:${s.id} | [${s.priority.toUpperCase()}] ${s.type} "${s.title}" | ${start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} ${start.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}${end ? ` → ${end.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}` : ''} (${dur}min)`;
+      return `ID:${s.id} | [${s.priority.toUpperCase()}] ${s.type} "${s.title}" | ${start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:tz})} ${start.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:tz})}${end ? ` → ${end.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:tz})}` : ''} (${dur}min)`;
     })
     .join('\n');
 
@@ -335,25 +344,28 @@ serve(async (req: Request) => {
       dateRange?: { from: string; to: string };
       mode?: 'today' | 'week';
       proposed?: ProposedSchedule;
+      timezone?: string;
     };
 
     const action = body.action ?? 'weekly_analysis';
+    // Use the client's local timezone (IANA string, e.g. 'Asia/Manila'); fall back to UTC
+    const tz = (body.timezone && body.timezone.length > 0) ? body.timezone : 'UTC';
     let result: unknown;
 
     if (action === 'daily_brief') {
-      result = await dailyBrief(body.schedules ?? [], body.mode ?? 'today');
+      result = await dailyBrief(body.schedules ?? [], body.mode ?? 'today', tz);
 
     } else if (action === 'smart_suggest') {
       if (!body.proposed) throw new Error('smart_suggest requires a "proposed" schedule object');
-      result = await smartSuggest(body.schedules ?? [], body.proposed);
+      result = await smartSuggest(body.schedules ?? [], body.proposed, tz);
 
     } else if (action === 'reschedule_suggest') {
-      result = await rescheduleSuggest(body.schedules ?? []);
+      result = await rescheduleSuggest(body.schedules ?? [], tz);
 
     } else {
       // weekly_analysis (default)
       const dateRange = body.dateRange ?? { from: 'this week', to: 'this week' };
-      result = await weeklyAnalysis(body.schedules ?? [], dateRange);
+      result = await weeklyAnalysis(body.schedules ?? [], dateRange, tz);
 
       // Persist to ai_analyses table
       const serviceClient = createClient(

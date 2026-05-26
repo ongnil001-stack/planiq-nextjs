@@ -85,6 +85,7 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({
             action: 'reschedule_suggest',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             schedules: schedules.filter(s => !s.is_completed).map(s => ({
               id: s.id, title: s.title, type: s.type, priority: s.priority,
               start_time: s.start_time, end_time: s.end_time,

@@ -201,17 +201,18 @@ export default function AIAnalysisPage() {
           method:'POST', headers,
           body: JSON.stringify({
             action: 'weekly_analysis',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             schedules,
             dateRange: { from: wStart.toDateString(), to: wEnd.toDateString() },
           }),
         }),
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
-          body: JSON.stringify({ action: 'daily_brief', mode: 'today', schedules }),
+          body: JSON.stringify({ action: 'daily_brief', mode: 'today', schedules, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
         }),
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
-          body: JSON.stringify({ action: 'daily_brief', mode: 'week', schedules }),
+          body: JSON.stringify({ action: 'daily_brief', mode: 'week', schedules, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
         }),
       ]);
 

@@ -162,6 +162,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({
             action: 'weekly_analysis',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             dateRange: { from: wStart.toDateString(), to: wEnd.toDateString() },
             schedules: weekSchedules.map(s => ({
               id: s.id, title: s.title, type: s.type, priority: s.priority,

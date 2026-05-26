@@ -88,6 +88,7 @@ export default function SmartScheduleAI({ proposed, existingSchedules, onSelectT
           },
           body: JSON.stringify({
             action: 'smart_suggest',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             proposed,
             schedules: existingSchedules,
           }),
