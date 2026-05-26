@@ -248,36 +248,40 @@ function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Dat
 
 
 // ── Fluid swipe calendar track ────────────────────────────────────────────────
-// Strategy: single grid rendered at a time. On swipe-commit the key changes and
-// a CSS slide-in animation plays. During drag, the grid translates live via
-// an inline transform. No flex track, no width measurement needed — the grid
-// uses the natural width of its parent (the scroll-body) and repeat(7,1fr).
 interface CalTrackProps {
   year: number; month: number;
   selectedDay: number;
-  dayMapFn: (y: number, mo: number) => Record<number, import('@/types/database').Schedule[]>;
-  holidaysFn: (y: number, mo: number) => Map<string, import('@/lib/holidays').Holiday>;
-  isToday: (d: number, y?: number, mo?: number) => boolean;
-  onDayClick: (d: number) => void;
+  dayMapFn:    (y: number, mo: number) => Record<number, import('@/types/database').Schedule[]>;
+  holidaysFn:  (y: number, mo: number) => Map<string, import('@/lib/holidays').Holiday>;
+  isToday:     (d: number, y: number, mo: number) => boolean;
+  onDayClick:  (d: number) => void;
   onMonthChange: (delta: -1 | 1) => void;
 }
-function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday, onDayClick, onMonthChange }: CalTrackProps) {
-  const startX  = useRef<number | null>(null);
-  const startY  = useRef<number | null>(null);
-  const animRef = useRef(false);
-  const [dragX,    setDragX]    = useState(0);
-  const [slideDir, setSlideDir] = useState<'left'|'right'|null>(null);
-  const [locked,   setLocked]   = useState<'h'|'v'|null>(null);
+function CalendarTrack({
+  year, month, selectedDay,
+  dayMapFn, holidaysFn, isToday,
+  onDayClick, onMonthChange,
+}: CalTrackProps) {
+  const startX   = useRef<number | null>(null);
+  const startY   = useRef<number | null>(null);
+  const busy     = useRef(false);
+  const [offsetX, setOffsetX] = useState(0);   // live drag offset px
+  const [dir,     setDir]     = useState<'l'|'r'|null>(null); // swipe direction for commit animation
+  const [axis,    setAxis]    = useState<'h'|'v'|null>(null);
 
-  // Reset slide animation after it plays
+  // After month changes, clear dir so animation only plays once
+  const prevKey = useRef(`${year}-${month}`);
   useEffect(() => {
-    if (slideDir !== null) {
-      const t = setTimeout(() => { setSlideDir(null); animRef.current = false; }, 320);
+    const key = `${year}-${month}`;
+    if (key !== prevKey.current) {
+      prevKey.current = key;
+      const t = setTimeout(() => { setDir(null); busy.current = false; }, 300);
       return () => clearTimeout(t);
     }
-  }, [year, month, slideDir]);
+  }, [year, month]);
 
-  function renderGrid(y: number, mo: number) {
+  // Build a single month's grid cells (no wrapper div — caller wraps)
+  function cells(y: number, mo: number) {
     const days  = new Date(y, mo + 1, 0).getDate();
     const first = new Date(y, mo, 1).getDay();
     const dMap  = dayMapFn(y, mo);
@@ -288,21 +292,26 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
         {Array.from({ length: days }).map((_, i) => {
           const d       = i + 1;
           const dateStr = toDateStr(new Date(y, mo, d));
-          const holiday = hMap.get(dateStr);
-          const events  = dMap[d] ?? [];
-          const hasDots = events.length > 0;
-          const active  = (mo === month && y === year) && d === selectedDay;
+          const hol     = hMap.get(dateStr);
+          const evts    = dMap[d] ?? [];
+          const active  = y === year && mo === month && d === selectedDay;
           const todayD  = isToday(d, y, mo);
           return (
-            <button key={d}
-              className={`cal-day${active ? ' active' : ''}${todayD ? ' today' : ''}${holiday ? ' holiday' : ''}`}
-              onClick={() => { if (mo === month && y === year) onDayClick(d); }}
-              title={holiday ? holiday.localName : undefined}>
+            <button
+              key={d}
+              className={[
+                'cal-day',
+                active  ? 'active'  : '',
+                todayD  ? 'today'   : '',
+                hol     ? 'holiday' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => { if (y === year && mo === month) onDayClick(d); }}
+              title={hol?.localName}>
               <span className="day-num">{d}</span>
               <div className="day-indicators">
-                {holiday && <span className="h-dot" />}
-                {hasDots && !holiday && <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />}
-                {hasDots && events.length > 1 && <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />}
+                {hol && <span className="h-dot" />}
+                {!hol && evts[0] && <span className="dot" style={{ background: PRIORITY_COLORS[evts[0].priority] }} />}
+                {!hol && evts[1] && <span className="dot" style={{ background: PRIORITY_COLORS[evts[1].priority] }} />}
               </div>
             </button>
           );
@@ -311,75 +320,61 @@ function CalendarTrack({ year, month, selectedDay, dayMapFn, holidaysFn, isToday
     );
   }
 
-  const W         = typeof window !== 'undefined' ? window.innerWidth : 390;
-  const THRESHOLD = W * 0.28;
+  const W = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const THRESH = W * 0.28;
 
-  function handleTouchStart(e: React.TouchEvent) {
-    if (animRef.current) return;
+  function onTS(e: React.TouchEvent) {
+    if (busy.current) return;
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
-    setLocked(null);
-    setDragX(0);
+    setAxis(null); setOffsetX(0);
   }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    if (startX.current === null || animRef.current) return;
+  function onTM(e: React.TouchEvent) {
+    if (startX.current === null || busy.current) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - (startY.current ?? 0);
-    if (locked === null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-        setLocked(Math.abs(dx) > Math.abs(dy) ? 'h' : 'v');
-      }
+    if (!axis) {
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+        setAxis(Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v');
       return;
     }
-    if (locked === 'v') return;
+    if (axis === 'v') return;
     e.preventDefault();
-    // Rubber-band: full drag up to 60% width, then resist
-    const cap    = W * 0.60;
-    const resist = 0.35;
-    setDragX(Math.abs(dx) > cap
-      ? (dx > 0 ? 1 : -1) * (cap + (Math.abs(dx) - cap) * resist)
-      : dx);
+    const cap = W * 0.55, r = 0.32;
+    setOffsetX(Math.abs(dx) > cap ? Math.sign(dx)*(cap + (Math.abs(dx)-cap)*r) : dx);
   }
-
-  function handleTouchEnd() {
-    if (startX.current === null) return;
+  function onTE() {
+    if (!startX.current) return;
     startX.current = null;
-    if (locked !== 'h' || animRef.current) { setDragX(0); setLocked(null); return; }
-    const snap = dragX > THRESHOLD ? -1 : dragX < -THRESHOLD ? 1 : 0;
+    if (axis !== 'h' || busy.current) { setOffsetX(0); setAxis(null); return; }
+    const snap = offsetX > THRESH ? -1 : offsetX < -THRESH ? 1 : 0;
     if (snap !== 0) {
-      animRef.current = true;
-      const dir: 'left'|'right' = snap < 0 ? 'right' : 'left';
-      setDragX(0);
-      setSlideDir(dir);
-      onMonthChange(snap as -1 | 1);
+      busy.current = true;
+      setDir(snap < 0 ? 'r' : 'l');
+      setOffsetX(0);
+      setAxis(null);
+      onMonthChange(snap as -1|1);
     } else {
-      setDragX(0);
+      setOffsetX(0); setAxis(null);
     }
-    setLocked(null);
   }
 
-  // During drag: translate the grid live
-  const dragStyle = dragX !== 0 ? { transform: `translateX(${dragX}px)`, transition:'none' } : {};
-
-  // On month change: play slide-in animation via CSS class
-  const animClass = slideDir === 'left'  ? ' slide-in-left'
-                  : slideDir === 'right' ? ' slide-in-right'
-                  : '';
+  // The grid gets a translateX during drag, or a CSS slide-in animation on month change
+  const gridStyle: React.CSSProperties = offsetX !== 0
+    ? { transform: `translateX(${offsetX}px)`, transition: 'none', willChange: 'transform' }
+    : dir === 'l' ? { animation: 'calSlideL 280ms cubic-bezier(.25,.46,.45,.94) both' }
+    : dir === 'r' ? { animation: 'calSlideR 280ms cubic-bezier(.25,.46,.45,.94) both' }
+    : {};
 
   return (
     <div
-      style={{ overflow:'hidden', touchAction:'pan-y', userSelect:'none', padding:'0 8px 4px' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      style={{ overflow:'hidden' }}
+      onTouchStart={onTS}
+      onTouchMove={onTM}
+      onTouchEnd={onTE}
     >
-      <div
-        key={`${year}-${month}`}
-        className={`cal-grid${animClass}`}
-        style={dragStyle}
-      >
-        {renderGrid(year, month)}
+      <div key={`${year}-${month}`} className="cal-grid" style={gridStyle}>
+        {cells(year, month)}
       </div>
     </div>
   );
@@ -826,43 +821,32 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               </div>
             )}
 
-            {/* ── Calendar grid — fluid swipe track ── */}
-            <div style={{ padding:'10px 0 0', flexShrink:0 }}>
-              <div className="cal-grid header-row" style={{ paddingTop:0, padding:'0 8px 2px' }}>
-                {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
+            {/* ── Calendar grid ── */}
+            <div style={{ flexShrink:0, paddingTop:10 }}>
+              {/* Day-of-week header — outside swipe container so it never moves */}
+              <div className="cal-grid" style={{ paddingBottom:2 }}>
+                {DAYS_SHORT.map(dn => <div key={dn} className="dow">{dn}</div>)}
               </div>
+              {/* Swipe track */}
               <CalendarTrack
                 year={year}
                 month={month}
                 selectedDay={selectedDay}
                 dayMapFn={(y, mo) => {
-                  const scheds = schedules.filter(s => {
-                    const sd = new Date(s.start_time);
-                    return sd.getFullYear() === y && sd.getMonth() === mo;
-                  });
                   const map: Record<number, Schedule[]> = {};
-                  scheds.forEach(s => {
-                    const d = new Date(s.start_time).getDate();
-                    if (!map[d]) map[d] = [];
-                    map[d].push(s);
-                  });
+                  schedules
+                    .filter(s => { const d = new Date(s.start_time); return d.getFullYear()===y && d.getMonth()===mo; })
+                    .forEach(s => { const d = new Date(s.start_time).getDate(); (map[d] ??= []).push(s); });
                   return map;
                 }}
                 holidaysFn={(y, mo) => {
-                  // Return subset of loaded holidays matching y/mo
                   const out = new Map<string, import('@/lib/holidays').Holiday>();
-                  holidays.forEach((v, k) => {
-                    const [hy, hm] = k.split('-').map(Number);
-                    if (hy === y && hm - 1 === mo) out.set(k, v);
-                  });
+                  holidays.forEach((v,k) => { const [hy,hm]=k.split('-').map(Number); if(hy===y && hm-1===mo) out.set(k,v); });
                   return out;
                 }}
-                isToday={(d, y2, mo2) => {
-                  const ty = today.getFullYear(), tm = today.getMonth(), td = today.getDate();
-                  return d === td && (y2 ?? year) === ty && (mo2 ?? month) === tm;
-                }}
+                isToday={(d, y, mo) => d===today.getDate() && y===today.getFullYear() && mo===today.getMonth()}
                 onDayClick={d => { handleDayClick(d); setMonthlyTab('overview'); }}
-                onMonthChange={delta => { if (delta === -1) navPrev(); else navNext(); }}
+                onMonthChange={delta => { if (delta===-1) navPrev(); else navNext(); }}
               />
             </div>
 
@@ -1381,13 +1365,11 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; position:relative; }
 
         /* ════ MONTHLY ════ */
-        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:0 8px 4px; background:var(--glass-bg2,var(--surf)); }
-        @keyframes slideInLeft  { from { transform:translateX(100%); opacity:.4; } to { transform:translateX(0); opacity:1; } }
-        @keyframes slideInRight { from { transform:translateX(-100%); opacity:.4; } to { transform:translateX(0); opacity:1; } }
-        .cal-grid.slide-in-left  { animation: slideInLeft  280ms cubic-bezier(.25,.46,.45,.94) both; }
-        .cal-grid.slide-in-right { animation: slideInRight 280ms cubic-bezier(.25,.46,.45,.94) both; }
-        .header-row { padding-top:8px; }
-        .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:4px 0; }
+        /* ── Calendar grid ── */
+        @keyframes calSlideL { from{transform:translateX(100%);opacity:.3} to{transform:translateX(0);opacity:1} }
+        @keyframes calSlideR { from{transform:translateX(-100%);opacity:.3} to{transform:translateX(0);opacity:1} }
+        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; padding:0 10px 6px; background:var(--glass-bg2,var(--surf)); }
+        .dow { text-align:center; font-size:10px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; padding:5px 0 3px; }
         .cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; }
         .cal-day:active { background:var(--pur-lt); }
         .cal-day.active { background:var(--purple) !important; }
