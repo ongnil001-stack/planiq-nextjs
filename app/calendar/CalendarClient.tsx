@@ -189,6 +189,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [schedules,   setSchedules]   = useState<Schedule[]>(initialSchedules);
   const [sheetOpen,   setSheetOpen]   = useState(false);
   const [sheetTime,    setSheetTime]    = useState<string | undefined>(undefined);
+  const [monthlyTab,  setMonthlyTab]  = useState<'overview'|'busy'|'free'>('overview');
 
   const year        = viewDate.getFullYear();
   const month       = viewDate.getMonth();
@@ -247,6 +248,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       .order('start_time');
     if (data) setSchedules(data as Schedule[]);
   }, [year, month, selectedDay]);
+
+  // Reset monthly tab when navigating months
+  useEffect(() => { setMonthlyTab('overview'); }, [year, month]);
 
   // Build day map
   const dayMap: Record<number, Schedule[]> = {};
@@ -376,83 +380,245 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       ════════════════════════════════════════════════════════════ */}
       <div className="scroll-body" style={(viewMode === 'daily' || viewMode === 'weekly') ? { overflowY:'hidden', display:'flex', flexDirection:'column' } : undefined}>
 
-        {/* ── MONTHLY VIEW (default) ── */}
-        {viewMode === 'monthly' && (
-          <>
-            {/* Day-of-week headers */}
-            <div className="cal-grid header-row">
-              {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
-            </div>
-            {/* Calendar grid */}
-            <div className="cal-grid">
-              {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const d       = i + 1;
-                const dateStr = toDateStr(new Date(year, month, d));
-                const holiday = holidays.get(dateStr);
-                const hasDots = dayMap[d]?.length > 0;
-                const active  = d === selectedDay;
-                const todayDay = isToday(d);
-                return (
-                  <button key={d}
-                    className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
-                    onClick={() => handleDayClick(d)}
-                    title={holiday ? holiday.localName : undefined}>
-                    <span className="day-num">{d}</span>
-                    <div className="day-indicators">
-                      {holiday && <span className="h-dot" />}
-                      {hasDots && dayMap[d].slice(0, 2).map((s, idx) => (
-                        <span key={idx} className="dot" style={{ background: PRIORITY_COLORS[s.priority] }} />
-                      ))}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {/* Selected day panel */}
-            <div className="day-panel">
-              {/* Panel header */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                <div>
-                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
-                    {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
-                  </div>
-                  <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
-                    {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
-                  </div>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  {selectedSchedules.length > 0 && (
-                    <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
-                      {selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setSheetOpen(true)}
-                    style={{ padding:'7px 14px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(124,106,240,.3)' }}
-                  >+ Add</button>
-                </div>
+        {/* ── MONTHLY VIEW ── */}
+        {viewMode === 'monthly' && (() => {
+          // Compute month stats
+          const busyDayNums  = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => dayMap[d]?.length > 0);
+          const freeDayNums  = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(d => !dayMap[d]?.length);
+          const totalActs    = Object.values(dayMap).reduce((sum, arr) => sum + arr.length, 0);
+          const busyCount    = busyDayNums.length;
+          const freeCount    = freeDayNums.length;
+
+          return (
+            <>
+              {/* ── Month snapshot pills ── */}
+              <div style={{
+                display:'flex', gap:8, padding:'12px 14px 10px',
+                background:'var(--glass-bg2,var(--surf))',
+                borderBottom:'1px solid var(--glass-border,var(--border))',
+                flexShrink:0,
+              }}>
+                {/* Busy Days pill */}
+                <button
+                  onClick={() => setMonthlyTab(monthlyTab === 'busy' ? 'overview' : 'busy')}
+                  style={{
+                    flex:1, padding:'10px 6px', borderRadius:14,
+                    background: monthlyTab === 'busy' ? 'rgba(255,107,138,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+                    border: monthlyTab === 'busy' ? '1.5px solid rgba(255,107,138,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+                  }}>
+                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'busy' ? 'var(--coral,#FF6B8A)' : 'var(--dark)', lineHeight:1 }}>{busyCount}</div>
+                  <div style={{ fontSize:9, fontWeight:700, color:'var(--coral,#FF6B8A)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Busy Days</div>
+                </button>
+
+                {/* Total activities pill */}
+                <button
+                  onClick={() => setMonthlyTab('overview')}
+                  style={{
+                    flex:1, padding:'10px 6px', borderRadius:14,
+                    background: monthlyTab === 'overview' ? 'rgba(124,106,240,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+                    border: monthlyTab === 'overview' ? '1.5px solid rgba(124,106,240,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+                  }}>
+                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'overview' ? 'var(--purple)' : 'var(--dark)', lineHeight:1 }}>{totalActs}</div>
+                  <div style={{ fontSize:9, fontWeight:700, color:'var(--purple)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Activities</div>
+                </button>
+
+                {/* Free Days pill */}
+                <button
+                  onClick={() => setMonthlyTab(monthlyTab === 'free' ? 'overview' : 'free')}
+                  style={{
+                    flex:1, padding:'10px 6px', borderRadius:14,
+                    background: monthlyTab === 'free' ? 'rgba(45,212,191,.18)' : 'var(--glass-bg,rgba(255,255,255,.04))',
+                    border: monthlyTab === 'free' ? '1.5px solid rgba(45,212,191,.4)' : '1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+                    cursor:'pointer', fontFamily:'inherit', textAlign:'center', transition:'all .14s',
+                  }}>
+                  <div style={{ fontSize:20, fontWeight:900, color: monthlyTab === 'free' ? 'var(--mint,#2DD4BF)' : 'var(--dark)', lineHeight:1 }}>{freeCount}</div>
+                  <div style={{ fontSize:9, fontWeight:700, color:'var(--mint,#2DD4BF)', marginTop:3, letterSpacing:'.4px', textTransform:'uppercase' }}>Free Days</div>
+                </button>
               </div>
-              {selectedHol && <HolidayBanner holiday={selectedHol} />}
-              {selectedSchedules.length === 0 ? (
-                <div style={{ textAlign:'center', padding:'24px 0', color:'var(--mid)' }}>
-                  <div style={{ opacity:.25, marginBottom:10, display:'flex', justifyContent:'center' }}>
-                    <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
-                      <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
-                      <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
-                      <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
-                    </svg>
+
+              {/* ── Expandable panels (busy / free) ── */}
+              {monthlyTab === 'busy' && (
+                <div style={{
+                  margin:'10px 14px 0', borderRadius:14,
+                  background:'var(--glass-bg,rgba(255,255,255,.04))',
+                  border:'1px solid rgba(255,107,138,.2)',
+                  overflow:'hidden',
+                }}>
+                  <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
+                    <span style={{ fontSize:11, fontWeight:800, color:'var(--coral,#FF6B8A)', textTransform:'uppercase', letterSpacing:'.8px' }}>
+                      Occupied Dates — {MONTHS[month]} {year}
+                    </span>
                   </div>
-                  <p style={{ fontSize:12 }}>Nothing scheduled</p>
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
+                  {busyDayNums.length === 0 ? (
+                    <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No busy days this month</div>
+                  ) : (
+                    <div style={{ maxHeight:220, overflowY:'auto', padding:'8px 10px 10px' }}>
+                      {busyDayNums.map(d => {
+                        const dayDate = new Date(year, month, d);
+                        const evts    = dayMap[d] ?? [];
+                        const isT     = isToday(d);
+                        const isSel   = d === selectedDay;
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                            style={{
+                              width:'100%', textAlign:'left', background: isSel ? 'rgba(124,106,240,.12)' : 'transparent',
+                              border:'none', borderRadius:10, padding:'8px 10px', cursor:'pointer',
+                              marginBottom:2, fontFamily:'inherit', transition:'background .12s',
+                            }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{
+                                width:32, height:32, borderRadius:10, flexShrink:0,
+                                background: isT ? 'var(--purple)' : 'rgba(255,107,138,.15)',
+                                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                              }}>
+                                <span style={{ fontSize:8, fontWeight:700, color: isT ? '#fff' : 'var(--coral,#FF6B8A)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
+                                <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1.1 }}>{d}</span>
+                              </div>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                                  {evts.slice(0,3).map(s => (
+                                    <span key={s.id} style={{
+                                      fontSize:10, fontWeight:600, color:'var(--dark)',
+                                      background:'var(--surf2,rgba(255,255,255,.06))',
+                                      border:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                                      borderRadius:6, padding:'2px 7px',
+                                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:110,
+                                    }}>{s.title}</span>
+                                  ))}
+                                  {evts.length > 3 && (
+                                    <span style={{ fontSize:10, color:'var(--mid)', padding:'2px 4px' }}>+{evts.length-3}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <span style={{ fontSize:10, fontWeight:700, color:'var(--coral,#FF6B8A)', flexShrink:0 }}>{evts.length}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </>
-        )}
+
+              {monthlyTab === 'free' && (
+                <div style={{
+                  margin:'10px 14px 0', borderRadius:14,
+                  background:'var(--glass-bg,rgba(255,255,255,.04))',
+                  border:'1px solid rgba(45,212,191,.2)',
+                  overflow:'hidden',
+                }}>
+                  <div style={{ padding:'10px 14px 6px', borderBottom:'1px solid var(--glass-border,rgba(255,255,255,.06))' }}>
+                    <span style={{ fontSize:11, fontWeight:800, color:'var(--mint,#2DD4BF)', textTransform:'uppercase', letterSpacing:'.8px' }}>
+                      Free Dates — {MONTHS[month]} {year}
+                    </span>
+                  </div>
+                  {freeDayNums.length === 0 ? (
+                    <div style={{ padding:'16px 14px', fontSize:12, color:'var(--mid)', textAlign:'center' }}>No free days this month — you&apos;re fully booked!</div>
+                  ) : (
+                    <div style={{ padding:'10px 12px 12px', display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {freeDayNums.map(d => {
+                        const dayDate = new Date(year, month, d);
+                        const isT     = isToday(d);
+                        const isSel   = d === selectedDay;
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => { setSelectedDay(d); setMonthlyTab('overview'); }}
+                            style={{
+                              width:42, height:42, borderRadius:10, border:'none', cursor:'pointer',
+                              background: isT ? 'var(--purple)' : isSel ? 'rgba(45,212,191,.18)' : 'rgba(45,212,191,.08)',
+                              fontFamily:'inherit', display:'flex', flexDirection:'column',
+                              alignItems:'center', justifyContent:'center', gap:1, transition:'all .12s',
+                            }}>
+                            <span style={{ fontSize:7, fontWeight:700, color: isT ? '#fff' : 'var(--mint,#2DD4BF)', lineHeight:1 }}>{DAYS_SHORT[dayDate.getDay()].toUpperCase()}</span>
+                            <span style={{ fontSize:14, fontWeight:800, color: isT ? '#fff' : 'var(--dark)', lineHeight:1 }}>{d}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Calendar grid ── */}
+              <div style={{ padding:'10px 8px 0', flexShrink:0 }}>
+                {/* Day-of-week headers */}
+                <div className="cal-grid header-row" style={{ paddingTop:0 }}>
+                  {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
+                </div>
+                <div className="cal-grid">
+                  {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const d        = i + 1;
+                    const dateStr  = toDateStr(new Date(year, month, d));
+                    const holiday  = holidays.get(dateStr);
+                    const events   = dayMap[d] ?? [];
+                    const hasDots  = events.length > 0;
+                    const active   = d === selectedDay;
+                    const todayDay = isToday(d);
+                    const isBusy   = hasDots;
+                    return (
+                      <button key={d}
+                        className={`cal-day${active ? ' active' : ''}${todayDay ? ' today' : ''}${holiday ? ' holiday' : ''}`}
+                        onClick={() => { handleDayClick(d); setMonthlyTab('overview'); }}
+                        title={holiday ? holiday.localName : undefined}>
+                        <span className="day-num">{d}</span>
+                        <div className="day-indicators">
+                          {holiday && <span className="h-dot" />}
+                          {isBusy && !holiday && (
+                            <span className="dot" style={{ background: PRIORITY_COLORS[events[0].priority] }} />
+                          )}
+                          {isBusy && events.length > 1 && (
+                            <span className="dot" style={{ background: PRIORITY_COLORS[events[Math.min(1,events.length-1)].priority] }} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Selected day detail ── */}
+              <div className="day-panel">
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
+                      {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                    </div>
+                    <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
+                      {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    {selectedSchedules.length > 0 && (
+                      <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
+                        {selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setSheetOpen(true)}
+                      style={{ padding:'7px 14px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(124,106,240,.3)' }}
+                    >+ Add</button>
+                  </div>
+                </div>
+                {selectedHol && <HolidayBanner holiday={selectedHol} />}
+                {selectedSchedules.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'20px 0', color:'var(--mid)' }}>
+                    <p style={{ fontSize:12 }}>Nothing scheduled — free day ✦</p>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                    {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {/* ── DAILY VIEW — 24-hour timeline ── */}
         {viewMode === 'daily' && (() => {
