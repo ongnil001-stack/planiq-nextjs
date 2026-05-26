@@ -68,7 +68,7 @@ const S = {
     flex: 1,
     overflowY: 'auto' as const,
     overflowX: 'hidden' as const,
-    padding: '12px 18px 100px',
+    padding: '12px 18px calc(80px + max(env(safe-area-inset-bottom, 0px), 20px))',
     WebkitOverflowScrolling: 'touch' as const,
     scrollbarWidth: 'none' as const,
     overscrollBehavior: 'contain' as const,
@@ -765,7 +765,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           const renderer = cardRenderers[key];
           return renderer ? renderer() : null;
         })}
-        <div style={{ height: 24 }} />
+
       </div>
 
       <WorkloadSheet
