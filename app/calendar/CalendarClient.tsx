@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Schedule } from '@/types/database';
-import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
+import { PRIORITY_COLORS } from '@/lib/utils';
 import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/holidays';
 import { COUNTRIES } from '@/lib/countries';
 import BottomNav from '@/components/layout/BottomNav';
@@ -15,6 +15,36 @@ const MONTHS     = ['January','February','March','April','May','June','July','Au
 const MONTHS_SH  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 type ViewMode = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// ── SVG TypeIcon — shared across all views ─────────────────────────────────────
+function TypeIcon({ type }: { type: string }) {
+  const col = type === 'task' ? 'var(--mint,#2DD4BF)' : type === 'reminder' ? 'var(--amber,#FDCB6E)' : type === 'block' ? 'var(--coral,#FF6B8A)' : 'var(--cyan,#00C6FF)';
+  if (type === 'task') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <rect x="1" y="1" width="14" height="14" rx="3" stroke={col} strokeWidth="1.4"/>
+      <polyline points="4,8 7,11 12,5" stroke={col} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (type === 'reminder') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <path d="M8 2a4 4 0 014 4v3l1 1v1H3v-1l1-1V6a4 4 0 014-4z" stroke={col} strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M6.5 13a1.5 1.5 0 003 0" stroke={col} strokeWidth="1.4"/>
+    </svg>
+  );
+  if (type === 'block') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <circle cx="8" cy="8" r="6" stroke={col} strokeWidth="1.4"/>
+      <path d="M4 4l8 8" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <rect x="1" y="3" width="14" height="12" rx="2.5" stroke={col} strokeWidth="1.4"/>
+      <path d="M1 7h14" stroke={col} strokeWidth="1.4"/>
+      <path d="M5 1v3M11 1v3" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 // ── SVG flag icons ─────────────────────────────────────────────────────────────
 function CountryFlag({ code }: { code: string }) {
@@ -101,19 +131,47 @@ function HolidayBanner({ holiday }: { holiday: Holiday }) {
 }
 
 function EventCard({ s, compact = false }: { s: Schedule; compact?: boolean }) {
+  const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+  const loc    = (s as Schedule & { location?: string }).location;
+  const startD = new Date(s.start_time);
+  const endD   = s.end_time ? new Date(s.end_time) : null;
   return (
-    <div className={`event-item${s.is_completed ? ' done' : ''}${compact ? ' compact' : ''}`}>
-      <div className="event-bar" style={{ background: PRIORITY_COLORS[s.priority] }} />
-      <div className="event-body">
-        <p className="event-title">{s.title}</p>
-        <p className="event-meta">
-          {TYPE_ICONS[s.type]}{' '}
-          {s.all_day ? 'All day' : formatTime(s.start_time)}
-          {s.end_time ? ` — ${formatTime(s.end_time)}` : ''}
-          {(s as Schedule & { location?: string }).location ? ` · ${(s as Schedule & { location?: string }).location}` : ''}
-        </p>
+    <div style={{
+      display:'flex', flexDirection:'column', gap: compact ? 3 : 4,
+      padding: compact ? '8px 10px 8px 12px' : '10px 12px 10px 14px',
+      borderRadius: compact ? 10 : 12,
+      background:'var(--surf)',
+      border:'1px solid var(--glass-border,var(--border))',
+      borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+      boxShadow:'0 1px 5px rgba(0,0,0,.07)',
+      opacity: s.is_completed ? 0.5 : 1,
+    }}>
+      {/* Title row */}
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <TypeIcon type={s.type} />
+        <span style={{
+          fontSize: compact ? 13 : 14, fontWeight:700, color:'var(--dark)',
+          flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          textDecoration: s.is_completed ? 'line-through' : 'none',
+        }}>{s.title}</span>
+        {s.is_completed && <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>}
       </div>
-      {s.is_completed && <span className="done-badge">✓</span>}
+      {/* Meta row */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+          {endD && !s.all_day ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+        </span>
+        {loc && <>
+          <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+          <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:120 }}>{loc}</span>
+        </>}
+        <span style={{
+          fontSize:9, fontWeight:800, color:pColor,
+          background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`,
+          padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
+        }}>{s.priority}</span>
+      </div>
     </div>
   );
 }
@@ -316,7 +374,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       {/* ════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT AREA
       ════════════════════════════════════════════════════════════ */}
-      <div className="scroll-body" style={viewMode === 'daily' ? { overflowY:'hidden', display:'flex', flexDirection:'column' } : undefined}>
+      <div className="scroll-body" style={(viewMode === 'daily' || viewMode === 'weekly') ? { overflowY:'hidden', display:'flex', flexDirection:'column' } : undefined}>
 
         {/* ── MONTHLY VIEW (default) ── */}
         {viewMode === 'monthly' && (
@@ -353,23 +411,42 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             </div>
             {/* Selected day panel */}
             <div className="day-panel">
-              <div className="day-panel-header">
-                <span className="day-panel-title">
-                  {selectedDate.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}
-                </span>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span className="day-count">{selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}</span>
-                  <button className="day-add-inline" onClick={() => setSheetOpen(true)}>+ Add</button>
+              {/* Panel header */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:800, color:'var(--purple)', textTransform:'uppercase', letterSpacing:'1px' }}>
+                    {selectedDate.toLocaleDateString('en-US',{ weekday:'long' })}
+                  </div>
+                  <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginTop:1 }}>
+                    {selectedDate.toLocaleDateString('en-US',{ month:'long', day:'numeric', year:'numeric' })}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  {selectedSchedules.length > 0 && (
+                    <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
+                      {selectedSchedules.length} item{selectedSchedules.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    style={{ padding:'7px 14px', background:'var(--gradient)', border:'none', borderRadius:20, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(124,106,240,.3)' }}
+                  >+ Add</button>
                 </div>
               </div>
               {selectedHol && <HolidayBanner holiday={selectedHol} />}
               {selectedSchedules.length === 0 ? (
-                <div className="day-empty">
-                  <p>Nothing scheduled for this day</p>
-                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
+                <div style={{ textAlign:'center', padding:'24px 0', color:'var(--mid)' }}>
+                  <div style={{ opacity:.25, marginBottom:10, display:'flex', justifyContent:'center' }}>
+                    <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
+                      <rect x="5" y="8" width="30" height="28" rx="6" stroke="var(--mid)" strokeWidth="1.8"/>
+                      <path d="M5 16h30" stroke="var(--mid)" strokeWidth="1.8"/>
+                      <path d="M13 4v6M27 4v6" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <p style={{ fontSize:12 }}>Nothing scheduled</p>
                 </div>
               ) : (
-                <div className="event-list">
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {selectedSchedules.map(s => <EventCard key={s.id} s={s} />)}
                 </div>
               )}
@@ -397,36 +474,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             return `${h - 12} PM`;
           }
 
-          // SVG type icon (inline, no emoji)
-          function TypeIcon({ type }: { type: string }) {
-            const col = type === 'task' ? 'var(--mint,#2DD4BF)' : type === 'reminder' ? 'var(--amber,#FDCB6E)' : type === 'block' ? 'var(--coral,#FF6B8A)' : 'var(--cyan,#00C6FF)';
-            if (type === 'task') return (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-                <rect x="1" y="1" width="14" height="14" rx="3" stroke={col} strokeWidth="1.4"/>
-                <polyline points="4,8 7,11 12,5" stroke={col} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            );
-            if (type === 'reminder') return (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-                <path d="M8 2a4 4 0 014 4v3l1 1v1H3v-1l1-1V6a4 4 0 014-4z" stroke={col} strokeWidth="1.4" strokeLinejoin="round"/>
-                <path d="M6.5 13a1.5 1.5 0 003 0" stroke={col} strokeWidth="1.4"/>
-              </svg>
-            );
-            if (type === 'block') return (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-                <circle cx="8" cy="8" r="6" stroke={col} strokeWidth="1.4"/>
-                <path d="M4 4l8 8" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            );
-            // event (default)
-            return (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-                <rect x="1" y="3" width="14" height="12" rx="2.5" stroke={col} strokeWidth="1.4"/>
-                <path d="M1 7h14" stroke={col} strokeWidth="1.4"/>
-                <path d="M5 1v3M11 1v3" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            );
-          }
+
 
           return (
             <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
@@ -610,18 +658,29 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── WEEKLY VIEW ── */}
         {viewMode === 'weekly' && (
-          <div style={{ padding: '0 0 100px' }}>
-            {/* 7-column day strip */}
+          <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+            {/* 7-column day strip — tap once to select, tap selected to open Daily */}
             <div className="week-strip">
               {weekDays.map((d, i) => {
-                const isT  = d.toDateString() === today.toDateString();
+                const isT   = d.toDateString() === today.toDateString();
                 const isSel = d.toDateString() === selectedDate.toDateString();
-                const ds   = toDateStr(d);
-                const cnt  = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length;
+                const ds    = toDateStr(d);
+                const cnt   = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length;
                 return (
-                  <button key={i} className={`week-day-col${isSel ? ' sel' : ''}${isT ? ' today' : ''}`}
-                    onClick={() => { setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); }}>
-                    <div className="wdc-name">{DAYS_SHORT[i].slice(0,2)}</div>
+                  <button key={i}
+                    className={`week-day-col${isSel ? ' sel' : ''}${isT ? ' today' : ''}`}
+                    onClick={() => {
+                      if (isSel) {
+                        // Second tap → drill into Daily view
+                        setViewDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                        setSelectedDay(d.getDate());
+                        setViewMode('daily');
+                      } else {
+                        setViewDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                        setSelectedDay(d.getDate());
+                      }
+                    }}>
+                    <div className="wdc-name">{DAYS_SHORT[d.getDay()].slice(0,2)}</div>
                     <div className="wdc-num">{d.getDate()}</div>
                     {cnt > 0 && <div className="wdc-cnt">{cnt}</div>}
                   </button>
@@ -629,42 +688,65 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               })}
             </div>
 
-            {/* Events grouped by day */}
-            <div style={{ padding: '0 16px' }}>
+            {/* Scrollable events list — all 7 days always shown */}
+            <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', WebkitOverflowScrolling:'touch', padding:'0 16px 100px' }}>
               {weekDays.map((d, i) => {
                 const ds   = toDateStr(d);
                 const hol  = holidays.get(ds);
                 const evts = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds);
                 const isT  = d.toDateString() === today.toDateString();
-                if (evts.length === 0 && !hol) return null;
+                const isSel = d.toDateString() === selectedDate.toDateString();
                 return (
-                  <div key={i} className="week-day-group">
-                    <div className={`week-day-label${isT ? ' today' : ''}`}>
-                      <span className="wdl-name">{DAYS_FULL[d.getDay()]}</span>
-                      <span className="wdl-date">{MONTHS_SH[d.getMonth()]} {d.getDate()}</span>
-                      {isT && <span className="today-pip" />}
+                  <div key={i} style={{ marginTop: i === 0 ? 14 : 18 }}>
+                    {/* Day label row */}
+                    <div style={{
+                      display:'flex', alignItems:'center', gap:8, marginBottom:8,
+                      paddingBottom:6,
+                      borderBottom:`1px solid ${isSel ? 'rgba(124,106,240,.3)' : 'var(--glass-border,rgba(255,255,255,.06))'}`,
+                    }}>
+                      <span style={{
+                        fontSize:12, fontWeight:800,
+                        color: isT ? 'var(--purple)' : isSel ? 'var(--purple)' : 'var(--dark)',
+                        letterSpacing:'.2px',
+                      }}>{DAYS_FULL[d.getDay()]}</span>
+                      <span style={{ fontSize:11, color:'var(--mid)' }}>{MONTHS_SH[d.getMonth()]} {d.getDate()}</span>
+                      {isT && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--purple)', boxShadow:'0 0 5px var(--purple)', flexShrink:0, display:'inline-block' }}/>}
+                      <button
+                        onClick={() => { setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); setViewMode('daily'); }}
+                        style={{ marginLeft:'auto', fontSize:9, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.1)', border:'none', borderRadius:8, padding:'3px 8px', cursor:'pointer', fontFamily:'inherit', opacity: evts.length ? 1 : 0.5 }}
+                      >Daily →</button>
                     </div>
+
+                    {/* Holiday */}
                     {hol && (
-                      <div className="week-holiday-row">
+                      <div className="week-holiday-row" style={{ marginBottom:6 }}>
                         <span className="whr-dot" />
                         <span className="whr-name">{hol.localName}</span>
                         <span className="hol-tag" style={{ fontSize:9 }}>Holiday</span>
                       </div>
                     )}
-                    {evts.map(s => <EventCard key={s.id} s={s} compact />)}
+
+                    {/* Events */}
+                    {evts.length > 0 ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        {evts.map(s => <EventCard key={s.id} s={s} compact />)}
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding:'10px 14px', borderRadius:10,
+                        border:'1px dashed var(--glass-border,rgba(255,255,255,.07))',
+                        display:'flex', alignItems:'center', justifyContent:'space-between',
+                      }}>
+                        <span style={{ fontSize:11, color:'var(--mid)', opacity:0.5 }}>No events</span>
+                        <button
+                          onClick={() => { setSheetTime(undefined); setViewDate(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDay(d.getDate()); setSheetOpen(true); }}
+                          style={{ fontSize:10, fontWeight:700, color:'var(--purple)', background:'rgba(124,106,240,.1)', border:'none', borderRadius:8, padding:'3px 10px', cursor:'pointer', fontFamily:'inherit' }}
+                        >+ Add</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
-              {/* If the whole week is empty */}
-              {weekDays.every(d => {
-                const ds = toDateStr(d);
-                return schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length === 0 && !holidays.get(ds);
-              }) && (
-                <div className="day-empty" style={{ paddingTop: 32 }}>
-                  <p>No events this week</p>
-                  <button className="day-add-cta" onClick={() => setSheetOpen(true)}>+ Add Schedule</button>
-                </div>
-              )}
             </div>
           </div>
         )}
