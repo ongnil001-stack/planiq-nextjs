@@ -157,19 +157,38 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     loadCountry();
   }, [year, month]);
 
-  // Refresh schedules after adding
-  const refreshSchedules = useCallback(async () => {
+  // Refresh schedules — optionally fetch a just-inserted row by id first for instant display
+  const refreshSchedules = useCallback(async (newId?: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const startOfMonth = new Date(year, month, 1).toISOString();
-    const endOfMonth   = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+    // If we have the new record's id, fetch it immediately and inject into state
+    // so it appears in the timeline before the full re-fetch completes
+    if (newId) {
+      const { data: newRow } = await supabase.from('schedules').select('*').eq('id', newId).single();
+      if (newRow) {
+        setSchedules(prev => {
+          // Replace if already exists, otherwise append
+          const exists = prev.some(s => s.id === (newRow as Schedule).id);
+          if (exists) return prev;
+          return [...prev, newRow as Schedule].sort(
+            (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          );
+        });
+      }
+    }
+
+    // Full re-fetch for the selected day's month (covers cross-month navigation in Daily view)
+    const sd = new Date(year, month, selectedDay);
+    const startOfMonth = new Date(sd.getFullYear(), sd.getMonth(), 1).toISOString();
+    const endOfMonth   = new Date(sd.getFullYear(), sd.getMonth() + 1, 0, 23, 59, 59).toISOString();
     const { data } = await supabase.from('schedules').select('*')
       .eq('user_id', user.id)
       .gte('start_time', startOfMonth)
       .lte('start_time', endOfMonth)
       .order('start_time');
     if (data) setSchedules(data as Schedule[]);
-  }, [year, month]);
+  }, [year, month, selectedDay]);
 
   // Build day map
   const dayMap: Record<number, Schedule[]> = {};
@@ -434,9 +453,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                   <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600 }}>
                     {selectedSchedules.length} event{selectedSchedules.length !== 1 ? 's' : ''}
                   </span>
-                  <span style={{ fontSize:10, color:'var(--mid)', opacity:0.6, marginLeft:'auto' }}>
-                    Tap any hour to add
-                  </span>
+
                 </div>
               </div>
 
@@ -503,16 +520,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                           pointerEvents:'none',
                         }}/>
 
-                        {/* "+" hint on hover/press when row is empty */}
-                        {events.length === 0 && (
-                          <div style={{
-                            position:'absolute', top:'50%', left:'50%',
-                            transform:'translate(-50%,-50%)',
-                            fontSize:10, fontWeight:700, color:'var(--mid)',
-                            opacity:0.18, letterSpacing:'.5px', pointerEvents:'none',
-                            userSelect:'none',
-                          }}>+</div>
-                        )}
+
 
                         {/* Current-time needle */}
                         {isCurHr && (

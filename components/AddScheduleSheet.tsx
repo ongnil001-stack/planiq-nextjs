@@ -160,25 +160,38 @@ const DAYS_FULL    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
+  // Strategy: use Intl to find what UTC time corresponds to "dateStr timeHHMM" in tz.
+  // We format a candidate UTC time back into tz and iterate until wall-clock matches.
   try {
     const [y, mo, d] = dateStr.split('-').map(Number);
     const [h, mi]    = timeHHMM.split(':').map(Number);
-    const utcWall    = Date.UTC(y, mo - 1, d, h, mi, 0);
+
+    // Start with a naive guess: treat as UTC, which will be off by the tz offset
+    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
+
     const fmt = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
       year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      hour: '2-digit', minute: '2-digit', hour12: false,
     });
-    const parts: Record<string, string> = {};
-    fmt.formatToParts(new Date(utcWall)).forEach(({ type, value }) => { parts[type] = value; });
-    const formattedUTC = Date.UTC(
-      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-      parts.hour === '24' ? 0 : Number(parts.hour),
-      Number(parts.minute), Number(parts.second),
-    );
-    const offsetMs = utcWall - formattedUTC;
-    return new Date(utcWall - offsetMs).toISOString();
+
+    // Two iterations converges for any tz offset
+    for (let i = 0; i < 2; i++) {
+      const parts: Record<string, string> = {};
+      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
+      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
+      const diffMs = (
+        (Number(parts.year) - y) * 365 * 86400000 +
+        (Number(parts.month) - mo) * 30 * 86400000 +
+        (Number(parts.day) - d) * 86400000 +
+        (localH - h) * 3600000 +
+        (Number(parts.minute) - mi) * 60000
+      );
+      candidate -= diffMs;
+    }
+    return new Date(candidate).toISOString();
   } catch {
+    // Fallback: parse as local time (browser tz)
     return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
   }
 }
@@ -207,7 +220,7 @@ interface Props {
   countryCode: string;
   initialTime?: string;   // e.g. "14:00" — pre-fills start time when sheet opens
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (newId?: string) => void;  // passes the new record's id for instant UI update
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -325,15 +338,19 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         if (rrule && recurrenceEnd) rrule += `;UNTIL=${recurrenceEnd.replace(/-/g,'')}T000000Z`;
       }
 
-      const { error: insertErr } = await supabase.from('schedules').insert({
+      const { data: insertedRows, error: insertErr } = await supabase.from('schedules').insert({
         user_id: user.id, title: title.trim(), type, priority,
         start_time: startISO, end_time: endISO, all_day: allDay,
         location: schedLocation.trim() || null, description: notes.trim() || null,
         recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
-      });
+      }).select();
 
       if (insertErr) { setSaveError(`Database error: ${insertErr.message}`); setSaving(false); return; }
-      setSaving(false); onSaved(); onClose();
+      setSaving(false);
+      // Pass back inserted record for instant parent state update
+      const newId = Array.isArray(insertedRows) && insertedRows[0]?.id ? String(insertedRows[0].id) : undefined;
+      onSaved(newId);
+      onClose();
     } catch (e: unknown) {
       setSaveError(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
       setSaving(false);
