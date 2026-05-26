@@ -148,7 +148,7 @@ Focus on: overloading, conflicts, high-priority clustering, missing breaks, task
 
 // ─── Action: daily_brief ──────────────────────────────────────────────────────
 
-async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 'today', tz = 'UTC') {
+async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 'today', tz = 'UTC', completedCount = 0) {
   const now     = new Date();
   const today   = localDateStr(now.toISOString(), tz);          // local date in user's tz
   const dayName = now.toLocaleDateString('en-US', { weekday: 'long', timeZone: tz });
@@ -171,6 +171,20 @@ async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 't
   }
 
   if (!inScope.length) {
+    // Nothing pending in scope — check if things were completed
+    if (completedCount > 0) {
+      return {
+        headline: mode === 'today' ? `All ${completedCount} tasks done — outstanding work!` : `${completedCount} items wrapped up this week!`,
+        items: [{
+          type: 'win',
+          title: mode === 'today' ? 'All tasks completed today' : `${completedCount} items completed this week`,
+          body: mode === 'today'
+            ? "You cleared your entire day's schedule. Take a moment to enjoy that, then plan what's next."
+            : "You wrapped up everything on your plate this week. Great execution!",
+          accent: '#00C896',
+        }],
+      };
+    }
     return {
       headline: mode === 'today' ? 'All clear today — great time to plan ahead!' : 'Nothing scheduled this week.',
       items: [{
@@ -182,16 +196,21 @@ async function dailyBrief(schedules: ScheduleItem[], mode: 'today' | 'week' = 't
     };
   }
 
+  // All schedules passed here are already pre-filtered to pending-only by the client.
+  // completedCount is passed separately so we can acknowledge progress without
+  // re-analysing already-done items.
   const pending   = inScope.filter(s => !s.is_completed);
   const completed = inScope.filter(s => s.is_completed);
-  const scheduleText = inScope.map(s => fmtItem(s, tz)).join('\n');
+  const totalCompleted = completedCount + completed.length; // combine both sources
+  const scheduleText = pending.map(s => fmtItem(s, tz)).join('\n') || '(no pending items)';
 
   const prompt = `You are PlanIQ's AI Focus Advisor. Generate a motivating, actionable daily brief for ${scopeLabel}.
 
 SCOPE: ${scopeLabel}
-TOTAL: ${inScope.length} items  |  PENDING: ${pending.length}  |  DONE: ${completed.length}
+PENDING (needs attention): ${pending.length}
+ALREADY COMPLETED: ${totalCompleted}
 
-SCHEDULE:
+PENDING SCHEDULE ONLY (analyse these):
 ${scheduleText}
 
 Respond ONLY with valid JSON — no markdown, no extra text:
@@ -207,12 +226,15 @@ Respond ONLY with valid JSON — no markdown, no extra text:
   ]
 }
 
-Rules:
-- Generate 2-4 items that are genuinely useful (not generic platitudes)
-- Mention specific schedule item titles when relevant
-- If time overlaps exist, flag as type "conflict"
-- If all items are done or scope is clear, use type "win"
-- Keep body text concise and mobile-friendly (no bullet characters)`;
+STRICT RULES — read carefully:
+- Only analyse PENDING items. Completed tasks are NOT listed above and must NOT be flagged.
+- Never generate a conflict or warning card for something already done.
+- If ${totalCompleted} > 0 and pending.length === 0, generate a type "win" celebrating full completion.
+- If ${totalCompleted} > 0 and there are still pending items, acknowledge the progress briefly in one card.
+- If time overlaps exist among PENDING items, flag as type "conflict".
+- Generate 2-4 items total — specific, actionable, referencing actual schedule titles.
+- Keep body text concise and mobile-friendly (no bullet characters).
+- Do not fabricate issues, timings, or schedule names not in the data above.`;
 
   const raw = await callClaude(prompt, 800);
   return parseJson(raw);
@@ -374,7 +396,7 @@ serve(async (req: Request) => {
     let result: unknown;
 
     if (action === 'daily_brief') {
-      result = await dailyBrief(body.schedules ?? [], body.mode ?? 'today', tz);
+      result = await dailyBrief(body.schedules ?? [], body.mode ?? 'today', tz, body.completed_count ?? 0);
 
     } else if (action === 'smart_suggest') {
       if (!body.proposed) throw new Error('smart_suggest requires a "proposed" schedule object');

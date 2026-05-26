@@ -7,6 +7,7 @@ import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/hol
 import { COUNTRIES } from '@/lib/countries';
 import BottomNav from '@/components/layout/BottomNav';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
+import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 import { createClient } from '@/lib/supabase/client';
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -556,6 +557,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     if (data) setSchedules(data as Schedule[]);
   }, [year, month, selectedDay]);
 
+  // Delete a schedule and refresh local list
+  const deleteSchedule = useCallback(async (id: string) => {
+    const supabase = createClient();
+    await supabase.from('schedules').delete().eq('id', id);
+    setSchedules(prev => prev.filter(s => s.id !== id));
+  }, []);
+
   // Reset monthly tab when navigating months
   useEffect(() => {
     setMonthlyTab('overview');
@@ -987,7 +995,16 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {selectedSchedules.map(s => <EventCard key={s.id} s={s} onEdit={openEditSheet} />)}
+                  {selectedSchedules.map(s => (
+                    <SwipeDeleteRow
+                      key={s.id}
+                      onDelete={() => deleteSchedule(s.id)}
+                      undoLabel={`"${s.title}" deleted`}
+                      borderRadius={12}
+                    >
+                      <EventCard s={s} onEdit={openEditSheet} />
+                    </SwipeDeleteRow>
+                  ))}
                 </div>
               )}
             </div>
@@ -1224,52 +1241,58 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                           const loc    = (s as Schedule & { location?: string }).location;
                           const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
                           return (
-                            <button
+                            <SwipeDeleteRow
                               key={s.id}
-                              onClick={e => { e.stopPropagation(); openEditSheet(s); }}
-                              style={{
-                                display:'flex', flexDirection:'column', gap:4,
-                                padding:'8px 10px 8px 12px',
-                                borderRadius:10,
-                                background:'var(--surf)',
-                                border:`1px solid var(--glass-border,var(--border))`,
-                                borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
-                                boxShadow:'0 1px 6px rgba(0,0,0,.08)',
-                                opacity: s.is_completed ? 0.5 : 1,
-                                position:'relative', cursor:'pointer',
-                                textAlign:'left', width:'100%', fontFamily:'inherit',
-                              }}
+                              onDelete={() => deleteSchedule(s.id)}
+                              undoLabel={`"${s.title}" deleted`}
+                              borderRadius={10}
                             >
-                              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                                <TypeIcon type={s.type} />
-                                <span style={{
-                                  fontSize:13, fontWeight:700, color:'var(--dark)',
-                                  flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                                  textDecoration: s.is_completed ? 'line-through' : 'none',
-                                }}>{s.title}</span>
-                                {s.is_completed && (
-                                  <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
-                                )}
-                              </div>
-                              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                                <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-                                  {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
-                                  {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
-                                </span>
-                                {loc && (
-                                  <>
-                                    <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
-                                    <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{loc}</span>
-                                  </>
-                                )}
-                                <span style={{
-                                  fontSize:9, fontWeight:800, color:pColor,
-                                  background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
-                                  padding:'1px 6px', borderRadius:5,
-                                  letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
-                                }}>{s.priority}</span>
-                              </div>
-                            </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); openEditSheet(s); }}
+                                style={{
+                                  display:'flex', flexDirection:'column', gap:4,
+                                  padding:'8px 10px 8px 12px',
+                                  borderRadius:10,
+                                  background:'var(--surf)',
+                                  border:`1px solid var(--glass-border,var(--border))`,
+                                  borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+                                  boxShadow:'0 1px 6px rgba(0,0,0,.08)',
+                                  opacity: s.is_completed ? 0.5 : 1,
+                                  position:'relative', cursor:'pointer',
+                                  textAlign:'left', width:'100%', fontFamily:'inherit',
+                                }}
+                              >
+                                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                                  <TypeIcon type={s.type} />
+                                  <span style={{
+                                    fontSize:13, fontWeight:700, color:'var(--dark)',
+                                    flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                                    textDecoration: s.is_completed ? 'line-through' : 'none',
+                                  }}>{s.title}</span>
+                                  {s.is_completed && (
+                                    <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
+                                  )}
+                                </div>
+                                <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                  <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                                    {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+                                    {endD ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+                                  </span>
+                                  {loc && (
+                                    <>
+                                      <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+                                      <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{loc}</span>
+                                    </>
+                                  )}
+                                  <span style={{
+                                    fontSize:9, fontWeight:800, color:pColor,
+                                    background:`rgba(${pColor === '#FF3B30' ? '255,59,48' : pColor === '#FF6B8A' ? '255,107,138' : pColor === '#FDCB6E' ? '253,203,110' : '0,206,201'},.12)`,
+                                    padding:'1px 6px', borderRadius:5,
+                                    letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
+                                  }}>{s.priority}</span>
+                                </div>
+                              </button>
+                            </SwipeDeleteRow>
                           );
                         })}
                       </div>

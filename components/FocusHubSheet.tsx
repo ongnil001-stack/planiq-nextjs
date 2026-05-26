@@ -178,25 +178,30 @@ export default function FocusHubSheet({ open, onClose }: Props) {
             action: 'daily_brief',
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             mode: viewMode,
-            schedules: scheduleData.map(s => {
-              const startD = new Date(s.start_time);
-              const endD   = s.end_time ? new Date(s.end_time) : null;
-              const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-              const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-              return {
-                id: s.id,
-                title: s.title,
-                type: s.type,
-                priority: s.priority,
-                start_time: s.start_time,
-                end_time: s.end_time,
-                all_day: s.all_day ?? false,
-                is_completed: s.is_completed,
-                start_display: s.all_day ? 'All day' : startD.toLocaleTimeString('en-US', timeFmt),
-                end_display:   endD && !s.all_day ? endD.toLocaleTimeString('en-US', timeFmt) : undefined,
-                date_display:  startD.toLocaleDateString('en-US', dateFmt),
-              };
-            }),
+            // Pass completed_count separately so the AI can generate win cards
+            // but ONLY send pending schedules for conflict/priority analysis
+            completed_count: scheduleData.filter(s => s.is_completed).length,
+            schedules: scheduleData
+              .filter(s => !s.is_completed)   // exclude done items from AI conflict analysis
+              .map(s => {
+                const startD = new Date(s.start_time);
+                const endD   = s.end_time ? new Date(s.end_time) : null;
+                const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+                const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+                return {
+                  id: s.id,
+                  title: s.title,
+                  type: s.type,
+                  priority: s.priority,
+                  start_time: s.start_time,
+                  end_time: s.end_time,
+                  all_day: s.all_day ?? false,
+                  is_completed: false,
+                  start_display: s.all_day ? 'All day' : startD.toLocaleTimeString('en-US', timeFmt),
+                  end_display:   endD && !s.all_day ? endD.toLocaleTimeString('en-US', timeFmt) : undefined,
+                  date_display:  startD.toLocaleDateString('en-US', dateFmt),
+                };
+              }),
           }),
         }
       );
@@ -238,14 +243,22 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     setMarking(id);
     const supabase = createClient();
     await supabase.from('schedules').update({ is_completed: true }).eq('id', id);
-    setSchedules(prev => prev.map(s => s.id === id ? { ...s, is_completed: true } : s));
+    // Compute updated list locally so we can refresh AI brief immediately
+    const updated = schedules.map(s => s.id === id ? { ...s, is_completed: true } : s);
+    setSchedules(updated);
     setMarking(null);
+    // Refresh brief with latest completion state — completed items are now filtered out
+    // so AI won't keep flagging resolved issues
+    fetchAiBrief(updated, mode);
   }
 
   async function deleteSchedule(id: string) {
     const supabase = createClient();
     await supabase.from('schedules').delete().eq('id', id);
-    setSchedules(prev => prev.filter(s => s.id !== id));
+    const updated = schedules.filter(s => s.id !== id);
+    setSchedules(updated);
+    // Refresh brief so deleted items don't keep showing warnings
+    fetchAiBrief(updated, mode);
   }
 
   const now          = new Date(), today = toDateStr(now);
