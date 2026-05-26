@@ -48,9 +48,13 @@ const S = {
     overflow: 'hidden',
   },
   hdr: {
-    padding: '52px 22px 14px',
+    /* Status bar clearance + compact breathing room */
+    paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)',
+    paddingBottom: '14px',
+    paddingLeft: '22px',
+    paddingRight: '22px',
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',           /* avatar vertically centred with text block */
     justifyContent: 'space-between',
     flexShrink: 0,
     position: 'relative' as const,
@@ -736,14 +740,16 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
       {/* Header */}
       <div style={S.hdr}>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0 }}>{GREETING()}, {firstName}</h2>
+        {/* Greeting text */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0, lineHeight: 1.2 }}>{GREETING()}, {firstName}</h2>
           {(profile?.designation || profile?.role_title) && (
-            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 3, fontWeight: 500, margin: 0 }}>{profile?.designation || profile?.role_title}</p>
+            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 2, fontWeight: 500, margin: '2px 0 0', lineHeight: 1 }}>{profile?.designation || profile?.role_title}</p>
           )}
         </div>
-        <Link href="/profile" style={{ width: 44, height: 44, minWidth: 44, flexShrink: 0, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxShadow: '0 0 12px rgba(139,124,246,0.35)', position: 'relative', zIndex: 1 }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
+        {/* Avatar — 42px, centred next to text */}
+        <Link href="/profile" style={{ width: 42, height: 42, minWidth: 42, flexShrink: 0, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxShadow: '0 2px 10px rgba(139,124,246,0.35)', marginLeft: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
               : (profile?.full_name?.[0]?.toUpperCase() ?? '?')
