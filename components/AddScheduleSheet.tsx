@@ -245,6 +245,8 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   const [recurrenceEnd, setRecurrenceEnd] = useState('');
   const [saving,        setSaving]        = useState(false);
   const [saveError,     setSaveError]     = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting,      setDeleting]      = useState(false);
   const [daySchedules,  setDaySchedules]  = useState<Schedule[]>([]);
   const [holiday,       setHoliday]       = useState<Holiday | null>(null);
 
@@ -337,6 +339,19 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   const dateLabel = `${DAYS_FULL[selectedDate.getDay()]}, ${MONTHS_SHORT[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}`;
   const tzLabel   = activeTimezone || 'Browser default';
   const tzSourceLabel = tzSource === 'gps' ? 'GPS' : tzSource === 'manual' ? 'Manual' : 'Profile';
+
+  async function handleDelete() {
+    if (!editSchedule) return;
+    setDeleting(true);
+    const { error } = await supabase.from('schedules').delete().eq('id', editSchedule.id);
+    setDeleting(false);
+    if (error) {
+      setSaveError(`Delete failed: ${error.message}`);
+      setConfirmDelete(false);
+    } else {
+      onSaved(undefined);
+    }
+  }
 
   async function handleSave() {
     if (!title.trim()) { setSaveError('Please enter a schedule title.'); return; }
@@ -793,6 +808,60 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
               borderRadius:10, fontSize:12, color:'#FF3B30', fontWeight:600 }}>
               <Icon d={['M10 3L2 17h16L10 3z','M10 9v4m0 2.5v.01']} size={15} stroke="#FF3B30" strokeWidth={1.8} />
               <span style={{ flex:1 }}>{saveError}</span>
+            </div>
+          )}
+
+          {/* Delete button — edit mode only */}
+          {editSchedule && !confirmDelete && (
+            <button type="button" onClick={() => setConfirmDelete(true)} style={{
+              width: '100%', padding: '11px 0', marginBottom: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: 'rgba(255,59,48,.08)', border: '1px solid rgba(255,59,48,.22)',
+              borderRadius: 14, color: '#FF3B30', fontSize: 14, fontWeight: 700,
+              fontFamily: 'inherit', cursor: 'pointer', letterSpacing: '-.1px',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Delete Schedule
+            </button>
+          )}
+
+          {/* Delete confirmation */}
+          {editSchedule && confirmDelete && (
+            <div style={{
+              marginBottom: 10, padding: '14px 16px',
+              background: 'rgba(255,59,48,.10)', border: '1px solid rgba(255,59,48,.30)',
+              borderRadius: 14,
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#FF3B30', margin: '0 0 4px' }}>
+                Delete this schedule?
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--mid)', margin: '0 0 12px', lineHeight: 1.4 }}>
+                "{editSchedule.title}" will be permanently removed. This cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => setConfirmDelete(false)} style={{
+                  flex: 1, padding: '10px 0', background: 'var(--glass-bg2, rgba(255,255,255,.07))',
+                  border: '1px solid var(--glass-border)', borderRadius: 10,
+                  color: 'var(--mid)', fontSize: 13, fontWeight: 700,
+                  fontFamily: 'inherit', cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={handleDelete} disabled={deleting} style={{
+                  flex: 1, padding: '10px 0', background: '#FF3B30',
+                  border: 'none', borderRadius: 10,
+                  color: '#fff', fontSize: 13, fontWeight: 800,
+                  fontFamily: 'inherit', cursor: deleting ? 'default' : 'pointer',
+                  opacity: deleting ? .7 : 1,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                  {deleting ? 'Deleting…' : 'Yes, Delete'}
+                </button>
+              </div>
             </div>
           )}
 

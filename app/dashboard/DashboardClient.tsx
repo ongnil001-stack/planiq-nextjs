@@ -9,6 +9,7 @@ import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
 import WorkloadSheet from '@/components/WorkloadSheet';
+import AddScheduleSheet from '@/components/AddScheduleSheet';
 import {
   loadFullPrefs,
   migrateFromV1,
@@ -101,6 +102,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
   const [refreshingAI, setRefreshingAI] = useState(false);
+  const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
   const hdrRef  = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(80);   // measured header height in px
 
@@ -382,31 +384,74 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             ) : todaySchedules.map(s => (
               <div
                 key={s.id}
-                onClick={() => toggleComplete(s)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 14px 12px 0', background: 'var(--surf)',
-                  borderRadius: 14, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 0,
+                  background: 'var(--surf)', borderRadius: 14,
                   border: '1px solid var(--border)', position: 'relative', overflow: 'hidden',
                   opacity: s.is_completed ? 0.45 : 1,
                 }}
               >
+                {/* Left accent bar */}
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'var(--gradient)', borderRadius: '3px 0 0 3px' }} />
-                <div style={{ width: 44, fontSize: 10, fontWeight: 600, color: 'var(--lite)', textAlign: 'center', flexShrink: 0, lineHeight: 1.3, paddingLeft: 8 }}>
-                  {formatTime(s.start_time).split(' ')[0]}<br/>{formatTime(s.start_time).split(' ')[1]}
-                </div>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: PRIORITY_COLORS[s.priority] }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dark)' }}>{s.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>{TYPE_ICONS[s.type]} {s.end_time ? `${formatTime(s.start_time)} – ${formatTime(s.end_time)}` : formatTime(s.start_time)}</div>
-                </div>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, marginRight: 8,
-                  background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28' : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
-                  color: (s.priority === 'critical' || s.priority === 'high') ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
-                }}>
-                  {s.priority.toUpperCase()}
-                </div>
+
+                {/* Checkmark button — ONLY this marks done */}
+                <button
+                  onClick={e => { e.stopPropagation(); toggleComplete(s); }}
+                  title={s.is_completed ? 'Mark undone' : 'Mark done'}
+                  style={{
+                    flexShrink: 0, width: 48, alignSelf: 'stretch',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    paddingLeft: 10, WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%',
+                    border: s.is_completed ? 'none' : '1.5px solid rgba(0,200,150,0.45)',
+                    background: s.is_completed ? 'rgba(0,200,150,0.25)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background .15s',
+                  }}>
+                    {s.is_completed && (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </button>
+
+                {/* Body — tapping opens edit sheet */}
+                <button
+                  onClick={() => setEditSchedule(s)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 14px 12px 4px', background: 'transparent',
+                    border: 'none', cursor: 'pointer', textAlign: 'left',
+                    fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: PRIORITY_COLORS[s.priority] }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 600, color: 'var(--dark)',
+                      textDecoration: s.is_completed ? 'line-through' : 'none',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{s.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>
+                      {TYPE_ICONS[s.type]} {s.end_time ? `${formatTime(s.start_time)} – ${formatTime(s.end_time)}` : formatTime(s.start_time)}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
+                    background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28' : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
+                    color: (s.priority === 'critical' || s.priority === 'high') ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
+                  }}>
+                    {s.priority.toUpperCase()}
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: .35 }}>
+                    <path d="M9 18L15 12L9 6" stroke="var(--dark)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
@@ -888,6 +933,15 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           })}
         </div>
       </div>
+
+      <AddScheduleSheet
+        open={editSchedule !== null}
+        onClose={() => setEditSchedule(null)}
+        selectedDate={editSchedule ? new Date(editSchedule.start_time) : new Date()}
+        editSchedule={editSchedule ?? undefined}
+        countryCode={profile?.country_code ?? 'US'}
+        onSaved={() => { setEditSchedule(null); router.refresh(); }}
+      />
 
       <WorkloadSheet
         open={workloadOpen}

@@ -199,11 +199,30 @@ export default function SmartScheduleAI({ proposed, existingSchedules, onSelectT
       <div style={ROW}>
         <STATUS_ICON />
         <span style={LABEL}>{statusLabel}</span>
-        {!loading && (
-          <button style={BTN} onClick={() => { setChecked(false); setResult(null); checkConflicts(); }}>
-            {checked ? '↻ Recheck' : '✦ Check'}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {!loading && (
+            <button style={BTN} onClick={() => { setChecked(false); setResult(null); checkConflicts(); }}>
+              {checked ? '↻ Recheck' : '✦ Check'}
+            </button>
+          )}
+          {checked && result && !loading && (
+            <button
+              onClick={() => { setChecked(false); setResult(null); setError(null); }}
+              title="Clear results"
+              style={{
+                flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                border: '1px solid rgba(255,255,255,.15)',
+                background: 'rgba(255,255,255,.06)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontFamily: 'inherit',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6l12 12" stroke="var(--mid)" strokeWidth="2.2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error */}
