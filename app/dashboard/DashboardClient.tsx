@@ -39,6 +39,9 @@ const WEEK_WORKLOAD = [65, 80, 45, 100, 70, 57, 8];
 // ─── Shared style objects ──────────────────────────────────────────────────────
 const S = {
   page: {
+    /* min-height instead of height: page fills viewport but doesn't force
+       scroll containers to stretch when content is shorter than screen */
+    minHeight: '100dvh',
     height: '100dvh',
     background: 'var(--bg)',
     display: 'flex',
@@ -68,7 +71,7 @@ const S = {
     flex: 1,
     overflowY: 'auto' as const,
     overflowX: 'hidden' as const,
-    padding: '12px 18px calc(80px + max(env(safe-area-inset-bottom, 0px), 20px))',
+    padding: '12px 18px 0',
     WebkitOverflowScrolling: 'touch' as const,
     scrollbarWidth: 'none' as const,
     overscrollBehavior: 'contain' as const,
@@ -760,12 +763,17 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
       {/* Scroll body */}
       <div style={S.scrl}>
-        {cardOrder.map(key => {
-          if (!isVisible(key)) return null;
-          const renderer = cardRenderers[key];
-          return renderer ? renderer() : null;
-        })}
-
+        {/* Inner wrapper — only as tall as card content.
+            Bottom padding here = nav clearance, so scroll ends right after last card. */}
+        <div style={{
+          paddingBottom: 'calc(16px + 64px + max(env(safe-area-inset-bottom, 0px), 20px))',
+        }}>
+          {cardOrder.map(key => {
+            if (!isVisible(key)) return null;
+            const renderer = cardRenderers[key];
+            return renderer ? renderer() : null;
+          })}
+        </div>
       </div>
 
       <WorkloadSheet
