@@ -319,7 +319,16 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   }, [year, month, selectedDay]);
 
   // Reset monthly tab when navigating months
-  useEffect(() => { setMonthlyTab('overview'); setExpandedDays(new Set()); }, [year, month]);
+  useEffect(() => {
+    setMonthlyTab('overview');
+    // Auto-expand today's date if it falls in the current month
+    const todayD = today.getDate();
+    if (today.getMonth() === month && today.getFullYear() === year) {
+      setExpandedDays(new Set([todayD]));
+    } else {
+      setExpandedDays(new Set());
+    }
+  }, [year, month]);
 
   // Build day map
   const dayMap: Record<number, Schedule[]> = {};
@@ -343,7 +352,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const selectedHol       = holidays.get(selectedDateStr) ?? null;
   const countryInfo       = COUNTRIES.find(c => c.code === countryCode);
   const isToday           = (d: number) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-  const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineRef  = useRef<HTMLDivElement>(null);
+  const swipeRef      = useRef<HTMLDivElement>(null);
+  const swipeTouchX   = useRef<number | null>(null);
 
   // Auto-scroll timeline to current hour when daily view activates
   useEffect(() => {
@@ -677,8 +688,19 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               </div>
             )}
 
-            {/* ── Calendar grid ── */}
-            <div style={{ padding:'10px 8px 0', flexShrink:0 }}>
+            {/* ── Calendar grid — swipe left = next month, swipe right = prev month ── */}
+            <div
+              ref={swipeRef}
+              style={{ padding:'10px 8px 0', flexShrink:0, touchAction:'pan-y' }}
+              onTouchStart={e => { swipeTouchX.current = e.touches[0].clientX; }}
+              onTouchEnd={e => {
+                if (swipeTouchX.current === null) return;
+                const dx = e.changedTouches[0].clientX - swipeTouchX.current;
+                swipeTouchX.current = null;
+                if (Math.abs(dx) < 50) return;          // too short — ignore
+                if (dx < 0) navNext(); else navPrev();   // left = next, right = prev
+              }}
+            >
               <div className="cal-grid header-row" style={{ paddingTop:0 }}>
                 {DAYS_SHORT.map(d => <div key={d} className="dow">{d}</div>)}
               </div>
