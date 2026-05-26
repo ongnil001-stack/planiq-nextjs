@@ -80,8 +80,8 @@ export const DASHBOARD_CARDS: DashboardCard[] = [
   },
   {
     key: 'aiPriorities',
-    label: 'AI Priorities',
-    description: 'AI-generated insight banner and smart suggestions',
+    label: 'Weekly Progress',
+    description: 'Completion rate, streak, and 7-day performance summary',
     defaultVisible: true,
     canHide: true,
     supportsCompact: true,
@@ -134,10 +134,10 @@ export const ALL_SHORTCUTS: ShortcutDef[] = [
   },
   {
     key: 'viewPriorities',
-    label: 'Priorities',
-    href: '/ai-analysis',
-    iconPath: 'M10 3L12.5 9L19 9.75L14.4 14.1L15.8 20.5L10 17.3L4.2 20.5L5.6 14.1L1 9.75L7.5 9L10 3z',
-    color: 'var(--amber, #FDCB6E)',
+    label: 'Progress',
+    href: '/progress',
+    iconPath: 'M3 17l4-5 4 3 4-7 4 4M3 21h18M3 3v18',
+    color: 'var(--mint, #2DD4BF)',
   },
 ];
 

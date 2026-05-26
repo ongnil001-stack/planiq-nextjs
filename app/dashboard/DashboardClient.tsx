@@ -267,7 +267,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
               {/* Insight bar */}
               <Link
-                href="/ai-analysis"
+                href="/progress"
                 onClick={e => e.stopPropagation()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 9,
@@ -658,31 +658,60 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     );
   }
 
-  // ── Render: AI Priorities ─────────────────────────────────────────────
+  // ── Render: Weekly Progress ───────────────────────────────────────────
   function renderAiPriorities() {
     const compact = isCompact('aiPriorities');
-    const summary = latestAnalysis?.summary;
+    // Week completion rate from weekSchedules
+    const weekDone    = weekSchedules.filter((s: any) => s.is_completed).length;
+    const weekTotal   = weekSchedules.length;
+    const weekRate    = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+    const rateColor   = weekRate >= 80 ? 'var(--mint,#2DD4BF)' : weekRate >= 50 ? 'var(--cyan,#00C6FF)' : 'var(--amber,#FDCB6E)';
+    const rateLabel   = weekRate >= 80 ? 'On fire 🔥' : weekRate >= 50 ? 'Good pace' : weekTotal === 0 ? 'No data yet' : 'Keep going';
     return (
       <div key="aiPriorities" style={S.widget}>
-        <Link href="/ai-analysis" style={{ ...S.card, display: 'block', textDecoration: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 0 : 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--amber-lt, rgba(253,203,110,.12))', border: '1px solid var(--amber, #FDCB6E)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                <path d="M10 2L12 8H18L13.5 11.8L15.3 18L10 14.5L4.7 18L6.5 11.8L2 8H8L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+        <Link href="/progress" style={{ ...S.card, display: 'block', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: compact ? 0 : 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(45,212,191,.12)', border: '1px solid rgba(45,212,191,.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mint,#2DD4BF)', flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <path d="M3 14l3.5-4 3.5 2.5 3.5-6 3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3 17h14M3 4v13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </div>
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>AI Priorities</div>
-            <div style={{ fontSize: 16, color: 'var(--mid)' }}>→</div>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Weekly Progress</div>
+            <div style={{ fontSize: 12, color: 'var(--mid)' }}>→</div>
           </div>
           {!compact && (
             <div>
-              <p style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 500, lineHeight: 1.5, margin: 0, opacity: summary ? 1 : 0.6 }}>
-                {summary ? summary.slice(0, 100) + (summary.length > 100 ? '…' : '') : 'Tap to generate AI insights for your schedule'}
-              </p>
+              {/* Rate + streak row */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                <div style={{ flex: 1, padding: '8px 10px', borderRadius: 10, background: 'rgba(45,212,191,.07)', border: '1px solid rgba(45,212,191,.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: rateColor, letterSpacing: '-.4px' }}>{weekRate}%</div>
+                  <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 2 }}>THIS WEEK</div>
+                </div>
+                <div style={{ flex: 1, padding: '8px 10px', borderRadius: 10, background: 'rgba(124,106,240,.07)', border: '1px solid rgba(124,106,240,.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--purple)', letterSpacing: '-.4px' }}>{streakDays}</div>
+                  <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 2 }}>DAY STREAK</div>
+                </div>
+                <div style={{ flex: 1, padding: '8px 10px', borderRadius: 10, background: 'rgba(0,198,255,.07)', border: '1px solid rgba(0,198,255,.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan,#00C6FF)', letterSpacing: '-.4px' }}>{weekDone}</div>
+                  <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 2 }}>DONE</div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{ height: 6, borderRadius: 3, background: 'rgba(45,212,191,.10)', overflow: 'hidden', marginBottom: 6 }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${weekRate}%`, background: rateColor, transition: 'width .4s ease' }}/>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 600 }}>{rateLabel} · {weekDone} of {weekTotal} tasks done</div>
             </div>
           )}
-          {compact && summary && (
-            <span style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, lineHeight: 1.4 }}>{summary.slice(0, 55)}…</span>
+          {compact && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: rateColor }}>{weekRate}%</div>
+              <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'rgba(45,212,191,.10)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${weekRate}%`, background: rateColor }}/>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 600 }}>{streakDays}🔥</div>
+            </div>
           )}
         </Link>
       </div>

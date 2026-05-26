@@ -36,7 +36,7 @@ const CARD_ICONS: Record<string, string> = {
   performanceCard:  'M10 3a7 7 0 100 14A7 7 0 0010 3z M6 10h4l2-4 2 8 2-4h2',
   weeklySchedule:   'M3 8h14M6 5V3m8 2V3M5 5h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z',
   workloadBalance:  'M3 15l4-5 4 2.5 4-7 3 4M3 4v12h14',
-  aiPriorities:     'M10 3v2m0 10v2M3 10h2m10 0h2M5.6 5.6l1.2 1.2m6.4 6.4 1.2 1.2M5.6 14.4l1.2-1.2m6.4-6.4 1.2-1.2',
+  aiPriorities:     'M3 17l4-5 4 3 4-7 4 4M3 19h14M3 5v14',
   upcomingTasks:    'M4 6h12M4 10h8M4 14h10',
 };
 
@@ -47,7 +47,7 @@ const CARD_COLORS: Record<string, string> = {
   performanceCard:  'var(--mint)',
   weeklySchedule:   'var(--purple)',
   workloadBalance:  'var(--amber)',
-  aiPriorities:     'var(--coral)',
+  aiPriorities:     'var(--mint)',
   upcomingTasks:    'var(--mid)',
 };
 
@@ -75,7 +75,7 @@ const CARD_ICON_BG: Record<string, string> = {
   performanceCard:  'rgba(0,220,160,.15)',
   weeklySchedule:   'rgba(124,106,240,.15)',
   workloadBalance:  'rgba(255,184,0,.15)',
-  aiPriorities:     'rgba(255,80,80,.15)',
+  aiPriorities:     'rgba(45,212,191,.15)',
   upcomingTasks:    'rgba(160,160,180,.15)',
 };
 const CARD_ICON_BORDER: Record<string, string> = {
@@ -85,7 +85,7 @@ const CARD_ICON_BORDER: Record<string, string> = {
   performanceCard:  'rgba(0,220,160,.30)',
   weeklySchedule:   'rgba(124,106,240,.30)',
   workloadBalance:  'rgba(255,184,0,.30)',
-  aiPriorities:     'rgba(255,80,80,.30)',
+  aiPriorities:     'rgba(45,212,191,.30)',
   upcomingTasks:    'rgba(160,160,180,.30)',
 };
 

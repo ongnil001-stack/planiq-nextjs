@@ -154,16 +154,17 @@ export default function BottomNav() {
           <span style={FAB_LBL}>Focus Hub</span>
         </button>
 
-        {/* ── Priorities ── */}
-        <Link href="/ai-analysis" style={ITEM(isActive('/ai-analysis'))} aria-label="Priorities">
-          <span style={BAR(isActive('/ai-analysis'))} />
+        {/* ── Progress ── */}
+        <Link href="/progress" style={ITEM(isActive('/progress'))} aria-label="Progress">
+          <span style={BAR(isActive('/progress'))} />
           <span style={ICO}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 3L14.5 9L21 9.75L16.4 14.1L17.8 20.5L12 17.3L6.2 20.5L7.6 14.1L3 9.75L9.5 9L12 3Z"
-                stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
+              <path d="M3 17l4-5 4 3 4-7 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 21h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+              <path d="M3 3v18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
             </svg>
           </span>
-          <span style={LBL}>Priorities</span>
+          <span style={LBL}>Progress</span>
         </Link>
 
         {/* ── Profile ── */}
