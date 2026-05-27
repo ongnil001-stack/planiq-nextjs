@@ -33,7 +33,9 @@ export function getTaskTimePct(
 
   if (now < start) return 0;
   if (now >= end)  return 100;
-  return Math.round(((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100);
+  // Return raw float — callers use Math.round/floor for labels,
+  // bar WIDTH uses the float directly for sub-percent precision.
+  return ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100;
 }
 
 /**

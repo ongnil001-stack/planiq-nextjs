@@ -95,7 +95,7 @@ function TimerRing({
           strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cx})`}
           filter="url(#ring-glow)"
-          style={{ transition: 'stroke-dashoffset .8s ease, stroke .4s ease' }}
+          style={{ transition: 'stroke-dashoffset 1s linear, stroke .4s ease' }}
         />
         {/* Timer text */}
         <text x={cx} y={cx - 8} textAnchor="middle"

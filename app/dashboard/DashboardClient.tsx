@@ -115,7 +115,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [promptOpen,    setPromptOpen]    = useState(false);
   const [promptDismissedId, setPromptDismissedId] = useState<string | null>(null);
   const [savedMinsToday, setSavedMinsToday] = useState(0);
-  const [tick, setTick] = useState(0); // real-time ticker every 30s
+  const [tick, setTick] = useState(0); // real-time ticker every 10s
+  const isFirstRender = useRef(true);
 
   // Derived early so useEffects below can reference it
   const inProgressEarly = todaySchedules.find(s => !s.is_completed);
@@ -168,10 +169,13 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     setCompletingId(null);
   }
 
-  // ── Real-time ticker (every 30s) — drives focus bar + end-of-task prompt ─────
+  // ── Real-time ticker (every 10s) — drives focus bar + end-of-task prompt ────
+  // 10s tick + 10s CSS linear transition = bar moves at exactly the right speed
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 30_000);
-    return () => clearInterval(id);
+    // After mount, mark first-render complete so the transition can engage
+    const raf = requestAnimationFrame(() => { isFirstRender.current = false; });
+    const id  = setInterval(() => setTick(t => t + 1), 10_000);
+    return () => { clearInterval(id); cancelAnimationFrame(raf); };
   }, []);
 
   // ── Auto-show TaskCompletionPrompt when active task's time is up ──────────
@@ -293,17 +297,22 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const streakDays = 7;
   const inProgress = todaySchedules.find(s => !s.is_completed);
 
-  // ── Real-time task progress (re-derived every tick) ───────────────────────
-  const taskTimePct      = inProgress
+  // ── Real-time task progress (re-derived on every tick + every render) ───────
+  // taskTimePctRaw is a float (e.g. 47.3) — used for bar WIDTH (sub-percent smooth)
+  // taskTimePctInt is Math.round for human-readable labels
+  const taskTimePctRaw   = inProgress
     ? getTaskTimePct(inProgress.start_time, inProgress.end_time ?? null)
     : null;
+  const taskTimePct      = taskTimePctRaw !== null ? Math.round(taskTimePctRaw) : null;
   const taskRemainMins   = inProgress
     ? getRemainingMinutes(inProgress.start_time, inProgress.end_time ?? null)
     : null;
-  const taskIsOverdue    = taskTimePct !== null && taskTimePct >= 100;
-  // Focus bar shows time-based pct when there's an active task, else task-completion pct
-  const focusBarPct      = taskTimePct !== null ? Math.min(taskTimePct, 100) : progressPct;
-  const focusBarLabel    = taskTimePct !== null
+  const taskIsOverdue    = taskTimePctRaw !== null && taskTimePctRaw >= 100;
+  // Bar width: raw float for pixel-accurate positioning; capped at 100
+  const focusBarPct      = taskTimePctRaw !== null
+    ? Math.min(taskTimePctRaw, 100)
+    : progressPct;
+  const focusBarLabel    = taskTimePctRaw !== null
     ? (taskIsOverdue
         ? '⚠ Time up'
         : taskRemainMins !== null && taskRemainMins <= 5
@@ -410,15 +419,21 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                     <div style={{ flex: 1, height: 4, background: 'var(--border2, rgba(255,255,255,.07))', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 2,
-                        width: `${focusBarPct}%`,
+                        // Use raw float width for pixel-accurate sub-percent positioning
+                        width: `${focusBarPct.toFixed(3)}%`,
                         background: taskIsOverdue
                           ? 'linear-gradient(90deg,#FF6B8A,#FF3B30)'
-                          : taskTimePct !== null && taskTimePct > 0
+                          : taskTimePctRaw !== null && taskTimePctRaw > 0
                             ? 'linear-gradient(90deg,#7C6AF0,#00C6FF)'
                             : 'var(--gradient)',
-                        transition: 'width 1s linear',
-                        boxShadow: taskTimePct !== null && !taskIsOverdue && taskTimePct > 0
-                          ? '0 0 6px rgba(0,198,255,.4)' : 'none',
+                        // On first render: no transition so bar jumps instantly to correct position.
+                        // After mount: 10s linear transition = bar animates at exactly real-time speed
+                        // between each 10s tick, making it look perfectly continuous.
+                        transition: isFirstRender.current
+                          ? 'none'
+                          : 'width 10s linear, background .4s ease',
+                        boxShadow: taskTimePctRaw !== null && !taskIsOverdue && taskTimePctRaw > 0
+                          ? '0 0 8px rgba(0,198,255,.35)' : 'none',
                       }} />
                     </div>
                     <span style={{
