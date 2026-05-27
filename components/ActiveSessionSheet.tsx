@@ -87,7 +87,7 @@ function TimerRing({
         </defs>
         {/* Track */}
         <circle cx={cx} cy={cx} r={r} fill="none"
-          stroke="rgba(255,255,255,.07)" strokeWidth={STROKE}/>
+          style={{ stroke: 'var(--border)' }} strokeWidth={STROKE}/>
         {/* Progress arc */}
         <circle cx={cx} cy={cx} r={r} fill="none"
           stroke={color} strokeWidth={STROKE}
@@ -103,11 +103,11 @@ function TimerRing({
           {mainLabel}
         </text>
         <text x={cx} y={cx + 18} textAnchor="middle"
-          fill="rgba(255,255,255,.45)" fontSize={12} fontWeight="600" fontFamily="inherit">
+          style={{ fill: 'var(--mid)' }} fontSize={12} fontWeight="600" fontFamily="inherit">
           {subLabel}
         </text>
       </svg>
-      <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>
+      <div style={{ fontSize: 13, color: 'var(--mid)', fontWeight: 600 }}>
         {elapsedLabel}
       </div>
     </div>
@@ -225,7 +225,7 @@ export default function ActiveSessionSheet({
       <div style={SHEET} onClick={e => e.stopPropagation()}>
 
         {/* Handle */}
-        <div style={{ width:36, height:4, borderRadius:2, background:'rgba(255,255,255,.18)', margin:'12px auto 0', flexShrink:0 }}/>
+        <div style={{ width:36, height:4, borderRadius:2, background:'var(--border2)', margin:'12px auto 0', flexShrink:0 }}/>
 
         {/* Top bar */}
         <div style={{
@@ -276,11 +276,11 @@ export default function ActiveSessionSheet({
               {endD && !isNaN(endD.getTime())
                 ? ` – ${endD.toLocaleTimeString('en-US', timeFmt)}` : ''}
             </span>
-            <span style={{ color:'rgba(255,255,255,.2)' }}>·</span>
+            <span style={{ color:'var(--border2)' }}>·</span>
             <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600, textTransform:'capitalize' }}>
               {activeSchedule.type}
             </span>
-            <span style={{ color:'rgba(255,255,255,.2)' }}>·</span>
+            <span style={{ color:'var(--border2)' }}>·</span>
             <span style={{
               fontSize:10, fontWeight:800, letterSpacing:'.3px',
               color:pColor, textTransform:'uppercase',
@@ -307,14 +307,14 @@ export default function ActiveSessionSheet({
             <>
               <div style={{
                 fontSize:10, fontWeight:800, letterSpacing:'1px',
-                textTransform:'uppercase', color:'rgba(255,255,255,.35)',
+                textTransform:'uppercase', color:'var(--lite)',
                 marginBottom:10,
               }}>
                 Today&apos;s Queue
               </div>
               <div style={{
-                background:'rgba(255,255,255,.04)',
-                border:'1px solid rgba(255,255,255,.07)',
+                background:'var(--surf2)',
+                border:'1px solid var(--border)',
                 borderRadius:16, overflow:'hidden', marginBottom:20,
               }}>
                 {todaySchedules.map((s, i) => {
@@ -331,7 +331,7 @@ export default function ActiveSessionSheet({
                         width:'100%', padding:'11px 14px',
                         background: isActive ? 'rgba(0,200,150,.08)' : 'transparent',
                         borderBottom: i < todaySchedules.length - 1
-                          ? '1px solid rgba(255,255,255,.05)' : 'none',
+                          ? '1px solid var(--border)' : 'none',
                         cursor: isActive ? 'default' : 'pointer',
                         fontFamily:'inherit', textAlign:'left',
                         WebkitTapHighlightColor:'transparent',
@@ -352,7 +352,7 @@ export default function ActiveSessionSheet({
 
                       <span style={{
                         flex:1, fontSize:13, fontWeight: isActive ? 700 : 600,
-                        color: isDone ? 'rgba(255,255,255,.35)' : isActive ? 'var(--dark)' : 'var(--mid)',
+                        color: isDone ? 'var(--lite)' : isActive ? 'var(--dark)' : 'var(--mid)',
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                         textDecoration: isDone ? 'line-through' : 'none',
                       }}>
@@ -360,7 +360,7 @@ export default function ActiveSessionSheet({
                       </span>
 
                       <span style={{ fontSize:11, fontWeight:700,
-                        color: isActive ? '#00C896' : 'rgba(255,255,255,.35)', flexShrink:0 }}>
+                        color: isActive ? '#00C896' : 'var(--lite)', flexShrink:0 }}>
                         {sStart.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true })}
                       </span>
                     </button>
@@ -376,7 +376,7 @@ export default function ActiveSessionSheet({
           padding:'12px 20px',
           paddingBottom:'max(20px, env(safe-area-inset-bottom, 20px))',
           flexShrink:0,
-          borderTop:'1px solid rgba(255,255,255,.06)',
+          borderTop:'1px solid var(--border)',
         }}>
 
           {isTimeUp ? (
@@ -436,8 +436,8 @@ export default function ActiveSessionSheet({
                 onClick={() => { onReschedule?.(activeSchedule); onClose(); }}
                 style={{
                   width:'100%', padding:'14px 0',
-                  borderRadius:14, border:'1.5px solid rgba(255,255,255,.12)',
-                  background:'rgba(255,255,255,.05)',
+                  borderRadius:14, border:'1.5px solid var(--border)',
+                  background:'var(--surf2)',
                   color:'var(--dark)', fontSize:14, fontWeight:700,
                   display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                   cursor:'pointer', fontFamily:'inherit',

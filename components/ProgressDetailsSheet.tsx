@@ -51,7 +51,7 @@ function RingMeter({ pct, size = 130, stroke = 10 }: { pct: number; size?: numbe
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {/* Track */}
       <circle cx={cx} cy={cx} r={r} fill="none"
-        stroke="rgba(255,255,255,.07)" strokeWidth={stroke} />
+        style={{ stroke: "var(--border)" }} strokeWidth={stroke} />
       {/* Progress arc */}
       <circle cx={cx} cy={cx} r={r} fill="none"
         stroke={color} strokeWidth={stroke}
@@ -68,7 +68,7 @@ function RingMeter({ pct, size = 130, stroke = 10 }: { pct: number; size?: numbe
         {pct === 100 ? '🎉' : `${pct}%`}
       </text>
       <text x={cx} y={cx + 14} textAnchor="middle"
-        fill="rgba(255,255,255,.45)" fontSize={10} fontWeight="600"
+        style={{ fill: "var(--mid)" }} fontSize={10} fontWeight="600"
         fontFamily="inherit">
         {pct === 100 ? 'All done!' : 'of today done'}
       </text>
@@ -95,7 +95,7 @@ function WeekTrend({ weekSchedules }: { weekSchedules: Schedule[] }) {
         const isToday = key === toDateStr(now);
 
         const barH  = total ? Math.max(8, Math.round(pct * 40)) : 4;
-        const color = pct >= 1 ? '#00C896' : pct > 0 ? '#7C6AF0' : isPast ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.06)';
+        const color = pct >= 1 ? '#00C896' : pct > 0 ? 'var(--purple)' : isPast ? 'var(--border2)' : 'var(--border)';
 
         return (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -110,7 +110,7 @@ function WeekTrend({ weekSchedules }: { weekSchedules: Schedule[] }) {
             </div>
             <span style={{
               fontSize: 9, fontWeight: isToday ? 800 : 600,
-              color: isToday ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,.35)',
+              color: isToday ? 'var(--purple)' : 'var(--lite)',
             }}>{label}</span>
           </div>
         );
@@ -227,7 +227,7 @@ export default function ProgressDetailsSheet({
       <div style={SHEET} onClick={e => e.stopPropagation()}>
 
         {/* Handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.18)', margin: '12px auto 0', flexShrink: 0 }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border2)', margin: '12px auto 0', flexShrink: 0 }} />
 
         {/* Header */}
         <div style={{ padding: '14px 20px 0', flexShrink: 0 }}>
@@ -277,7 +277,7 @@ export default function ProgressDetailsSheet({
                   </svg>
                   <span style={{ fontSize: 24, fontWeight: 900, color: '#FDCB6E', lineHeight: 1 }}>{streakDays}</span>
                 </div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontWeight: 600, marginTop: 3 }}>
+                <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, marginTop: 3 }}>
                   day streak 🔥
                 </div>
               </div>
@@ -290,7 +290,7 @@ export default function ProgressDetailsSheet({
                 <div style={{ fontSize: 22, fontWeight: 900, color: prodColor, lineHeight: 1 }}>
                   {workloadScore}
                 </div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontWeight: 600, marginTop: 3 }}>
+                <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, marginTop: 3 }}>
                   {prodLabel}
                 </div>
               </div>
@@ -305,7 +305,7 @@ export default function ProgressDetailsSheet({
                 <path d="M8 12l3 3 5-5" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <div style={{ fontSize: 22, fontWeight: 900, color: '#00C896', lineHeight: 1 }}>{completed.length}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', fontWeight: 600, textAlign: 'center' }}>Done</div>
+              <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, textAlign: 'center' }}>Done</div>
             </div>
             <div style={STAT_CARD('#7C6AF0')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -313,31 +313,31 @@ export default function ProgressDetailsSheet({
                 <path d="M12 7v5l3 3" stroke="#7C6AF0" strokeWidth="2" strokeLinecap="round"/>
               </svg>
               <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--purple)', lineHeight: 1 }}>{pending.length}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', fontWeight: 600, textAlign: 'center' }}>Pending</div>
+              <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, textAlign: 'center' }}>Pending</div>
             </div>
-            <div style={STAT_CARD(overdue.length > 0 ? '#FF6B8A' : 'rgba(255,255,255,.3)')}>
+            <div style={STAT_CARD(overdue.length > 0 ? '#FF6B8A' : 'var(--border2)')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 4L3 19h18L12 4z" stroke={overdue.length > 0 ? '#FF6B8A' : 'rgba(255,255,255,.25)'}
+                <path d="M12 4L3 19h18L12 4z" stroke={overdue.length > 0 ? 'var(--coral, #FF6B8A)' : 'var(--lite)'}
                   strokeWidth="1.8" strokeLinejoin="round"/>
                 <path d="M12 10v4M12 16.5v.5"
-                  stroke={overdue.length > 0 ? '#FF6B8A' : 'rgba(255,255,255,.25)'}
+                  stroke={overdue.length > 0 ? 'var(--coral, #FF6B8A)' : 'var(--lite)'}
                   strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
-              <div style={{ fontSize: 22, fontWeight: 900, color: overdue.length > 0 ? '#FF6B8A' : 'rgba(255,255,255,.35)', lineHeight: 1 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: overdue.length > 0 ? 'var(--coral, #FF6B8A)' : 'var(--lite)', lineHeight: 1 }}>
                 {overdue.length}
               </div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', fontWeight: 600, textAlign: 'center' }}>Overdue</div>
+              <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, textAlign: 'center' }}>Overdue</div>
             </div>
           </div>
 
           {/* ── This week trend ── */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'var(--lite)', marginBottom: 12 }}>
               This Week
             </div>
             <div style={{
-              background: 'rgba(255,255,255,.04)',
-              border: '1px solid rgba(255,255,255,.07)',
+              background: 'var(--surf2)',
+              border: '1px solid var(--border)',
               borderRadius: 16, padding: '16px 12px',
             }}>
               <WeekTrend weekSchedules={weekSchedules} />
@@ -347,7 +347,7 @@ export default function ProgressDetailsSheet({
           {/* ── Recent wins ── */}
           {recentWins.length > 0 && (
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'var(--lite)', marginBottom: 12 }}>
                 Recent Wins
               </div>
               {recentWins.map(s => {
@@ -368,7 +368,7 @@ export default function ProgressDetailsSheet({
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.title}
                       </div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 2, fontWeight: 600 }}>
+                      <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 2, fontWeight: 600 }}>
                         {startD.toLocaleTimeString('en-US', timeFmt)} · {s.type}
                       </div>
                     </div>
@@ -386,7 +386,7 @@ export default function ProgressDetailsSheet({
           {/* Still pending */}
           {pending.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: 12, marginTop: recentWins.length ? 16 : 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', textTransform: 'uppercase', color: 'var(--lite)', marginBottom: 12, marginTop: recentWins.length ? 16 : 0 }}>
                 Still Pending
               </div>
               {pending.slice(0, 4).map(s => {
@@ -397,8 +397,8 @@ export default function ProgressDetailsSheet({
                   <div key={s.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 12px',
-                    background: isOvd ? 'rgba(255,107,138,.06)' : 'rgba(255,255,255,.04)',
-                    border: `1px solid ${isOvd ? 'rgba(255,107,138,.18)' : 'rgba(255,255,255,.07)'}`,
+                    background: isOvd ? 'rgba(255,107,138,.06)' : 'var(--surf2)',
+                    border: `1px solid ${isOvd ? 'rgba(255,107,138,.18)' : 'var(--border)'}`,
                     borderRadius: 12, marginBottom: 7,
                   }}>
                     <div style={{
@@ -417,7 +417,7 @@ export default function ProgressDetailsSheet({
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.title}
                       </div>
-                      <div style={{ fontSize: 10, color: isOvd ? '#FF6B8A' : 'rgba(255,255,255,.4)', marginTop: 2, fontWeight: 600 }}>
+                      <div style={{ fontSize: 10, color: isOvd ? 'var(--coral, #FF6B8A)' : 'var(--mid)', marginTop: 2, fontWeight: 600 }}>
                         {isOvd ? '⚠ Overdue · ' : ''}{startD.toLocaleTimeString('en-US', timeFmt)}
                       </div>
                     </div>
@@ -425,7 +425,7 @@ export default function ProgressDetailsSheet({
                 );
               })}
               {pending.length > 4 && (
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', textAlign: 'center', marginTop: 4, fontWeight: 600 }}>
+                <div style={{ fontSize: 12, color: 'var(--lite)', textAlign: 'center', marginTop: 4, fontWeight: 600 }}>
                   +{pending.length - 4} more pending
                 </div>
               )}
@@ -441,7 +441,7 @@ export default function ProgressDetailsSheet({
             }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#00C896' }}>Everything done!</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--mid)', marginTop: 4 }}>
                 You cleared all {completed.length} tasks today.
               </div>
             </div>
