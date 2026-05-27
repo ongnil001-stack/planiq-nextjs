@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * SwipeDeleteRow  v3
+ * SwipeDeleteRow  v4
  * ─────────────────────────────────────────────────────────────
  * Track approach  →  red panel starts outside the clip boundary.
- * 2-step confirmation:
- *   swipe-left → red panel snaps open
- *   tap DELETE  → panel transforms to "Cancel / Confirm Delete"
- *   tap Confirm → delete fires, 4-second undo toast
- *   tap Cancel  → row springs closed
+ * Single-tap confirmation:
+ *   swipe-left  → red panel snaps open  (DELETE label + trash icon)
+ *   tap DELETE  → item deleted immediately, 4-second undo toast
+ *   swipe back  → panel closes
+ *   tap content → panel closes
  */
 
 import { useRef, useState, useCallback } from 'react';
@@ -20,7 +20,7 @@ interface Props {
   borderRadius?: number;
 }
 
-const DELETE_WIDTH   = 76;
+const DELETE_WIDTH   = 80;
 const SNAP_THRESHOLD = 40;
 const AUTO_DELETE_PX = 200;
 
@@ -30,12 +30,11 @@ export default function SwipeDeleteRow({
   children,
   borderRadius = 14,
 }: Props) {
-  const [offset,      setOffset]      = useState(0);
-  const [snapped,     setSnapped]     = useState(false);
-  const [confirming,  setConfirming]  = useState(false); // waiting for 2nd tap
-  const [deleting,    setDeleting]    = useState(false);
-  const [toastMsg,    setToastMsg]    = useState<string | null>(null);
-  const [undoFn,      setUndoFn]      = useState<(() => void) | null>(null);
+  const [offset,   setOffset]   = useState(0);
+  const [snapped,  setSnapped]  = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [undoFn,   setUndoFn]   = useState<(() => void) | null>(null);
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -64,7 +63,7 @@ export default function SwipeDeleteRow({
     if (!isDragging.current) return;
     isDragging.current = false;
     if (offset > AUTO_DELETE_PX) {
-      // Hard swipe — skip confirmation, go straight to undo toast
+      // Hard full-swipe → instant delete
       executeDelete();
     } else if (offset > SNAP_THRESHOLD) {
       setOffset(DELETE_WIDTH);
@@ -72,37 +71,17 @@ export default function SwipeDeleteRow({
     } else {
       setOffset(0);
       setSnapped(false);
-      setConfirming(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
-  // ── close on tap when panel is open ───────────────────────────────────────
+  // ── close panel when user taps the content area ────────────────────────────
   const handleContentTap = useCallback(() => {
-    if (snapped) { setOffset(0); setSnapped(false); setConfirming(false); }
+    if (snapped) {
+      setOffset(0);
+      setSnapped(false);
+    }
   }, [snapped]);
-
-  // ── step 1: tap DELETE button → show confirmation ─────────────────────────
-  const requestDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirming(true);
-  }, []);
-
-  // ── step 2a: user cancels ─────────────────────────────────────────────────
-  const cancelDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirming(false);
-    setOffset(0);
-    setSnapped(false);
-  }, []);
-
-  // ── step 2b: user confirms ────────────────────────────────────────────────
-  const confirmDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirming(false);
-    executeDelete();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ── actual delete with undo ───────────────────────────────────────────────
   const executeDelete = useCallback(() => {
@@ -115,7 +94,6 @@ export default function SwipeDeleteRow({
       setDeleting(false);
       setOffset(0);
       setSnapped(false);
-      setConfirming(false);
       setToastMsg(null);
       setUndoFn(null);
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -130,50 +108,6 @@ export default function SwipeDeleteRow({
 
   const isAnimating = !isDragging.current;
 
-  // ── panel content: trash icon → confirm buttons ───────────────────────────
-  const panelContent = confirming ? (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      gap: 6, width: '100%', height: '100%',
-      padding: '0 6px',
-    }}>
-      <button
-        onClick={confirmDelete}
-        style={{
-          width: '100%', padding: '5px 0',
-          background: 'rgba(255,255,255,.22)', border: 'none',
-          borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 800,
-          cursor: 'pointer', fontFamily: 'inherit',
-        }}
-      >
-        Confirm
-      </button>
-      <button
-        onClick={cancelDelete}
-        style={{
-          width: '100%', padding: '5px 0',
-          background: 'transparent', border: '1px solid rgba(255,255,255,.3)',
-          borderRadius: 6, color: 'rgba(255,255,255,.8)', fontSize: 10, fontWeight: 700,
-          cursor: 'pointer', fontFamily: 'inherit',
-        }}
-      >
-        Cancel
-      </button>
-    </div>
-  ) : (
-    <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, pointerEvents: 'auto' }}
-      onClick={requestDelete}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
-          stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '.3px' }}>DELETE</span>
-    </div>
-  );
-
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius }}>
 
@@ -185,10 +119,10 @@ export default function SwipeDeleteRow({
         onClick={handleContentTap}
         style={{
           display:    'flex',
-          width:      `calc(100% + ${confirming ? DELETE_WIDTH + 20 : DELETE_WIDTH}px)`,
+          width:      `calc(100% + ${DELETE_WIDTH}px)`,
           transform:  deleting ? 'translateX(-100%)' : `translateX(${-offset}px)`,
           transition: isAnimating
-            ? 'transform .22s cubic-bezier(.25,.8,.25,1), opacity .22s ease, width .18s ease'
+            ? 'transform .22s cubic-bezier(.25,.8,.25,1), opacity .22s ease'
             : 'none',
           opacity:    deleting ? 0 : 1,
           willChange: 'transform',
@@ -205,21 +139,41 @@ export default function SwipeDeleteRow({
           {children}
         </div>
 
-        {/* Red panel: off-screen at rest, slides in from right as track moves left */}
+        {/* Red delete panel */}
         <div
+          onClick={(e) => { e.stopPropagation(); executeDelete(); }}
           style={{
-            width:          confirming ? DELETE_WIDTH + 20 : DELETE_WIDTH,
+            width:          DELETE_WIDTH,
             flexShrink:     0,
-            background:     confirming ? '#c0392b' : '#FF3B30',
+            background:     'linear-gradient(135deg, #FF3B30 0%, #c0392b 100%)',
             borderRadius:   `0 ${borderRadius}px ${borderRadius}px 0`,
             display:        'flex',
+            flexDirection:  'column',
             alignItems:     'center',
             justifyContent: 'center',
+            gap:            5,
             cursor:         'pointer',
-            transition:     'width .18s ease, background .15s ease',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
-          {panelContent}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
+              stroke="#fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span style={{
+            fontSize:      10,
+            fontWeight:    800,
+            color:         '#fff',
+            letterSpacing: '.5px',
+            textTransform: 'uppercase',
+          }}>
+            Delete
+          </span>
         </div>
       </div>
 
@@ -246,8 +200,13 @@ export default function SwipeDeleteRow({
           pointerEvents:        'auto',
         }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
-              stroke="rgba(255,255,255,.5)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path
+              d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
+              stroke="rgba(255,255,255,.5)"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.85)' }}>
             {toastMsg}
