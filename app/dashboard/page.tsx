@@ -13,8 +13,11 @@ export default async function DashboardPage() {
 
   const today = new Date();
 
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-  const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
+  const startOfDay  = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+  const endOfDay    = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
+  const streakStart = new Date(today);
+  streakStart.setDate(today.getDate() - 27);
+  streakStart.setHours(0, 0, 0, 0);
 
   const dow = today.getDay();
   const startOfWeek = new Date(today);
@@ -31,6 +34,7 @@ export default async function DashboardPage() {
     { data: weekSchedules },
     { data: upcomingSchedules },
     { data: latestAnalysis },
+    { data: streakSchedules },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
 
@@ -58,7 +62,30 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(1)
       .single(),
+
+    // 28-day history for streak computation — lightweight (only 2 columns)
+    supabase.from('schedules')
+      .select('start_time, is_completed')
+      .eq('user_id', user.id)
+      .gte('start_time', streakStart.toISOString())
+      .lte('start_time', endOfDay)
+      .order('start_time', { ascending: false }),
   ]);
+
+  // Compute streak server-side: consecutive days going back from today with ≥1 completed task
+  const completedDays = new Set(
+    (streakSchedules ?? [])
+      .filter((s: { is_completed: boolean }) => s.is_completed)
+      .map((s: { start_time: string }) => s.start_time.slice(0, 10))
+  );
+  let streakDays = 0;
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    if (completedDays.has(dateStr)) streakDays++;
+    else break;
+  }
 
   return (
     <DashboardClient
@@ -67,6 +94,7 @@ export default async function DashboardPage() {
       weekSchedules={weekSchedules ?? []}
       upcomingSchedules={upcomingSchedules ?? []}
       latestAnalysis={latestAnalysis}
+      streakDays={streakDays}
     />
   );
 }

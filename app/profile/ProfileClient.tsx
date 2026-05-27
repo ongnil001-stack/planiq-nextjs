@@ -39,11 +39,14 @@ const DESIGNATION_SUGGESTIONS = [
 ];
 
 interface ProfileClientProps {
-  initialUser: { id: string; email?: string; [key: string]: unknown };
+  initialUser:  { id: string; email?: string; [key: string]: unknown };
   initialProfile: Record<string, unknown> | null;
+  streakDays:   number;        // consecutive days with ≥1 completed task
+  tasksDone:    number;        // total completed tasks ever
+  avgScore:     number | null; // completion rate % over last 28 days (null = no data)
 }
 
-export default function ProfileClient({ initialUser, initialProfile }: ProfileClientProps) {
+export default function ProfileClient({ initialUser, initialProfile, streakDays, tasksDone, avgScore }: ProfileClientProps) {
   const router   = useRouter();
   const supabase = createClient();
   const fileRef  = useRef<HTMLInputElement>(null);
@@ -286,23 +289,23 @@ export default function ProfileClient({ initialUser, initialProfile }: ProfileCl
           Edit Profile
         </button>
 
-        {/* Stats row */}
+        {/* Stats row — sourced from real DB data, not hardcoded */}
         <div className={s.profStats}>
           <div className={s.ps}>
             <div className={s.psV}>
               <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
                 <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
               </svg>
-              <span>8</span>
+              <span>{streakDays}</span>
             </div>
             <div className={s.psL}>Streak</div>
           </div>
           <div className={s.ps}>
-            <div className={s.psV}>142</div>
+            <div className={s.psV}>{tasksDone}</div>
             <div className={s.psL}>Tasks Done</div>
           </div>
           <div className={s.ps}>
-            <div className={s.psV}>78%</div>
+            <div className={s.psV}>{avgScore !== null ? `${avgScore}%` : '—'}</div>
             <div className={s.psL}>Avg Score</div>
           </div>
         </div>

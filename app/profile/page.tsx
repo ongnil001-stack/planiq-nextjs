@@ -10,18 +10,61 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const today = new Date();
+  const streakStart = new Date(today);
+  streakStart.setDate(today.getDate() - 27);
+  streakStart.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
 
-  // Pass pre-fetched data as props → ProfileClient initialises state
-  // immediately without any useEffect round-trips
+  const [
+    { data: profile },
+    { count: tasksDone },
+    { data: recentSchedules },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+
+    // Total completed tasks ever
+    supabase.from('schedules')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_completed', true),
+
+    // Last 28 days — for streak + avg completion rate
+    supabase.from('schedules')
+      .select('start_time, is_completed')
+      .eq('user_id', user.id)
+      .gte('start_time', streakStart.toISOString())
+      .lte('start_time', endOfDay.toISOString())
+      .order('start_time', { ascending: false }),
+  ]);
+
+  // ── Streak: consecutive days going back from today with ≥1 completed task ──
+  const completedDays = new Set(
+    (recentSchedules ?? [])
+      .filter((s: { is_completed: boolean }) => s.is_completed)
+      .map((s: { start_time: string }) => s.start_time.slice(0, 10))
+  );
+  let streakDays = 0;
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    if (completedDays.has(d.toISOString().slice(0, 10))) streakDays++;
+    else break;
+  }
+
+  // ── Avg completion rate: done/planned over last 28 days ──
+  const planned28 = (recentSchedules ?? []).length;
+  const done28    = (recentSchedules ?? []).filter((s: { is_completed: boolean }) => s.is_completed).length;
+  const avgScore  = planned28 > 0 ? Math.round((done28 / planned28) * 100) : null;
+
   return (
     <ProfileClient
       initialUser={{ id: user.id, email: user.email, ...user }}
       initialProfile={profile}
+      streakDays={streakDays}
+      tasksDone={tasksDone ?? 0}
+      avgScore={avgScore}
     />
   );
 }

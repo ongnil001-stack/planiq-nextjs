@@ -37,6 +37,7 @@ interface Props {
   weekSchedules: Schedule[];
   upcomingSchedules: Schedule[];
   latestAnalysis: AiAnalysis | null;
+  streakDays: number;  // computed server-side from 28-day history
 }
 
 const GREETING = () => {
@@ -47,7 +48,7 @@ const GREETING = () => {
 };
 
 const DAY_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-const WEEK_WORKLOAD = [65, 80, 45, 100, 70, 57, 8];
+// weekWorkload is computed per-render from real scheduleDayMap data (see below)
 
 // ─── Shared style objects ──────────────────────────────────────────────────────
 const S = {
@@ -102,7 +103,7 @@ const S = {
   },
 };
 
-export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis }: Props) {
+export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const ch = useChartColors();
@@ -293,7 +294,11 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
-  const workloadScore = liveScore ?? latestAnalysis?.workload_score ?? 78;
+  // Compute fallback score from real data — 0 for new users with no schedules
+  const computedScore = weekSchedules.length > 0
+    ? Math.min(Math.round((weekSchedules.length / 35) * 100), 100)
+    : 0;
+  const workloadScore = liveScore ?? latestAnalysis?.workload_score ?? computedScore;
 
   const workloadStatus =
     workloadScore >= 85 ? { badgeClass: 'attention', color: ch.full }
@@ -306,7 +311,6 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     : workloadScore >= 65 ? 'Moderate'
     : workloadScore >= 30 ? 'On Track' : 'Light';
 
-  const streakDays = 7;
   const inProgress = todaySchedules.find(s => !s.is_completed);
 
   // ── Real-time task progress (re-derived on every tick + every render) ───────
@@ -349,6 +353,11 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     if (!scheduleDayMap[key]) scheduleDayMap[key] = [];
     scheduleDayMap[key].push(s);
   });
+  // Real workload per day: each task ≈ 14% load; 7+ tasks = 100%
+  const weekWorkload = weekDays.map(d =>
+    Math.min((scheduleDayMap[d.toDateString()]?.length ?? 0) * 14, 100)
+  );
+
   const weekItemCount = weekSchedules.length;
 
   const todayLabel = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -806,8 +815,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   // ── Render: Workload Balance ──────────────────────────────────────────
   function renderWorkloadBalance() {
     const compact = isCompact('workloadBalance');
-    const heaviestIdx = WEEK_WORKLOAD.indexOf(Math.max(...WEEK_WORKLOAD));
-    const heaviestLoad = WEEK_WORKLOAD[heaviestIdx];
+    const heaviestIdx = weekWorkload.indexOf(Math.max(...weekWorkload));
+    const heaviestLoad = weekWorkload[heaviestIdx];
     const isOverloaded = heaviestLoad >= 90;
     const insightMsg = heaviestIdx !== todayDow
       ? `${DAY_LABELS[heaviestIdx]}'s schedule looks heaviest — consider spreading tasks`
@@ -846,7 +855,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
                 <div style={{ width: 28, flexShrink: 0 }} />
                 {weekDays.map((_, i) => {
-                  const load = WEEK_WORKLOAD[i];
+                  const load = weekWorkload[i];
                   const barColor = load >= 90 ? ch.full : load >= 65 ? ch.warn : load >= 30 ? ch.mid : ch.ok;
                   return (
                     <div key={i} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -880,7 +889,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                   </div>
                 )}
                 {weekDays.map((d, i) => {
-                  const load = WEEK_WORKLOAD[i];
+                  const load = weekWorkload[i];
                   const isToday = d.toDateString() === today.toDateString();
                   const barColor = load >= 90 ? ch.full : load >= 65 ? ch.warn : load >= 30 ? ch.mid : ch.ok;
                   return (
@@ -904,7 +913,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               {!compact && <div style={{ width: 28, flexShrink: 0 }} />}
               {weekDays.map((d, i) => {
                 const isToday = d.toDateString() === today.toDateString();
-                const load = WEEK_WORKLOAD[i];
+                const load = weekWorkload[i];
                 return (
                   <div key={i} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                     <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, color: isToday ? 'var(--purple)' : load >= 90 ? 'var(--coral)' : 'var(--lite)' }}>
@@ -1113,7 +1122,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         onClose={() => setWorkloadOpen(false)}
         weekDays={weekDays}
         scheduleDayMap={scheduleDayMap}
-        weekWorkload={WEEK_WORKLOAD}
+        weekWorkload={weekWorkload}
         weekRange={weekRange}
         weekItemCount={weekItemCount}
         latestAnalysisSummary={latestAnalysis?.summary}
