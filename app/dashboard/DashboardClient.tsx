@@ -21,6 +21,7 @@ import {
 } from '@/lib/dashboardPrefs';
 import { useChartColors } from '@/lib/useChartColors';
 import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
+import { countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import {
   getTaskTimePct,
   getRemainingMinutes,
@@ -32,12 +33,14 @@ import {
 import TaskCompletionPrompt from '@/components/TaskCompletionPrompt';
 
 interface Props {
-  profile: Profile | null;
-  todaySchedules: Schedule[];
-  weekSchedules: Schedule[];
+  profile:          Profile | null;
+  todaySchedules:   Schedule[];
+  weekSchedules:    Schedule[];
   upcomingSchedules: Schedule[];
-  latestAnalysis: AiAnalysis | null;
-  streakDays: number;  // computed server-side from 28-day history
+  latestAnalysis:   AiAnalysis | null;
+  streakDays:       number;  // consecutive days with ≥1 completed task
+  focusWins:        number;  // days in last 28 with 100% task completion
+  tasksDone:        number;  // total all-time completed tasks (for awards count)
 }
 
 const GREETING = () => {
@@ -103,7 +106,7 @@ const S = {
   },
 };
 
-export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays }: Props) {
+export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays, focusWins, tasksDone }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const ch = useChartColors();
@@ -640,12 +643,19 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       <div key="quickStats" style={S.widget}>
         <div style={{ ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: compact ? '10px 14px' : '14px 16px' }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--amber)', opacity: .85 }}>
-              <path d="M10 3C10 3 7 6 7 9C7 10.66 8.34 12 10 12C11.66 12 13 10.66 13 9C13 6 10 3 10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M10 12V17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: .9 }}>
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)' }}>{streakDays}</div>
             <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Streak</div>
+            {(() => {
+              const n = countEarnedAwards({ streakDays, tasksDone, avgScore: null, focusWins });
+              return n > 0 ? (
+                <div style={{ fontSize: 9, color: 'var(--amber)', fontWeight: 700, letterSpacing: '.3px', marginTop: -1 }}>
+                  {n}/{TOTAL_AWARDS} awards
+                </div>
+              ) : null;
+            })()}
           </div>
           <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>

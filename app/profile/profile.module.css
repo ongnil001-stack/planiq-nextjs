@@ -108,11 +108,11 @@
   margin-top: 18px; border: 1px solid var(--glass-border, var(--border));
   box-shadow: var(--glass-sh2, none);
 }
-.ps { flex: 1; padding: 12px 6px; text-align: center; border-right: 1px solid var(--border); }
+.ps { flex: 1; padding: 10px 4px; text-align: center; border-right: 1px solid var(--border); }
 .ps:last-child { border-right: none; }
 .psV {
-  font-size: 17px; font-weight: 700; color: var(--dark);
-  display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-size: 15px; font-weight: 700; color: var(--dark);
+  display: flex; align-items: center; justify-content: center; gap: 3px;
 }
 .psL { font-size: 10px; color: var(--mid); margin-top: 2px; font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
 

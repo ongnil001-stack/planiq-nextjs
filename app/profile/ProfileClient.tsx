@@ -11,6 +11,7 @@ import { COUNTRIES } from '@/lib/countries';
 import s from './profile.module.css';
 import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
+import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
@@ -21,16 +22,7 @@ import {
 
 const THEMES = THEME_IDS.map(id => ({ id, ...THEME_META[id] }));
 
-const ACHIEVEMENTS = [
-  { label: '7-Day Streak', earned: true  },
-  { label: 'Speed Runner', earned: true  },
-  { label: '100 Tasks',    earned: true  },
-  { label: 'AI Listener',  earned: true  },
-  { label: '30-Day King',  earned: false },
-  { label: 'Score 95+',    earned: false },
-  { label: 'Balance Pro',  earned: false },
-  { label: '500 Tasks',    earned: false },
-];
+// Awards are computed from real user data via lib/awards.ts — no hardcoded values
 
 const DESIGNATION_SUGGESTIONS = [
   'Finance Officer','AP Specialist','AR Specialist','CFO',
@@ -40,14 +32,15 @@ const DESIGNATION_SUGGESTIONS = [
 ];
 
 interface ProfileClientProps {
-  initialUser:  { id: string; email?: string; [key: string]: unknown };
+  initialUser:    { id: string; email?: string; [key: string]: unknown };
   initialProfile: Record<string, unknown> | null;
-  streakDays:   number;        // consecutive days with ≥1 completed task
-  tasksDone:    number;        // total completed tasks ever
-  avgScore:     number | null; // completion rate % over last 28 days (null = no data)
+  streakDays:     number;        // consecutive days with ≥1 completed task
+  tasksDone:      number;        // total completed tasks ever
+  avgScore:       number | null; // completion rate % over last 28 days (null = no data)
+  focusWins:      number;        // days in last 28 with 100% task completion
 }
 
-export default function ProfileClient({ initialUser, initialProfile, streakDays, tasksDone, avgScore }: ProfileClientProps) {
+export default function ProfileClient({ initialUser, initialProfile, streakDays, tasksDone, avgScore, focusWins }: ProfileClientProps) {
   const router   = useRouter();
   const supabase = createClient();
   const fileRef  = useRef<HTMLInputElement>(null);
@@ -293,24 +286,31 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           Edit Profile
         </button>
 
-        {/* Stats row — sourced from real DB data, not hardcoded */}
+        {/* Stats row — sourced from real DB data */}
         <div className={s.profStats}>
           <div className={s.ps}>
             <div className={s.psV}>
-              <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span>{streakDays}</span>
+              <span style={{ color: 'var(--amber)' }}>{streakDays}</span>
             </div>
             <div className={s.psL}>Streak</div>
           </div>
           <div className={s.ps}>
-            <div className={s.psV}>{tasksDone}</div>
-            <div className={s.psL}>Tasks Done</div>
+            <div className={s.psV} style={{ color: 'var(--mint)' }}>{tasksDone}</div>
+            <div className={s.psL}>Completed</div>
           </div>
           <div className={s.ps}>
-            <div className={s.psV}>{avgScore !== null ? `${avgScore}%` : '—'}</div>
-            <div className={s.psL}>Avg Score</div>
+            <div className={s.psV} style={{ color: 'var(--purple)' }}>{avgScore !== null ? `${avgScore}%` : '—'}</div>
+            <div className={s.psL}>28-Day Rate</div>
+          </div>
+          <div className={s.ps}>
+            <div className={s.psV} style={{ color: 'var(--coral)' }}>
+              {countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins })}
+              <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--mid)', marginLeft: 1 }}>/{TOTAL_AWARDS}</span>
+            </div>
+            <div className={s.psL}>Awards</div>
           </div>
         </div>
       </div>
@@ -363,16 +363,160 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           ))}
         </div>
 
-        {/* Achievements */}
-        <div className={s.sh}><div className={s.shT}>Achievements</div></div>
-        <div className={s.badgesGrid}>
-          {ACHIEVEMENTS.map(a => (
-            <div key={a.label} className={`${s.badgeItem}${a.earned ? ` ${s.badgeLit}` : ` ${s.badgeDim}`}`}>
-              <div className={s.badgeIco}>{a.earned ? '🏅' : '🔒'}</div>
-              <div className={s.badgeLbl}>{a.label}</div>
-            </div>
-          ))}
-        </div>
+        {/* Awards & Momentum — computed from real user data */}
+        {(() => {
+          const awards = computeAwards({ streakDays, tasksDone, avgScore, focusWins });
+          const earned = awards.filter(a => a.earned);
+          const locked = awards.filter(a => !a.earned);
+          return (
+            <>
+              <div className={s.sh}>
+                <div className={s.shT} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2l2.09 6.26L20 9.27l-5 4.87 1.18 6.88L12 17.77l-5.18 3.25L8 14.14 3 9.27l5.91-.01L12 2z"
+                      stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+                  </svg>
+                  Awards & Momentum
+                  {earned.length > 0 && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, letterSpacing: '.4px',
+                      background: 'rgba(124,106,240,.15)', color: 'var(--purple)',
+                      border: '1px solid rgba(124,106,240,.25)',
+                      borderRadius: 8, padding: '1px 7px', lineHeight: 1.6,
+                    }}>{earned.length} earned</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Momentum stats strip */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+                gap: 8, margin: '0 0 12px',
+              }}>
+                {[
+                  { label: 'Momentum Streak', value: streakDays === 0 ? '—' : `${streakDays}d`, sub: streakDays === 0 ? 'No streak yet' : streakDays === 1 ? 'Started today!' : 'days in a row', color: 'var(--amber)', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' },
+                  { label: 'Focus Wins', value: focusWins === 0 ? '—' : `${focusWins}`, sub: focusWins === 0 ? 'No perfect days yet' : focusWins === 1 ? 'perfect day' : 'perfect days', color: 'var(--mint)', icon: 'M9 11l3 3L22 4M21 12a9 9 0 11-9-9' },
+                  { label: 'Tasks Done', value: tasksDone === 0 ? '0' : tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone), sub: tasksDone === 1 ? 'task completed' : 'tasks completed', color: 'var(--purple)', icon: 'M5 13l4 4L19 7' },
+                ].map(stat => (
+                  <div key={stat.label} style={{
+                    background: 'var(--glass-bg2, rgba(255,255,255,.04))',
+                    border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
+                    borderRadius: 14, padding: '12px 10px', textAlign: 'center',
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 6px', display: 'block' }}>
+                      <path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: stat.color, lineHeight: 1, letterSpacing: '-.5px' }}>{stat.value}</div>
+                    <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '.4px', lineHeight: 1.3 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Earned awards */}
+              {earned.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, paddingLeft: 2 }}>Unlocked</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {earned.map(a => (
+                      <div key={a.id} style={{
+                        background: `${a.color}12`,
+                        border: `1.5px solid ${a.color}28`,
+                        borderRadius: 14, padding: '12px 12px 10px',
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                      }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                          background: `${a.color}20`, border: `1px solid ${a.color}35`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d={a.icon} stroke={a.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dark)', lineHeight: 1.2 }}>{a.label}</span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke={a.color} strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--mid)', lineHeight: 1.4 }}>{a.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state for new users */}
+              {earned.length === 0 && (
+                <div style={{
+                  textAlign: 'center', padding: '24px 16px',
+                  background: 'var(--glass-bg2, rgba(255,255,255,.03))',
+                  border: '1.5px dashed var(--border)',
+                  borderRadius: 16, marginBottom: 12,
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>🌱</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', marginBottom: 4 }}>Your journey starts here</div>
+                  <div style={{ fontSize: 12, color: 'var(--mid)', lineHeight: 1.5, maxWidth: 220, margin: '0 auto' }}>
+                    Complete your first task to unlock your first award.
+                  </div>
+                </div>
+              )}
+
+              {/* Locked awards — next to unlock */}
+              {locked.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, paddingLeft: 2 }}>Up Next</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {locked.slice(0, 3).map(a => (
+                      <div key={a.id} style={{
+                        background: 'var(--glass-bg2, rgba(255,255,255,.03))',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: 12, padding: '10px 12px',
+                        display: 'flex', alignItems: 'center', gap: 10, opacity: 0.7,
+                      }}>
+                        <div style={{
+                          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                          background: 'var(--surf2)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="11" width="18" height="11" rx="2" stroke="var(--mid)" strokeWidth="1.8"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mid)', marginBottom: 2 }}>{a.label}</div>
+                          <div style={{ fontSize: 10, color: 'var(--lite)', lineHeight: 1.3 }}>{a.hint}</div>
+                        </div>
+                        {/* Progress bar */}
+                        <div style={{ width: 44, flexShrink: 0 }}>
+                          <div style={{ height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 2,
+                              background: a.color,
+                              width: `${Math.min(100, Math.round((a.progress.current / a.progress.target) * 100))}%`,
+                              transition: 'width .4s ease',
+                            }}/>
+                          </div>
+                          <div style={{ fontSize: 9, color: 'var(--lite)', textAlign: 'right', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                            {a.progress.current}/{a.progress.target}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {locked.length > 3 && (
+                      <div style={{ fontSize: 11, color: 'var(--mid)', textAlign: 'center', paddingTop: 2, fontWeight: 600 }}>
+                        +{locked.length - 3} more awards to discover
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* ══════════════════════════════════════════
              SYSTEM SETTINGS

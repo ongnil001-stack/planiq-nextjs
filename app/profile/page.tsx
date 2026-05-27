@@ -62,6 +62,17 @@ export default async function ProfilePage() {
   const done28    = (recentSchedules ?? []).filter((s: { is_completed: boolean }) => s.is_completed).length;
   const avgScore  = planned28 > 0 ? Math.round((done28 / planned28) * 100) : null;
 
+  // Focus wins: days in last 28 where EVERY planned task was completed
+  const dayMap = new Map<string, { total: number; done: number }>();
+  for (const s of recentSchedules ?? []) {
+    const d = (s as { start_time: string; is_completed: boolean }).start_time.slice(0, 10);
+    const e = dayMap.get(d) ?? { total: 0, done: 0 };
+    e.total++;
+    if ((s as { is_completed: boolean }).is_completed) e.done++;
+    dayMap.set(d, e);
+  }
+  const focusWins = Array.from(dayMap.values()).filter(e => e.total > 0 && e.done === e.total).length;
+
   return (
     <ProfileClient
       initialUser={{ id: user.id, email: user.email, ...user }}
@@ -69,6 +80,7 @@ export default async function ProfilePage() {
       streakDays={streakDays}
       tasksDone={tasksDone ?? 0}
       avgScore={avgScore}
+      focusWins={focusWins}
     />
   );
 }

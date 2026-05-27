@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     { data: upcomingSchedules },
     { data: latestAnalysis },
     { data: streakSchedules },
+    { count: tasksDone },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
 
@@ -70,6 +71,12 @@ export default async function DashboardPage() {
       .gte('start_time', streakStart.toISOString())
       .lte('start_time', endOfDay)
       .order('start_time', { ascending: false }),
+
+    // Total completed tasks ever — for awards count in quick stats
+    supabase.from('schedules')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_completed', true),
   ]);
 
   // Compute streak server-side.
@@ -93,6 +100,17 @@ export default async function DashboardPage() {
   const todayStr = today.toISOString().slice(0, 10);
   if (completedDays.has(todayStr)) streakDays++;
 
+  // Focus wins: days in last 28 where every planned task was completed
+  const fwMap = new Map<string, { total: number; done: number }>();
+  for (const s of streakSchedules ?? []) {
+    const d = (s as { start_time: string; is_completed: boolean }).start_time.slice(0, 10);
+    const e = fwMap.get(d) ?? { total: 0, done: 0 };
+    e.total++;
+    if ((s as { is_completed: boolean }).is_completed) e.done++;
+    fwMap.set(d, e);
+  }
+  const focusWins = Array.from(fwMap.values()).filter(e => e.total > 0 && e.done === e.total).length;
+
   return (
     <DashboardClient
       profile={profile}
@@ -101,6 +119,8 @@ export default async function DashboardPage() {
       upcomingSchedules={upcomingSchedules ?? []}
       latestAnalysis={latestAnalysis}
       streakDays={streakDays}
+      focusWins={focusWins}
+      tasksDone={tasksDone ?? 0}
     />
   );
 }
