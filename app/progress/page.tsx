@@ -93,11 +93,16 @@ export default function ProgressPage() {
       const td = dayList.reduce((a,b) => a + b.done,    0);
       setTotalPlanned(tp); setTotalDone(td);
 
-      // ── Streak (consecutive days going backwards with ≥1 done) ──
+      // ── Streak: walk from yesterday backward, add today only if today already has completions ──
+      // dayList is in ascending order (index 0 = oldest, last = today).
+      // We skip index [last] (today) in the main loop to avoid zeroing a real streak at day-start.
       let s = 0;
-      for (let i = dayList.length - 1; i >= 0; i--) {
+      const lastIdx = dayList.length - 1;
+      for (let i = lastIdx - 1; i >= 0; i--) {
         if (dayList[i].done > 0) s++; else break;
       }
+      // Add today only if today has at least one completion
+      if (dayList[lastIdx]?.done > 0) s++;
       setStreak(s);
 
       // ── Activity lists ──

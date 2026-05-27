@@ -72,20 +72,26 @@ export default async function DashboardPage() {
       .order('start_time', { ascending: false }),
   ]);
 
-  // Compute streak server-side: consecutive days going back from today with ≥1 completed task
+  // Compute streak server-side.
+  // Rule: walk backward from YESTERDAY first, then add today if today already has completions.
+  // This prevents today-in-progress (e.g. morning with no tasks done yet) from zeroing a real streak.
   const completedDays = new Set(
     (streakSchedules ?? [])
       .filter((s: { is_completed: boolean }) => s.is_completed)
       .map((s: { start_time: string }) => s.start_time.slice(0, 10))
   );
   let streakDays = 0;
-  for (let i = 0; i < 28; i++) {
+  // Walk from yesterday backward
+  for (let i = 1; i <= 28; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
     if (completedDays.has(dateStr)) streakDays++;
     else break;
   }
+  // Only count today if you've already completed at least one task today
+  const todayStr = today.toISOString().slice(0, 10);
+  if (completedDays.has(todayStr)) streakDays++;
 
   return (
     <DashboardClient

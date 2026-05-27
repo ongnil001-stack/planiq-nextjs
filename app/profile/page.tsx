@@ -39,19 +39,23 @@ export default async function ProfilePage() {
       .order('start_time', { ascending: false }),
   ]);
 
-  // ── Streak: consecutive days going back from today with ≥1 completed task ──
+  // ── Streak: consecutive days with ≥1 completed task ──
+  // Walk from YESTERDAY backward, then add today only if today already has completions.
+  // Avoids zeroing a real streak just because it's morning and no tasks are done yet.
   const completedDays = new Set(
     (recentSchedules ?? [])
       .filter((s: { is_completed: boolean }) => s.is_completed)
       .map((s: { start_time: string }) => s.start_time.slice(0, 10))
   );
   let streakDays = 0;
-  for (let i = 0; i < 28; i++) {
+  for (let i = 1; i <= 28; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     if (completedDays.has(d.toISOString().slice(0, 10))) streakDays++;
     else break;
   }
+  const todayStr = today.toISOString().slice(0, 10);
+  if (completedDays.has(todayStr)) streakDays++;
 
   // ── Avg completion rate: done/planned over last 28 days ──
   const planned28 = (recentSchedules ?? []).length;

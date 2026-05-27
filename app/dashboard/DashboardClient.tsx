@@ -653,7 +653,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--mint)' }}>{completedToday}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Done</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Today</div>
           </div>
           <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
@@ -662,7 +662,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <path d="M10 6v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--purple)' }}>{workloadScore}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Score</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Load</div>
           </div>
         </div>
       </div>
@@ -749,7 +749,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
           {!compact && perfExpanded && (
             <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              {[['Score', workloadScore], ['Tasks', totalToday], ['Done', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
+              {[['Load', workloadScore], ['Tasks', totalToday], ['Today', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
                 <div key={String(lbl)} style={{ display: 'flex', alignItems: 'stretch' }}>
                   {i > 0 && <div style={{ width: 1, background: 'var(--border)', margin: '4px 0', flexShrink: 0 }} />}
                   <div style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
