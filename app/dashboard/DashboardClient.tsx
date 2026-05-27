@@ -10,6 +10,7 @@ import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
 import WorkloadSheet from '@/components/WorkloadSheet';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
+import ProgressDetailsSheet from '@/components/ProgressDetailsSheet';
 import {
   loadFullPrefs,
   migrateFromV1,
@@ -98,6 +99,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [todayExpanded, setTodayExpanded] = useState(false);
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
   const [prefs, setPrefs] = useState<DashboardFullPrefs | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
@@ -289,14 +291,15 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
           {!compact && (
             <>
-              {/* Focus bar */}
+              {/* Focus bar — tappable → opens ProgressDetailsSheet */}
               <div
-                onClick={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setProgressOpen(true); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 11px', background: 'var(--bg)', borderRadius: 10,
                   marginBottom: 8, border: '1px solid var(--border, rgba(255,255,255,.08))',
                   opacity: inProgress ? 1 : 0.7,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'rgba(124,106,240,.08)',
                 }}
               >
                 <div style={{ fontSize: 14, color: 'var(--purple)', fontWeight: 700, flexShrink: 0 }}>
@@ -341,31 +344,33 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                   <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--dark)', lineHeight: 1.4 }}>{insightText}</div>
                   <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--pur-lt)', color: 'var(--purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}>›</div>
                 </Link>
-                {/* AI Refresh button */}
+                {/* AI Refresh — minimal circular icon button */}
                 <button
                   onClick={e => { e.stopPropagation(); refreshAI(); }}
                   disabled={refreshingAI}
                   title="Refresh AI insights"
                   style={{
-                    flexShrink: 0, width: 36, borderRadius: 10,
-                    border: '1px solid rgba(124,106,240,0.25)',
-                    background: refreshingAI ? 'rgba(124,106,240,0.18)' : 'rgba(124,106,240,0.10)',
-                    color: 'var(--purple)',
+                    flexShrink: 0,
+                    width: 34, height: 34,
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: 'rgba(124,106,240,.12)',
+                    color: refreshingAI ? 'var(--purple)' : 'rgba(124,106,240,.7)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: refreshingAI ? 'default' : 'pointer',
-                    fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
-                    transition: 'background .15s',
+                    fontFamily: 'inherit',
+                    WebkitTapHighlightColor: 'transparent',
+                    transition: 'background .15s, color .15s',
                   }}
                 >
-                  {refreshingAI ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                      <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3M4 12H2m2 0l2-2m12 2h2m-2 0l-2-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
+                  <svg
+                    width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    style={refreshingAI ? { animation: 'spin 0.9s linear infinite' } : undefined}
+                  >
+                    <path d="M4.5 12A7.5 7.5 0 0117 6.7M19.5 12A7.5 7.5 0 017 17.3"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M17 4v3h3M7 17v3H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </button>
               </div>
             </>
@@ -962,6 +967,15 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         weekRange={weekRange}
         weekItemCount={weekItemCount}
         latestAnalysisSummary={latestAnalysis?.summary}
+      />
+
+      <ProgressDetailsSheet
+        open={progressOpen}
+        onClose={() => setProgressOpen(false)}
+        todaySchedules={todaySchedules}
+        weekSchedules={weekSchedules}
+        streakDays={streakDays}
+        workloadScore={workloadScore}
       />
 
       <BottomNav />
