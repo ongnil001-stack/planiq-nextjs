@@ -11,6 +11,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import WorkloadSheet from '@/components/WorkloadSheet';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
 import ProgressDetailsSheet from '@/components/ProgressDetailsSheet';
+import ActiveSessionSheet from '@/components/ActiveSessionSheet';
 import {
   loadFullPrefs,
   migrateFromV1,
@@ -19,6 +20,7 @@ import {
   ALL_SHORTCUTS,
 } from '@/lib/dashboardPrefs';
 import { useChartColors } from '@/lib/useChartColors';
+import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
 
 interface Props {
   profile: Profile | null;
@@ -100,6 +102,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [sessionOpen,  setSessionOpen]  = useState(false);
   const [prefs, setPrefs] = useState<DashboardFullPrefs | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
@@ -147,6 +150,26 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     if (error) toast.error('Could not update task');
     else router.refresh();
     setCompletingId(null);
+  }
+
+  // Called by ActiveSessionSheet → marks task done, closes sheet, refreshes
+  // Auto-schedule notifications for today's pending activities
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isNotificationsEnabled()) return;
+    scheduleAllTodayNotifications(
+      todaySchedules.filter(s => !s.is_completed)
+    );
+  // Re-run whenever todaySchedules changes (task completed / added)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todaySchedules]);
+
+  async function handleSessionMarkComplete(id: string) {
+    setCompletingId(id);
+    await supabase.from('schedules').update({ is_completed: true }).eq('id', id);
+    setCompletingId(null);
+    setSessionOpen(false);
+    router.refresh();
   }
 
   async function refreshAI() {
@@ -293,7 +316,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             <>
               {/* Focus bar — tappable → opens ProgressDetailsSheet */}
               <div
-                onClick={e => { e.stopPropagation(); setProgressOpen(true); }}
+                onClick={e => { e.stopPropagation(); inProgress ? setSessionOpen(true) : setProgressOpen(true); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 11px', background: 'var(--bg)', borderRadius: 10,
@@ -968,6 +991,16 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         weekItemCount={weekItemCount}
         latestAnalysisSummary={latestAnalysis?.summary}
       />
+
+      {inProgress && (
+        <ActiveSessionSheet
+          open={sessionOpen}
+          onClose={() => setSessionOpen(false)}
+          activeSchedule={inProgress}
+          todaySchedules={todaySchedules}
+          onMarkComplete={handleSessionMarkComplete}
+        />
+      )}
 
       <ProgressDetailsSheet
         open={progressOpen}

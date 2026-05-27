@@ -10,6 +10,13 @@ import { THEME_META, THEME_IDS, ThemeId, getSavedTheme, saveTheme, applyThemeToB
 import { COUNTRIES } from '@/lib/countries';
 import s from './profile.module.css';
 import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
+import {
+  isNotificationsEnabled,
+  setNotificationsEnabled,
+  requestPermission,
+  getNotificationPermission,
+  cancelAllNotifications,
+} from '@/lib/notifications';
 
 const THEMES = THEME_IDS.map(id => ({ id, ...THEME_META[id] }));
 
@@ -57,6 +64,8 @@ export default function ProfileClient({ initialUser, initialProfile }: ProfileCl
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifPerm,    setNotifPerm]    = useState<string>('default');
   const hdrRef = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(90);
 
@@ -103,6 +112,8 @@ export default function ProfileClient({ initialUser, initialProfile }: ProfileCl
       setEmailVisible(localStorage.getItem('planiq_email_visible') === 'true');
     }
     setActiveTheme(getSavedTheme());
+    setNotifEnabled(isNotificationsEnabled());
+    setNotifPerm(getNotificationPermission());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -183,6 +194,31 @@ export default function ProfileClient({ initialUser, initialProfile }: ProfileCl
     const parts = domain.split('.');
     const tld = parts.pop();
     return `${local[0]}${dots}@${parts.join('.')[0]}•••.${tld}`;
+  }
+
+  async function handleNotifToggle() {
+    if (notifEnabled) {
+      // Turn off — cancel queued notifications, save preference
+      setNotifEnabled(false);
+      setNotificationsEnabled(false);
+      await cancelAllNotifications();
+      toast('Notifications disabled');
+    } else {
+      const perm = getNotificationPermission();
+      if (perm === 'denied') {
+        toast.error('Notifications are blocked. Please enable them in your browser settings.');
+        return;
+      }
+      const granted = await requestPermission();
+      setNotifPerm(getNotificationPermission());
+      if (granted) {
+        setNotifEnabled(true);
+        setNotificationsEnabled(true);
+        toast.success('Notifications enabled ✓');
+      } else {
+        toast.error('Permission not granted');
+      }
+    }
   }
 
   function toggleEmail() {
@@ -377,6 +413,76 @@ export default function ProfileClient({ initialUser, initialProfile }: ProfileCl
             <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
+
+        {/* ── Notifications ── */}
+        <div className={s.sh} style={{ marginTop: 4 }}>
+          <div className={s.shT}>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight:5 }}>
+              <path d="M10 2a6 6 0 0 0-6 6c0 3.5-2 5-2 5h16s-2-1.5-2-5a6 6 0 0 0-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M11.73 17a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Notifications
+          </div>
+        </div>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 16px', marginBottom: 8,
+            background: 'var(--glass-bg2, rgba(255,255,255,.05))',
+            border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
+            borderRadius: 14,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: notifEnabled ? 'rgba(124,106,240,.15)' : 'rgba(255,255,255,.06)',
+              border: `1px solid ${notifEnabled ? 'rgba(124,106,240,.25)' : 'rgba(255,255,255,.1)'}`,
+              transition: 'background .2s, border-color .2s',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2a6 6 0 0 0-6 6c0 3.5-2 5-2 5h16s-2-1.5-2-5a6 6 0 0 0-6-6z"
+                  stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M11.73 17a2 2 0 0 1-3.46 0"
+                  stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Activity Notifications</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>
+                {notifPerm === 'denied'
+                  ? 'Blocked in browser — enable in settings'
+                  : notifEnabled
+                    ? 'Notified when activities start'
+                    : 'Get notified when activities start'}
+              </div>
+            </div>
+          </div>
+          {/* Toggle pill */}
+          <button
+            onClick={handleNotifToggle}
+            aria-label={notifEnabled ? 'Disable notifications' : 'Enable notifications'}
+            style={{
+              flexShrink: 0,
+              width: 46, height: 26, borderRadius: 13,
+              background: notifEnabled ? 'var(--purple)' : 'rgba(255,255,255,.12)',
+              border: 'none', cursor: 'pointer',
+              position: 'relative', transition: 'background .2s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3,
+              left: notifEnabled ? 23 : 3,
+              width: 20, height: 20, borderRadius: '50%',
+              background: '#fff',
+              boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+              transition: 'left .18s cubic-bezier(.4,0,.2,1)',
+              display: 'block',
+            }} />
+          </button>
+        </div>
 
         {/* Account info */}
         <div className={s.sh} style={{ marginTop: 4 }}><div className={s.shT}>Account</div></div>
