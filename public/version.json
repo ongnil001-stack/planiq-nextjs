@@ -1,21 +1,26 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "releaseDate": "2026-05-27",
-  "summary": "Improved theme-aware colors across Progress and Active Session modules.",
+  "summary": "Unified System Settings, smarter AI tone, fixed calendar views, and streak accuracy improvements.",
   "changelog": [
     {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "date": "2026-05-27",
       "notes": [
-        "Fixed theme-aware colors in Progress Details and Active Session sheets",
-        "Replaced hardcoded dark-only colors with adaptive CSS variables",
-        "All cards, labels, and borders now respond correctly to theme changes"
+        "Unified System Settings: Account, Notifications, Customize Dashboard, and Software Update in one grouped card",
+        "AI assistant tone rewritten — supportive planning partner, never judgmental",
+        "Calendar yearly view: readable mini-grids with day-of-week headers and circular today highlight",
+        "Streak algorithm fix: no longer resets to zero at start of day",
+        "Dashboard metrics clarified: Today count and Load score now clearly labeled",
+        "Software Update section: real version detection, cache-clearing update flow"
       ]
     },
     {
-      "version": "0.9.0",
+      "version": "1.0.0",
       "date": "2026-05-20",
       "notes": [
+        "Fixed theme-aware colors in Progress Details and Active Session sheets",
+        "Replaced hardcoded dark-only colors with adaptive CSS variables",
         "Added Missed/Skip option to task completion prompt",
         "Time-safe rescheduling — past time slots are now disabled",
         "Removed hardcoded demo data — all stats now use real user data",
@@ -23,7 +28,7 @@
       ]
     },
     {
-      "version": "0.8.0",
+      "version": "0.9.0",
       "date": "2026-05-10",
       "notes": [
         "Built Active Session sheet with live countdown timer",

@@ -378,13 +378,22 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
              SYSTEM SETTINGS
         ══════════════════════════════════════════ */}
         <div className={s.sh} style={{ marginTop: 8 }}>
-          <div className={s.shT}>
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight:6 }}>
+          <div className={s.shT} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ display:'inline', verticalAlign:'middle' }}>
               <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"
                 stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
             System Settings
+            {appUpdate.hasUpdate && (
+              <span style={{
+                display: 'inline-flex', width: 7, height: 7, borderRadius: '50%',
+                background: '#FF6B6B',
+                boxShadow: '0 0 0 2px rgba(255,107,107,.25)',
+                animation: 'pulse 2s ease-in-out infinite',
+                flexShrink: 0,
+              }} />
+            )}
           </div>
         </div>
 
@@ -583,8 +592,10 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               </div>
               <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>
                 {appUpdate.hasUpdate
-                  ? `v${appUpdate.latestVersion} is ready to install`
-                  : `v${appUpdate.currentVersion} — up to date`}
+                  ? `v${appUpdate.latestVersion ?? '…'} available — tap to update`
+                  : appUpdate.checking
+                    ? 'Checking for updates…'
+                    : `v${appUpdate.currentVersionClean} — up to date`}
               </div>
             </div>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0, transition: 'transform .2s', transform: settingsTab === 'update' ? 'rotate(90deg)' : 'none' }}>
@@ -600,7 +611,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ flex: 1, padding: '10px 16px', borderRight: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>Installed</div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--dark)', fontVariantNumeric: 'tabular-nums' }}>v{appUpdate.currentVersion}</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--dark)', fontVariantNumeric: 'tabular-nums' }}>v{appUpdate.currentVersionClean}</div>
                 </div>
                 <div style={{ flex: 1, padding: '10px 16px' }}>
                   <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>Latest</div>
@@ -610,11 +621,25 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                 </div>
               </div>
 
-              {/* What's new */}
-              {appUpdate.hasUpdate && appUpdate.summary && (
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(255,107,107,.04)' }}>
-                  <div style={{ fontSize: 10, color: 'rgba(255,107,107,.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>What&apos;s New</div>
+              {/* What's new — always shown once manifest is loaded */}
+              {appUpdate.summary && (
+                <div style={{
+                  padding: '10px 16px', borderBottom: '1px solid var(--border)',
+                  background: appUpdate.hasUpdate ? 'rgba(255,107,107,.04)' : 'var(--surf2, rgba(255,255,255,.02))',
+                }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: '.5px', marginBottom: 3,
+                    color: appUpdate.hasUpdate ? 'rgba(255,107,107,.8)' : 'var(--mid)',
+                  }}>
+                    {appUpdate.hasUpdate ? "What\'s New" : 'Last Update'}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--dark)', lineHeight: 1.5 }}>{appUpdate.summary}</div>
+                  {appUpdate.releaseDate && (
+                    <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 3 }}>
+                      Released {new Date(appUpdate.releaseDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -622,19 +647,27 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               <div style={{ display: 'flex', gap: 8, padding: '12px 16px' }}>
                 {appUpdate.hasUpdate ? (
                   <button
-                    onClick={appUpdate.refreshToUpdate}
+                    onClick={() => appUpdate.refreshToUpdate()}
+                    disabled={appUpdate.updating}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
-                      background: '#FF6B6B', color: '#fff',
-                      fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B',
+                      color: '#fff',
+                      fontSize: 13, fontWeight: 700,
+                      cursor: appUpdate.updating ? 'default' : 'pointer',
+                      fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      boxShadow: '0 3px 12px rgba(255,107,107,.35)',
+                      boxShadow: appUpdate.updating ? 'none' : '0 3px 12px rgba(255,107,107,.35)',
                       WebkitTapHighlightColor: 'transparent',
+                      transition: 'background .2s, box-shadow .2s',
                     }}>
-                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
-                      <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Refresh &amp; Apply Update
+                    {appUpdate.updating && (
+                      <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                        style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                        <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {appUpdate.updating ? 'Applying Update…' : 'Update Now'}
                   </button>
                 ) : (
                   <button
@@ -650,10 +683,12 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       WebkitTapHighlightColor: 'transparent',
                     }}>
-                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
-                      style={{ animation: appUpdate.checking ? 'spin 1s linear infinite' : 'none' }}>
-                      <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    {appUpdate.checking && (
+                      <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
+                        style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                        <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
                     {appUpdate.checking ? 'Checking…' : 'Check for Updates'}
                   </button>
                 )}

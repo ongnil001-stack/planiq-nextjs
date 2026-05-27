@@ -480,6 +480,12 @@ body[data-theme="lady"]     .btn-ghost:active {
 }
 .pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
 
+/* Notification dot pulse — used by update badge in System Settings */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: .7; }
+}
+
 
 /* ═══════════════════════════════════════════════════════════
    PlanIQ — Navigation speed & perceived performance
