@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "releaseDate": "2026-05-27",
+  "summary": "Improved theme-aware colors across Progress and Active Session modules.",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-27",
+      "notes": [
+        "Fixed theme-aware colors in Progress Details and Active Session sheets",
+        "Replaced hardcoded dark-only colors with adaptive CSS variables",
+        "All cards, labels, and borders now respond correctly to theme changes"
+      ]
+    },
+    {
+      "version": "0.9.0",
+      "date": "2026-05-20",
+      "notes": [
+        "Added Missed/Skip option to task completion prompt",
+        "Time-safe rescheduling — past time slots are now disabled",
+        "Removed hardcoded demo data — all stats now use real user data",
+        "Simplified swipe-to-delete: single tap, immediate action with undo"
+      ]
+    },
+    {
+      "version": "0.8.0",
+      "date": "2026-05-10",
+      "notes": [
+        "Built Active Session sheet with live countdown timer",
+        "Added real-time progress bar across all schedule views",
+        "Notification scheduler with browser push support",
+        "Workload balance sheet with interactive filters"
+      ]
+    }
+  ]
+}

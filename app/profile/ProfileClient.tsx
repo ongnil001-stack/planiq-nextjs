@@ -10,6 +10,7 @@ import { THEME_META, THEME_IDS, ThemeId, getSavedTheme, saveTheme, applyThemeToB
 import { COUNTRIES } from '@/lib/countries';
 import s from './profile.module.css';
 import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
+import { useAppUpdate } from '@/lib/useAppUpdate';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
@@ -65,6 +66,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [showSugg,     setShowSugg]     = useState(false);
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
@@ -485,6 +488,220 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               display: 'block',
             }} />
           </button>
+        </div>
+
+
+        {/* ── Software Update ── */}
+        <div className={s.sh} style={{ marginTop: 4 }}>
+          <div className={s.shT} style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight:5 }}>
+              <path d="M10 2v4M10 14v4M2 10h4M14 10h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
+            Software Update
+            {appUpdate.hasUpdate && (
+              <span style={{
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                width:7, height:7, borderRadius:'50%',
+                background:'#FF6B6B', flexShrink:0, marginLeft:2,
+              }}/>
+            )}
+          </div>
+        </div>
+        <div style={{
+          background: 'var(--glass-bg2, rgba(255,255,255,.05))',
+          border: `1.5px solid ${appUpdate.hasUpdate ? 'rgba(255,107,107,.3)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
+          borderRadius: 14, marginBottom: 8, overflow: 'hidden',
+          transition: 'border-color .3s',
+        }}>
+
+          {/* Version row */}
+          <div style={{
+            display:'flex', alignItems:'center', justifyContent:'space-between',
+            padding:'14px 16px 10px',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{
+                width:36, height:36, borderRadius:10, flexShrink:0,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                background: appUpdate.hasUpdate ? 'rgba(255,107,107,.12)' : 'rgba(0,200,150,.10)',
+                border: `1px solid ${appUpdate.hasUpdate ? 'rgba(255,107,107,.25)' : 'rgba(0,200,150,.22)'}`,
+                transition: 'background .3s, border-color .3s',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  {appUpdate.hasUpdate ? (
+                    <path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="#FF6B6B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  ) : (
+                    <path d="M5 10l4 4 6-7" stroke="#00C896" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  )}
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)' }}>
+                  {appUpdate.hasUpdate ? 'Update Available' : 'Up to Date'}
+                </div>
+                <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>
+                  {appUpdate.checking
+                    ? 'Checking for updates…'
+                    : appUpdate.hasUpdate
+                      ? `v${appUpdate.latestVersion} is ready`
+                      : 'You have the latest version'}
+                </div>
+              </div>
+            </div>
+            {/* Status pill */}
+            <span style={{
+              fontSize:10, fontWeight:800, letterSpacing:'.4px', padding:'3px 9px',
+              borderRadius:20, flexShrink:0,
+              background: appUpdate.hasUpdate ? 'rgba(255,107,107,.12)' : 'rgba(0,200,150,.10)',
+              color: appUpdate.hasUpdate ? '#FF6B6B' : '#00C896',
+              border: `1px solid ${appUpdate.hasUpdate ? 'rgba(255,107,107,.25)' : 'rgba(0,200,150,.22)'}`,
+            }}>
+              {appUpdate.hasUpdate ? 'NEW' : 'CURRENT'}
+            </span>
+          </div>
+
+          {/* Version numbers */}
+          <div style={{
+            display:'flex', gap:0,
+            borderTop:'1px solid var(--border)',
+            borderBottom: appUpdate.hasUpdate ? '1px solid var(--border)' : 'none',
+          }}>
+            <div style={{ flex:1, padding:'10px 16px', borderRight:'1px solid var(--border)' }}>
+              <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Installed</div>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--dark)', fontVariantNumeric:'tabular-nums' }}>
+                v{appUpdate.currentVersion}
+              </div>
+            </div>
+            <div style={{ flex:1, padding:'10px 16px' }}>
+              <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Latest</div>
+              <div style={{ fontSize:15, fontWeight:800, color: appUpdate.hasUpdate ? '#FF6B6B' : 'var(--dark)', fontVariantNumeric:'tabular-nums' }}>
+                {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : '—'}
+              </div>
+            </div>
+          </div>
+
+          {/* What's new — only shown when update available */}
+          {appUpdate.hasUpdate && appUpdate.summary && (
+            <div style={{
+              padding:'10px 16px',
+              borderBottom:'1px solid var(--border)',
+              background:'rgba(255,107,107,.04)',
+            }}>
+              <div style={{ fontSize:10, color:'rgba(255,107,107,.8)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:4 }}>
+                What&apos;s New
+              </div>
+              <div style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>
+                {appUpdate.summary}
+              </div>
+            </div>
+          )}
+
+          {/* Actions row */}
+          <div style={{ display:'flex', gap:8, padding:'12px 16px' }}>
+            {appUpdate.hasUpdate ? (
+              <button
+                onClick={appUpdate.refreshToUpdate}
+                style={{
+                  flex:1, padding:'11px 0',
+                  borderRadius:12, border:'none',
+                  background:'#FF6B6B', color:'#fff',
+                  fontSize:13, fontWeight:700,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:7,
+                  cursor:'pointer', fontFamily:'inherit',
+                  WebkitTapHighlightColor:'transparent',
+                  boxShadow:'0 4px 14px rgba(255,107,107,.35)',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Refresh &amp; Apply Update
+              </button>
+            ) : (
+              <button
+                onClick={appUpdate.recheck}
+                disabled={appUpdate.checking}
+                style={{
+                  flex:1, padding:'11px 0',
+                  borderRadius:12,
+                  border:'1.5px solid var(--border)',
+                  background:'var(--surf2, rgba(255,255,255,.04))',
+                  color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)',
+                  fontSize:13, fontWeight:600,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:7,
+                  cursor: appUpdate.checking ? 'default' : 'pointer',
+                  fontFamily:'inherit',
+                  WebkitTapHighlightColor:'transparent',
+                  opacity: appUpdate.checking ? .6 : 1,
+                  transition:'opacity .2s',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none"
+                  style={{ animation: appUpdate.checking ? 'spin 1s linear infinite' : 'none' }}>
+                  <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {appUpdate.checking ? 'Checking…' : 'Check for Updates'}
+              </button>
+            )}
+            <button
+              onClick={() => setChangelogOpen(v => !v)}
+              style={{
+                padding:'11px 14px',
+                borderRadius:12,
+                border:'1.5px solid var(--border)',
+                background:'var(--surf2, rgba(255,255,255,.04))',
+                color:'var(--mid)',
+                fontSize:12, fontWeight:600,
+                cursor:'pointer', fontFamily:'inherit',
+                WebkitTapHighlightColor:'transparent',
+                display:'flex', alignItems:'center', gap:5,
+              }}
+            >
+              History
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"
+                style={{ transform: changelogOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}>
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Changelog — collapsible */}
+          {changelogOpen && (
+            <div style={{
+              borderTop:'1px solid var(--border)',
+              padding:'12px 16px 14px',
+              display:'flex', flexDirection:'column', gap:14,
+            }}>
+              {appUpdate.changelog.map((entry, i) => (
+                <div key={entry.version}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{
+                        fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:8,
+                        background: i === 0 ? 'rgba(124,106,240,.15)' : 'var(--surf2)',
+                        color: i === 0 ? 'var(--purple)' : 'var(--mid)',
+                        border: i === 0 ? '1px solid rgba(124,106,240,.25)' : '1px solid var(--border)',
+                      }}>
+                        v{entry.version}
+                      </span>
+                      {i === 0 && (
+                        <span style={{ fontSize:9, fontWeight:800, color:'#00C896', letterSpacing:'.5px' }}>LATEST</span>
+                      )}
+                    </div>
+                    <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                      {new Date(entry.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
+                    </span>
+                  </div>
+                  <ul style={{ margin:0, paddingLeft:16, display:'flex', flexDirection:'column', gap:4 }}>
+                    {entry.notes.map((note, j) => (
+                      <li key={j} style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Account info */}
