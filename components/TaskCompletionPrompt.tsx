@@ -4,11 +4,14 @@
  * TaskCompletionPrompt
  * ──────────────────────────────────────────────────────────────────────────────
  * Bottom sheet that appears when an active task's scheduled end_time is reached.
- * Asks: "Did you finish [Task Name]?"
  *
- * • Yes, Done   → calls onMarkComplete(id)
- * • Not Yet     → calls onReschedule(schedule)  → opens AddScheduleSheet to extend
- * • Dismiss     → calls onDismiss() (snoozes the prompt for this task)
+ * Three primary actions:
+ *   ✅  Yes, I Completed It    → onMarkComplete(id)
+ *   🔄  Not Yet — Reschedule   → onReschedule(schedule)  opens edit sheet w/ minTime
+ *   ❌  Missed / Skip          → onMissedSkip(id)
+ *
+ * Secondary:
+ *   ⏰  Remind me later        → onDismiss()
  */
 
 import type { Schedule } from '@/types/database';
@@ -17,20 +20,20 @@ import { formatSavedTime } from '@/lib/timeProgress';
 interface Props {
   open:            boolean;
   schedule:        Schedule;
-  savedMins?:      number;        // if completing early, show saved time
+  savedMins?:      number;
   onMarkComplete:  (id: string) => Promise<void>;
   onReschedule:    (s: Schedule) => void;
+  onMissedSkip?:   (id: string) => void;
   onDismiss:       () => void;
 }
 
 export default function TaskCompletionPrompt({
   open, schedule, savedMins = 0,
-  onMarkComplete, onReschedule, onDismiss,
+  onMarkComplete, onReschedule, onMissedSkip, onDismiss,
 }: Props) {
 
   const typeColor: Record<string, string> = {
-    task: '#7C6AF0', event: '#00C6FF', reminder: '#FDCB6E',
-    block: '#FF6B8A',
+    task: '#7C6AF0', event: '#00C6FF', reminder: '#FDCB6E', block: '#FF6B8A',
   };
   const accent = typeColor[schedule.type ?? 'task'] ?? '#7C6AF0';
 
@@ -57,16 +60,18 @@ export default function TaskCompletionPrompt({
   return (
     <div style={OVERLAY} onClick={onDismiss}>
       <div style={SHEET} onClick={e => e.stopPropagation()}>
+
         {/* Drag handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.15)', margin: '10px auto 0' }} />
+        <div style={{
+          width: 36, height: 4, borderRadius: 2,
+          background: 'rgba(255,255,255,.15)', margin: '10px auto 0',
+        }} />
 
         {/* Header */}
         <div style={{ padding: '20px 20px 0', textAlign: 'center' }}>
-          {/* Bell ring icon */}
           <div style={{
             width: 56, height: 56, borderRadius: 16, margin: '0 auto 14px',
-            background: `${accent}22`,
-            border: `1.5px solid ${accent}44`,
+            background: `${accent}22`, border: `1.5px solid ${accent}44`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
@@ -79,14 +84,13 @@ export default function TaskCompletionPrompt({
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--mid)', fontWeight: 600, marginBottom: 4 }}>
-            Time's up!
+            Time&apos;s up!
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--dark)', lineHeight: 1.3, marginBottom: 6 }}>
             Did you finish
           </div>
           <div style={{
-            display: 'inline-block',
-            fontSize: 15, fontWeight: 700, color: accent,
+            display: 'inline-block', fontSize: 15, fontWeight: 700, color: accent,
             background: `${accent}18`, borderRadius: 8,
             padding: '4px 12px', marginBottom: 16, maxWidth: '90%',
           }}>
@@ -97,8 +101,8 @@ export default function TaskCompletionPrompt({
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               fontSize: 12, color: '#00C896', fontWeight: 700,
-              background: 'rgba(0,200,150,.1)', borderRadius: 8, padding: '6px 14px',
-              marginBottom: 6,
+              background: 'rgba(0,200,150,.1)', borderRadius: 8,
+              padding: '6px 14px', marginBottom: 6,
             }}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2v4l3 2" stroke="#00C896" strokeWidth="1.8" strokeLinecap="round"/>
@@ -110,8 +114,9 @@ export default function TaskCompletionPrompt({
         </div>
 
         {/* Action buttons */}
-        <div style={{ padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Yes, Done */}
+        <div style={{ padding: '16px 20px 8px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+
+          {/* ✅ Yes, Done */}
           <button
             onClick={() => onMarkComplete(schedule.id)}
             style={{
@@ -122,15 +127,16 @@ export default function TaskCompletionPrompt({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               fontFamily: 'inherit', letterSpacing: '.01em',
               boxShadow: '0 4px 16px rgba(0,200,150,.3)',
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
               <path d="M4 10l5 5 7-8" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Yes, Mark as Complete
+            Yes, I Completed It
           </button>
 
-          {/* Not Yet — reschedule */}
+          {/* 🔄 Not Yet — Reschedule */}
           <button
             onClick={() => onReschedule(schedule)}
             style={{
@@ -141,23 +147,48 @@ export default function TaskCompletionPrompt({
               fontSize: 14, fontWeight: 700, color: 'var(--dark)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M4 10a6 6 0 1 0 1.2-3.6" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M4 6v4h4" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4 10a6 6 0 1 0 1.2-3.6"
+                stroke="var(--purple, #7C6AF0)" strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M4 6v4h4"
+                stroke="var(--purple, #7C6AF0)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Not Yet — Extend or Reschedule
           </button>
 
-          {/* Dismiss */}
+          {/* ❌ Missed / Skip */}
+          <button
+            onClick={() => onMissedSkip ? onMissedSkip(schedule.id) : onDismiss()}
+            style={{
+              width: '100%', padding: '13px',
+              background: 'rgba(255,59,48,.07)',
+              border: '1.5px solid rgba(255,59,48,.18)',
+              borderRadius: 14, cursor: 'pointer',
+              fontSize: 14, fontWeight: 700, color: '#FF6B6B',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="#FF6B6B" strokeWidth="1.7"/>
+              <path d="M7 7l6 6M13 7l-6 6" stroke="#FF6B6B" strokeWidth="1.7" strokeLinecap="round"/>
+            </svg>
+            Missed / Skip
+          </button>
+
+          {/* Remind me later — ghost link */}
           <button
             onClick={onDismiss}
             style={{
-              width: '100%', padding: '10px',
+              width: '100%', padding: '9px',
               background: 'transparent', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, color: 'var(--mid)',
-              fontFamily: 'inherit',
+              fontSize: 12, fontWeight: 600, color: 'var(--mid)',
+              fontFamily: 'inherit', opacity: .7,
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             Remind me later

@@ -222,13 +222,14 @@ interface Props {
   countryCode: string;
   initialTime?: string;     // e.g. "14:00" — pre-fills start time when sheet opens
   editSchedule?: Schedule;  // if set, opens in edit mode with fields pre-filled
+  minTime?: string;          // "HH:MM" — earliest selectable start time (past times disabled)
   onClose: () => void;
   onSaved: (newId?: string) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, editSchedule, onClose, onSaved }: Props) {
+export default function AddScheduleSheet({ open, selectedDate, countryCode, initialTime, editSchedule, minTime, onClose, onSaved }: Props) {
   const supabase = createClient();
 
   const [title,         setTitle]         = useState('');
@@ -287,7 +288,13 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         setTitle(editSchedule.title);
         setType(editSchedule.type as ScheduleType);
         setPriority(editSchedule.priority as Priority);
-        setStartTime(t0); setEndTime(t1); setEndTouched(true);
+        // If rescheduling after expiry, clamp start to minTime (current time)
+        const clampedT0 = (minTime && t0 < minTime) ? minTime : t0;
+        const clampedT1 = (minTime && t0 < minTime) ? addMinutes(minTime, 30) : t1;
+        setStartTime(clampedT0);
+        setEndTime(clampedT1);
+        // Keep endTouched=true only when we didn't clamp (user explicitly set it before)
+        setEndTouched(!(minTime && t0 < minTime));
         setAllDay(editSchedule.all_day ?? false);
         setSchedLocation((editSchedule as Schedule & { location?: string }).location ?? '');
         setNotes((editSchedule as Schedule & { description?: string }).description ?? '');
@@ -556,6 +563,24 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
           {!allDay && (
             <div style={fieldWrap}>
               <label style={labelStyle}>Time</label>
+
+              {/* Past-time warning — shown when minTime is set (reschedule mode) */}
+              {minTime && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(253,203,110,.09)',
+                  border: '1px solid rgba(253,203,110,.28)',
+                  borderRadius: 10, padding: '8px 12px',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M10 3L2 17h16L10 3z" stroke="#FDCB6E" strokeWidth="1.6" strokeLinejoin="round"/>
+                    <path d="M10 8v4m0 2.5v.01" stroke="#FDCB6E" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#FDCB6E', lineHeight: 1.4 }}>
+                    Past times disabled — earliest available: <strong>{minTime}</strong>
+                  </span>
+                </div>
+              )}
               <div style={{
                 display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center',
                 background:'var(--glass-bg2, rgba(255,255,255,.05))',
@@ -564,7 +589,21 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
               }}>
                 <div style={{ padding:'10px 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   <span style={{ fontSize:9, fontWeight:700, color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.6px' }}>Start</span>
-                  <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={timeInputStyle} />
+                  <input
+                    type="time"
+                    value={startTime}
+                    min={minTime}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (minTime && val < minTime) {
+                        setStartTime(minTime);
+                      } else {
+                        setStartTime(val);
+                        setEndTouched(false); // re-enable 30-min auto-end
+                      }
+                    }}
+                    style={timeInputStyle}
+                  />
                 </div>
                 <div style={{ width:1, alignSelf:'stretch', background:'var(--glass-border, rgba(255,255,255,.09))',
                   position:'relative', display:'flex', alignItems:'center', justifyContent:'center' }}>

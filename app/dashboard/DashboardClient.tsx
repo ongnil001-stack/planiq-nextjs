@@ -125,6 +125,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
   const [refreshingAI, setRefreshingAI] = useState(false);
   const [editSchedule, setEditSchedule] = useState<Schedule | null>(null);
+  const [rescheduleMinTime, setRescheduleMinTime] = useState<string | undefined>(undefined);
   const hdrRef  = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(80);   // measured header height in px
 
@@ -218,11 +219,22 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     router.refresh();
   }
 
-  // TaskCompletionPrompt "Not Yet" → open edit sheet to extend/reschedule
+  // TaskCompletionPrompt "Not Yet" → open edit sheet with current time as minimum
   function handleRescheduleFromPrompt(schedule: Schedule) {
     setPromptOpen(false);
     setPromptDismissedId(schedule.id);
+    // Enforce no-past-time: earliest selectable = right now
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    setRescheduleMinTime(`${hh}:${mm}`);
     setEditSchedule(schedule);
+  }
+
+  // TaskCompletionPrompt "Missed / Skip" → dismiss prompt, keep task as-is
+  function handleMissedSkip(id: string) {
+    setPromptOpen(false);
+    setPromptDismissedId(id);
   }
 
   // ActiveSessionSheet countdown → 0: close session, open completion prompt
@@ -1088,11 +1100,12 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
       <AddScheduleSheet
         open={editSchedule !== null}
-        onClose={() => setEditSchedule(null)}
+        onClose={() => { setEditSchedule(null); setRescheduleMinTime(undefined); }}
         selectedDate={editSchedule ? new Date(editSchedule.start_time) : new Date()}
         editSchedule={editSchedule ?? undefined}
         countryCode={profile?.country_code ?? 'US'}
-        onSaved={() => { setEditSchedule(null); router.refresh(); }}
+        minTime={rescheduleMinTime}
+        onSaved={() => { setEditSchedule(null); setRescheduleMinTime(undefined); router.refresh(); }}
       />
 
       <WorkloadSheet
@@ -1124,6 +1137,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           schedule={inProgress}
           onMarkComplete={handleSessionMarkComplete}
           onReschedule={handleRescheduleFromPrompt}
+          onMissedSkip={handleMissedSkip}
           onDismiss={() => {
             setPromptOpen(false);
             setPromptDismissedId(inProgress.id);
