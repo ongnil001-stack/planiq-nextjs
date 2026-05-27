@@ -13,6 +13,8 @@ export default function BottomNav() {
     pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
 
   // ── Shared style helpers ─────────────────────────────────────────────────
+  // ALL colours come from CSS variables so every theme (dark, soft, colorful,
+  // minimal, pixel, lady …) is handled automatically by globals.css.
   const NAV: React.CSSProperties = {
     position: 'fixed',
     bottom: 0, left: 0, right: 0,
@@ -24,13 +26,17 @@ export default function BottomNav() {
     paddingTop: '10px',
     paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)',
     minHeight: 'calc(64px + max(env(safe-area-inset-bottom, 0px), 20px))',
-    background: 'rgba(8, 9, 18, 0.94)',
+    // Theme-aware background — dark themes: deep navy/black; light themes: warm/cool tint
+    background: 'var(--nav-glass)',
     backdropFilter: 'blur(28px) saturate(160%)',
     WebkitBackdropFilter: 'blur(28px) saturate(160%)',
-    borderTop: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 -4px 24px rgba(0,0,0,0.50)',
+    // Theme-aware border and shadow
+    borderTop: '1px solid var(--border)',
+    boxShadow: 'var(--nav-shadow)',
+    transition: 'background 0.25s ease, border-color 0.25s ease',
   };
 
+  // Active = theme accent colour; Inactive = --nav-inactive (legible on both light and dark)
   const ITEM = (active: boolean): React.CSSProperties => ({
     display: 'flex',
     flexDirection: 'column',
@@ -42,12 +48,13 @@ export default function BottomNav() {
     padding: '0 6px',
     minHeight: '52px',
     textDecoration: 'none',
-    color: active ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,0.40)',
+    color: active ? 'var(--nav-active, var(--purple))' : 'var(--nav-inactive)',
     position: 'relative',
     WebkitTapHighlightColor: 'transparent',
-    touchAction: 'manipulation',   // eliminates 300ms tap delay on iOS/Android
+    touchAction: 'manipulation',
     userSelect: 'none',
     WebkitUserSelect: 'none',
+    transition: 'color 0.2s ease',
   });
 
   const ICO: React.CSSProperties = {
@@ -61,12 +68,13 @@ export default function BottomNav() {
     whiteSpace: 'nowrap', fontFamily: 'inherit',
   };
 
+  // Active indicator bar at the very top of the nav
   const BAR = (active: boolean): React.CSSProperties => ({
     position: 'absolute', top: '-10px', left: '50%',
     transform: 'translateX(-50%)',
     width: '24px', height: '3px',
     borderRadius: '0 0 3px 3px',
-    background: 'var(--purple, #7C6AF0)',
+    background: 'var(--nav-active, var(--purple))',
     opacity: active ? 1 : 0,
     transition: 'opacity .18s ease',
   });
@@ -92,9 +100,10 @@ export default function BottomNav() {
       ? 'linear-gradient(135deg,#9B8FFF 0%,#40D8FF 100%)'
       : 'var(--gradient, linear-gradient(135deg,#7C6AF0 0%,#00C6FF 100%))',
     boxShadow: [
-      '0 0 0 4px rgba(8,9,18,0.94)',
-      '0 4px 20px rgba(124,106,240,0.55)',
-      '0 2px 6px rgba(0,0,0,0.35)',
+      // Ring uses --nav-glass so it blends seamlessly on both light and dark navbars
+      '0 0 0 4px var(--nav-glass)',
+      '0 4px 20px rgba(0,0,0,0.35)',
+      '0 2px 6px rgba(0,0,0,0.22)',
       'inset 0 1px 0 rgba(255,255,255,0.22)',
     ].join(', '),
     transition: 'transform .14s ease, box-shadow .14s ease',
@@ -102,7 +111,8 @@ export default function BottomNav() {
 
   const FAB_LBL: React.CSSProperties = {
     ...LBL,
-    color: hubOpen ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,0.40)',
+    color: hubOpen ? 'var(--nav-active, var(--purple))' : 'var(--nav-inactive)',
+    transition: 'color 0.2s ease',
   };
 
   return (
@@ -150,7 +160,6 @@ export default function BottomNav() {
           aria-label="Focus Hub"
         >
           <span style={FAB_BTN}>
-            {/* Lightning bolt — signals AI/intelligence */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M13 2L4.09 12.11C3.69 12.59 4.04 13.33 4.67 13.33H11L10.5 21.5C10.47 22 11.13 22.22 11.42 21.81L20.24 10.25C20.61 9.75 20.25 9.04 19.63 9.04H13.5L13 2Z"
                 fill="white"/>
