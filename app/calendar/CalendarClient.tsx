@@ -1397,55 +1397,78 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding: '16px 14px 16px' }}>
+          <div style={{ padding: '14px 12px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 80px)' }}>
             <div className="year-grid">
               {Array.from({ length: 12 }, (_, mo) => {
-                const cnt        = monthCounts[mo];
-                const isThisMon  = mo === today.getMonth() && year === today.getFullYear();
-                const isSel      = mo === month;
-                const daysIn     = new Date(year, mo + 1, 0).getDate();
-                const firstD     = new Date(year, mo, 1).getDay();
-                const miniDayMap: Record<number, number> = {};
-                schedules.filter(s => {
+                const cnt       = monthCounts[mo];
+                const isThisMon = mo === today.getMonth() && year === today.getFullYear();
+                const isSel     = mo === month;
+                const daysIn    = new Date(year, mo + 1, 0).getDate();
+                const firstD    = new Date(year, mo, 1).getDay();
+
+                // Build a Set of days that have scheduled items for quick lookup
+                const activeDays = new Set<number>();
+                schedules.forEach(s => {
                   const d = new Date(s.start_time);
-                  return d.getFullYear() === year && d.getMonth() === mo;
-                }).forEach(s => {
-                  const d = new Date(s.start_time).getDate();
-                  miniDayMap[d] = (miniDayMap[d] || 0) + 1;
+                  if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
+                });
+
+                // Always 42 cells (6 full rows × 7 cols) — guarantees equal card height
+                const cells = Array.from({ length: 42 }, (_, i) => {
+                  const dayNum = i - firstD + 1;
+                  if (dayNum < 1 || dayNum > daysIn) return null;
+                  return dayNum;
                 });
 
                 return (
                   <button key={mo}
                     className={`year-month-card${isThisMon ? ' current' : isSel ? ' sel' : ''}`}
-                    onClick={() => { setViewDate(new Date(year, mo, 1)); setSelectedDay(mo === today.getMonth() && year === today.getFullYear() ? today.getDate() : 1); setViewMode('monthly'); }}>
-                    {/* Card header: month name + task count badge */}
+                    onClick={() => {
+                      setViewDate(new Date(year, mo, 1));
+                      setSelectedDay(isThisMon ? today.getDate() : 1);
+                      setViewMode('monthly');
+                    }}>
+
+                    {/* Month name + activity count */}
                     <div className="ymc-header">
-                      <span className={`ymc-name${isThisMon ? ' cur' : ''}`}>{MONTHS_SH[mo]}</span>
+                      <span className={`ymc-name${isThisMon ? ' cur' : ''}`}>
+                        {MONTHS_SH[mo]}
+                        {isThisMon && (
+                          <span className="ymc-today-tag"> ·&nbsp;now</span>
+                        )}
+                      </span>
                       {cnt > 0 && <span className="ymc-count">{cnt}</span>}
                     </div>
-                    {/* Day-of-week header row */}
+
+                    {/* Day-of-week labels */}
                     <div className="ymc-dow">
                       {['S','M','T','W','T','F','S'].map((d, i) => (
                         <div key={i} className="ymc-dow-cell">{d}</div>
                       ))}
                     </div>
-                    {/* Mini calendar grid */}
+
+                    {/* 42-cell uniform grid */}
                     <div className="ymc-grid">
-                      {Array.from({ length: firstD }).map((_, i) => <div key={`e${i}`} className="ymc-cell" />)}
-                      {Array.from({ length: daysIn }, (_, i) => {
-                        const d = i + 1;
-                        const isT = d === today.getDate() && isThisMon;
-                        const hasDot = !!miniDayMap[d];
+                      {cells.map((dayNum, i) => {
+                        if (dayNum === null) return <div key={i} className="ymc-cell ymc-empty" />;
+                        const isT    = dayNum === today.getDate() && isThisMon;
+                        const hasAct = activeDays.has(dayNum);
                         return (
-                          <div key={d} className={`ymc-cell${isT ? ' tod' : hasDot ? ' has' : ''}`}>
-                            <span>{d}</span>
+                          <div key={i} className={`ymc-cell${isT ? ' tod' : hasAct ? ' has' : ''}`}>
+                            <span>{dayNum}</span>
                           </div>
                         );
                       })}
                     </div>
+
                   </button>
                 );
               })}
+            </div>
+
+            {/* Footer hint */}
+            <div style={{ textAlign:'center', marginTop:16, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+              Tap any month to see the full schedule
             </div>
           </div>
         )}
@@ -1535,57 +1558,104 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
 
         /* ════ YEARLY ════ */
-        .year-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+        /* ── YEARLY VIEW — uniform 3-column layout ── */
+        .year-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 9px;
+        }
 
-        /* Card shell */
+        /* Card shell — all 12 cards are visually identical in structure */
         .year-month-card {
-          display:flex; flex-direction:column; gap:5px;
-          padding:9px 7px 8px;
-          background:var(--glass-bg2,rgba(255,255,255,.04));
-          border:1.5px solid var(--glass-border,rgba(255,255,255,.08));
-          border-radius:14px;
-          cursor:pointer; font-family:inherit;
-          transition:border-color .16s, background .16s, transform .1s;
-          text-align:left; overflow:hidden;
+          display: flex; flex-direction: column; gap: 0;
+          padding: 10px 7px 8px;
+          background: var(--glass-bg2, rgba(255,255,255,.04));
+          border: 1.5px solid var(--glass-border, rgba(255,255,255,.08));
+          border-radius: 14px;
+          cursor: pointer; font-family: inherit;
+          transition: border-color .18s, background .18s, transform .12s;
+          text-align: left; overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
         }
         .year-month-card.current {
-          border-color:var(--purple);
-          background:var(--pur-lt,rgba(124,106,240,.07));
+          border-color: var(--purple);
+          border-width: 2px;
+          background: rgba(124,106,240,.07);
         }
-        .year-month-card.sel:not(.current) { border-color:var(--purple); }
-        .year-month-card:active { transform:scale(.97); opacity:.85; }
+        .year-month-card.sel:not(.current) {
+          border-color: rgba(124,106,240,.5);
+        }
+        .year-month-card:active { transform: scale(.96); opacity: .82; }
 
-        /* Header */
-        .ymc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1px; }
-        .ymc-name { font-size:11px; font-weight:800; color:var(--dark); letter-spacing:-.2px; }
-        .ymc-name.cur { color:var(--purple); }
+        /* Card header: month name + activity badge */
+        .ymc-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 4px;
+        }
+        .ymc-name {
+          font-size: 12px; font-weight: 800;
+          color: var(--dark); letter-spacing: -.3px; line-height: 1;
+        }
+        .ymc-name.cur { color: var(--purple); }
+        .ymc-today-tag {
+          font-size: 8px; font-weight: 600;
+          color: var(--purple); opacity: .75;
+          letter-spacing: 0;
+        }
         .ymc-count {
-          font-size:8px; font-weight:800;
-          color:var(--purple);
-          background:var(--pur-lt,rgba(124,106,240,.15));
-          border-radius:6px; padding:1px 5px; line-height:1.6;
+          font-size: 8px; font-weight: 800;
+          color: var(--purple);
+          background: rgba(124,106,240,.15);
+          border-radius: 5px; padding: 1px 4px; line-height: 1.6;
+          flex-shrink: 0;
         }
 
-        /* Day-of-week header row */
-        .ymc-dow { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; margin-bottom:1px; }
+        /* Day-of-week labels — 7 equal cols, minimal */
+        .ymc-dow {
+          display: grid; grid-template-columns: repeat(7, 1fr);
+          gap: 0; margin-bottom: 3px;
+        }
         .ymc-dow-cell {
-          display:flex; align-items:center; justify-content:center;
-          font-size:5px; font-weight:800; color:var(--mid);
-          text-transform:uppercase; letter-spacing:.3px; line-height:1.5;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 6px; font-weight: 700;
+          color: var(--mid); line-height: 1.4;
+          text-transform: uppercase;
         }
 
-        /* Day grid */
-        .ymc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1.5px; }
-        .ymc-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:3px; }
-        .ymc-cell span { font-size:6.5px; color:var(--dark); line-height:1; font-weight:500; }
+        /* 42-cell uniform grid — always 6 rows, never varies */
+        .ymc-grid {
+          display: grid; grid-template-columns: repeat(7, 1fr);
+          gap: 1px;
+        }
+        .ymc-cell {
+          height: 14px;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          border-radius: 2px; position: relative;
+        }
+        .ymc-cell span {
+          font-size: 7.5px; color: var(--dark);
+          line-height: 1; font-weight: 500;
+        }
+        /* Empty cells (before/after month days) — invisible but keep layout */
+        .ymc-cell.ymc-empty { pointer-events: none; }
 
-        /* Today — filled circle */
-        .ymc-cell.tod { background:var(--purple); border-radius:50%; }
-        .ymc-cell.tod span { color:#fff; font-weight:900; font-size:6px; }
+        /* Today — filled purple circle */
+        .ymc-cell.tod {
+          background: var(--purple);
+          border-radius: 50%;
+        }
+        .ymc-cell.tod span { color: #fff; font-weight: 800; font-size: 7px; }
 
-        /* Has activity — tinted bg */
-        .ymc-cell.has { background:rgba(124,106,240,.20); border-radius:3px; }
-        .ymc-cell.has span { color:var(--purple); font-weight:700; }
+        /* Activity days — subtle dot indicator below the date */
+        .ymc-cell.has span { color: var(--purple); font-weight: 700; }
+        .ymc-cell.has::after {
+          content: '';
+          position: absolute; bottom: 1px;
+          width: 3px; height: 3px;
+          border-radius: 50%;
+          background: var(--purple); opacity: .65;
+        }
 
         /* ════ SHARED ════ */
         .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.10); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
