@@ -157,6 +157,11 @@ export default function ActiveSessionSheet({
   const pct         = hasEndTime
     ? Math.min(elapsedSec / totalSec, 1)
     : Math.min(elapsedSec / (60 * 60), 1); // fallback: 1h = 100%
+  const isTimeUp    = hasEndTime && pct >= 1 && !activeSchedule.is_completed;
+  // Guard NaN from Invalid Date (before timeStrToDate fix kicks in on older data)
+  const safePct     = isNaN(pct) ? 0 : pct;
+  const safeElapsed = isNaN(elapsedSec) ? 0 : elapsedSec;
+  const safeRemain  = isNaN(remainSec)  ? 0 : remainSec;
 
   // ── Scroll lock ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -265,8 +270,11 @@ export default function ActiveSessionSheet({
           </h2>
           <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
             <span style={{ fontSize:12, color:'var(--mid)', fontWeight:600 }}>
-              {startD.toLocaleTimeString('en-US', timeFmt)}
-              {endD ? ` – ${endD.toLocaleTimeString('en-US', timeFmt)}` : ''}
+              {isNaN(startD.getTime())
+                ? 'Scheduled task'
+                : startD.toLocaleTimeString('en-US', timeFmt)}
+              {endD && !isNaN(endD.getTime())
+                ? ` – ${endD.toLocaleTimeString('en-US', timeFmt)}` : ''}
             </span>
             <span style={{ color:'rgba(255,255,255,.2)' }}>·</span>
             <span style={{ fontSize:11, color:'var(--mid)', fontWeight:600, textTransform:'capitalize' }}>
@@ -291,7 +299,7 @@ export default function ActiveSessionSheet({
           {/* Timer ring */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
             {/* key={tick} forces SVG to re-evaluate strokeDashoffset transition */}
-            <TimerRing pct={pct} countdown={remainSec} elapsed={elapsedSec} hasEndTime={hasEndTime} />
+            <TimerRing pct={safePct} countdown={safeRemain} elapsed={safeElapsed} hasEndTime={hasEndTime} />
           </div>
 
           {/* Today's Queue */}
@@ -312,7 +320,7 @@ export default function ActiveSessionSheet({
                 {todaySchedules.map((s, i) => {
                   const isActive = s.id === activeSchedule.id;
                   const isDone   = s.is_completed;
-                  const sStart   = new Date(s.start_time);
+                  const sStart   = timeStrToDate(s.start_time);
                   const sPColor  = PRIORITY_COLOR[s.priority] ?? '#7C6AF0';
                   return (
                     <button
@@ -363,45 +371,138 @@ export default function ActiveSessionSheet({
           )}
         </div>
 
-        {/* Mark as Complete CTA */}
+        {/* ── Bottom action area ──────────────────────────────────────────────── */}
         <div style={{
           padding:'12px 20px',
           paddingBottom:'max(20px, env(safe-area-inset-bottom, 20px))',
           flexShrink:0,
           borderTop:'1px solid rgba(255,255,255,.06)',
         }}>
-          <button
-            onClick={handleComplete}
-            disabled={completing}
-            style={{
-              width:'100%', padding:'16px 0',
-              borderRadius:16, border:'none',
-              background: completing
-                ? 'rgba(0,200,150,.4)'
-                : 'linear-gradient(135deg, #00C896 0%, #00A878 100%)',
-              color:'#fff', fontSize:16, fontWeight:800,
-              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-              cursor: completing ? 'default' : 'pointer',
-              fontFamily:'inherit', WebkitTapHighlightColor:'transparent',
-              boxShadow: completing ? 'none' : '0 4px 20px rgba(0,200,150,.35)',
-              transition:'background .2s, box-shadow .2s, transform .1s',
-              letterSpacing:'.2px',
-            }}
-          >
-            {completing ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                style={{ animation:'spin .9s linear infinite' }}>
-                <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2.5"
-                  strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5 9-9" stroke="#fff" strokeWidth="2.5"
-                  strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-            {completing ? 'Marking complete…' : 'Mark as Complete'}
-          </button>
+
+          {isTimeUp ? (
+            /* ── TIME'S UP: ask what happened ─────────────────────────────── */
+            <>
+              {/* Banner */}
+              <div style={{
+                display:'flex', alignItems:'center', gap:8,
+                background:'rgba(253,203,110,.1)', border:'1px solid rgba(253,203,110,.25)',
+                borderRadius:12, padding:'10px 14px', marginBottom:12,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0 }}>
+                  <circle cx="10" cy="10" r="8" stroke="#FDCB6E" strokeWidth="1.6"/>
+                  <path d="M10 6v4l2.5 2.5" stroke="#FDCB6E" strokeWidth="1.6"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <div style={{ fontSize:12, fontWeight:700, color:'#FDCB6E', flex:1 }}>
+                  Scheduled time ended — what happened?
+                </div>
+              </div>
+
+              {/* ✅ Yes, I completed it */}
+              <button
+                onClick={handleComplete}
+                disabled={completing}
+                style={{
+                  width:'100%', padding:'15px 0', marginBottom:10,
+                  borderRadius:14, border:'none',
+                  background: completing
+                    ? 'rgba(0,200,150,.4)'
+                    : 'linear-gradient(135deg, #00C896 0%, #00A878 100%)',
+                  color:'#fff', fontSize:15, fontWeight:800,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  cursor: completing ? 'default' : 'pointer',
+                  fontFamily:'inherit', WebkitTapHighlightColor:'transparent',
+                  boxShadow: completing ? 'none' : '0 4px 16px rgba(0,200,150,.3)',
+                  letterSpacing:'.2px',
+                }}
+              >
+                {completing ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    style={{ animation:'spin .9s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2.5"
+                      strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12l5 5 9-9" stroke="#fff" strokeWidth="2.4"
+                      strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                {completing ? 'Marking complete…' : 'Yes, I Completed It'}
+              </button>
+
+              {/* 🔄 Not yet — reschedule */}
+              <button
+                onClick={() => { onReschedule?.(activeSchedule); onClose(); }}
+                style={{
+                  width:'100%', padding:'14px 0',
+                  borderRadius:14, border:'1.5px solid rgba(255,255,255,.12)',
+                  background:'rgba(255,255,255,.05)',
+                  color:'var(--dark)', fontSize:14, fontWeight:700,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  cursor:'pointer', fontFamily:'inherit',
+                  WebkitTapHighlightColor:'transparent',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <path d="M4 10a6 6 0 1 0 1.2-3.6" stroke="var(--purple)"
+                    strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M4 6v4h4" stroke="var(--purple)"
+                    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Not Yet — Extend or Reschedule
+              </button>
+            </>
+
+          ) : (
+            /* ── IN PROGRESS: done early + end session ─────────────────────── */
+            <>
+              <button
+                onClick={handleComplete}
+                disabled={completing}
+                style={{
+                  width:'100%', padding:'16px 0', marginBottom:9,
+                  borderRadius:16, border:'none',
+                  background: completing
+                    ? 'rgba(0,200,150,.4)'
+                    : 'linear-gradient(135deg, #00C896 0%, #00A878 100%)',
+                  color:'#fff', fontSize:16, fontWeight:800,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  cursor: completing ? 'default' : 'pointer',
+                  fontFamily:'inherit', WebkitTapHighlightColor:'transparent',
+                  boxShadow: completing ? 'none' : '0 4px 20px rgba(0,200,150,.35)',
+                  letterSpacing:'.2px',
+                }}
+              >
+                {completing ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    style={{ animation:'spin .9s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2.5"
+                      strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12l5 5 9-9" stroke="#fff" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                {completing ? 'Marking complete…' : '✓ Done Early'}
+              </button>
+
+              <button
+                onClick={onClose}
+                style={{
+                  width:'100%', padding:'11px 0',
+                  background:'transparent', border:'none',
+                  color:'var(--mid)', fontSize:13, fontWeight:600,
+                  cursor:'pointer', fontFamily:'inherit',
+                }}
+              >
+                End Session (keep as pending)
+              </button>
+            </>
+          )}
+
         </div>
 
       </div>

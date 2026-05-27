@@ -7,12 +7,28 @@
  * and work against today's date so the math is always "right now vs the schedule".
  */
 
-/** Parse "HH:MM" or "HH:MM:SS" into a Date object for today. */
-export function timeStrToDate(timeStr: string): Date {
-  const [h, m, s = 0] = timeStr.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h, m, s, 0);
-  return d;
+/**
+ * Parse a schedule time string into a Date object.
+ *
+ * AddScheduleSheet saves full ISO strings ("2026-05-27T01:00:00.000Z") to Supabase.
+ * Legacy / form inputs may pass bare "HH:MM" or "HH:MM:SS".
+ * Both formats are handled here so all time math is NaN-free.
+ */
+export function timeStrToDate(timeStr: string | null | undefined): Date {
+  if (!timeStr) return new Date(NaN);
+
+  // ── Plain time: "HH:MM" or "HH:MM:SS" ────────────────────────────────────
+  if (/^\d{1,2}:\d{2}/.test(timeStr) && !timeStr.includes('T')) {
+    const parts = timeStr.split(':').map(Number);
+    const d = new Date();
+    d.setHours(parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0, 0);
+    return d;
+  }
+
+  // ── Full ISO datetime ("2026-05-27T09:00:00.000Z") ───────────────────────
+  // Parse normally — gives the exact local moment the task was scheduled for.
+  const parsed = new Date(timeStr);
+  return parsed; // caller checks isNaN(parsed.getTime()) if needed
 }
 
 /**
@@ -21,8 +37,8 @@ export function timeStrToDate(timeStr: string): Date {
  * Returns null if start_time is missing (can't compute).
  */
 export function getTaskTimePct(
-  startTime: string | null,
-  endTime: string | null
+  startTime: string | null | undefined,
+  endTime: string | null | undefined
 ): number | null {
   if (!startTime) return null;
   const now   = new Date();
@@ -43,8 +59,8 @@ export function getTaskTimePct(
  * Positive = time left, negative = overdue by that many minutes.
  */
 export function getRemainingMinutes(
-  startTime: string | null,
-  endTime: string | null
+  startTime: string | null | undefined,
+  endTime: string | null | undefined
 ): number | null {
   if (!startTime) return null;
   const now = new Date();
@@ -56,8 +72,8 @@ export function getRemainingMinutes(
 
 /** True when the task's time window has elapsed and it is not yet completed. */
 export function isTaskEndReached(
-  startTime: string | null,
-  endTime: string | null
+  startTime: string | null | undefined,
+  endTime: string | null | undefined
 ): boolean {
   if (!startTime) return false;
   const pct = getTaskTimePct(startTime, endTime);
