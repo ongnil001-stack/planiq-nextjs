@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Schedule } from '@/types/database';
+import { timeStrToDate, getSavedMinutes } from '@/lib/timeProgress';
 
 interface Props {
   open:             boolean;
@@ -24,6 +25,8 @@ interface Props {
   todaySchedules:   Schedule[];
   onMarkComplete:   (id: string) => Promise<void>;
   onSwitchTask?:    (s: Schedule) => void;  // tap a queue item to switch focus
+  onTimeUp?:        (s: Schedule, savedMins: number) => void; // fired when countdown hits 0
+  onReschedule?:    (s: Schedule) => void;  // passed through from dashboard
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -116,22 +119,36 @@ export default function ActiveSessionSheet({
   open, onClose,
   activeSchedule, todaySchedules,
   onMarkComplete, onSwitchTask,
+  onTimeUp, onReschedule,
 }: Props) {
+  const timeUpFiredRef = useRef(false);
   const [tick,       setTick]       = useState(0);  // triggers re-render every second
   const [completing, setCompleting] = useState(false);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Live clock ──────────────────────────────────────────────────────────────
+  // ── Live clock + onTimeUp trigger ─────────────────────────────────────────
   useEffect(() => {
-    if (!open) return;
-    intervalRef.current = setInterval(() => setTick(t => t + 1), 1000);
+    if (!open) { timeUpFiredRef.current = false; return; }
+    intervalRef.current = setInterval(() => {
+      setTick(t => t + 1);
+      // Fire onTimeUp once when the countdown reaches 0
+      if (!timeUpFiredRef.current && onTimeUp && activeSchedule.end_time) {
+        const endNow = timeStrToDate(activeSchedule.end_time);
+        if (new Date() >= endNow) {
+          timeUpFiredRef.current = true;
+          const saved = getSavedMinutes(activeSchedule.end_time, new Date());
+          onTimeUp(activeSchedule, saved);
+        }
+      }
+    }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeSchedule.id]);
 
   // ── Compute times ───────────────────────────────────────────────────────────
   const now       = new Date();
-  const startD    = new Date(activeSchedule.start_time);
-  const endD      = activeSchedule.end_time ? new Date(activeSchedule.end_time) : null;
+  const startD    = timeStrToDate(activeSchedule.start_time);
+  const endD      = activeSchedule.end_time ? timeStrToDate(activeSchedule.end_time) : null;
   const hasEndTime = !!endD;
 
   const elapsedSec  = Math.max(0, Math.floor((now.getTime() - startD.getTime()) / 1000));

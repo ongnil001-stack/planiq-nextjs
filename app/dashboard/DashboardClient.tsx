@@ -21,6 +21,15 @@ import {
 } from '@/lib/dashboardPrefs';
 import { useChartColors } from '@/lib/useChartColors';
 import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
+import {
+  getTaskTimePct,
+  getRemainingMinutes,
+  isTaskEndReached,
+  getSavedMinutes,
+  formatSavedTime,
+  timeStrToDate,
+} from '@/lib/timeProgress';
+import TaskCompletionPrompt from '@/components/TaskCompletionPrompt';
 
 interface Props {
   profile: Profile | null;
@@ -102,7 +111,14 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [perfExpanded, setPerfExpanded] = useState(false);
   const [workloadOpen, setWorkloadOpen] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
-  const [sessionOpen,  setSessionOpen]  = useState(false);
+  const [sessionOpen,   setSessionOpen]   = useState(false);
+  const [promptOpen,    setPromptOpen]    = useState(false);
+  const [promptDismissedId, setPromptDismissedId] = useState<string | null>(null);
+  const [savedMinsToday, setSavedMinsToday] = useState(0);
+  const [tick, setTick] = useState(0); // real-time ticker every 30s
+
+  // Derived early so useEffects below can reference it
+  const inProgressEarly = todaySchedules.find(s => !s.is_completed);
   const [prefs, setPrefs] = useState<DashboardFullPrefs | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [liveSummary, setLiveSummary] = useState<string | null>(null);
@@ -152,6 +168,22 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     setCompletingId(null);
   }
 
+  // ── Real-time ticker (every 30s) — drives focus bar + end-of-task prompt ─────
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Auto-show TaskCompletionPrompt when active task's time is up ──────────
+  useEffect(() => {
+    if (!inProgressEarly || inProgressEarly.is_completed) return;
+    if (promptDismissedId === inProgressEarly.id) return;
+    if (isTaskEndReached(inProgressEarly.start_time, inProgressEarly.end_time ?? null)) {
+      setPromptOpen(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, inProgressEarly?.id]);
+
   // Called by ActiveSessionSheet → marks task done, closes sheet, refreshes
   // Auto-schedule notifications for today's pending activities
   useEffect(() => {
@@ -166,10 +198,33 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   async function handleSessionMarkComplete(id: string) {
     setCompletingId(id);
+    // Track saved time before marking complete
+    const sched = todaySchedules.find(s => s.id === id);
+    if (sched?.end_time) {
+      const saved = getSavedMinutes(sched.end_time, new Date());
+      if (saved > 0) {
+        setSavedMinsToday(prev => prev + saved);
+        toast.success(`⚡ ${formatSavedTime(saved)} saved!`, { duration: 3000 });
+      }
+    }
     await supabase.from('schedules').update({ is_completed: true }).eq('id', id);
     setCompletingId(null);
     setSessionOpen(false);
+    setPromptOpen(false);
     router.refresh();
+  }
+
+  // TaskCompletionPrompt "Not Yet" → open edit sheet to extend/reschedule
+  function handleRescheduleFromPrompt(schedule: Schedule) {
+    setPromptOpen(false);
+    setPromptDismissedId(schedule.id);
+    setEditSchedule(schedule);
+  }
+
+  // ActiveSessionSheet countdown → 0: close session, open completion prompt
+  function handleSessionTimeUp(_schedule: Schedule, _savedMins: number) {
+    setSessionOpen(false);
+    setPromptOpen(true);
   }
 
   async function refreshAI() {
@@ -237,6 +292,25 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   const streakDays = 7;
   const inProgress = todaySchedules.find(s => !s.is_completed);
+
+  // ── Real-time task progress (re-derived every tick) ───────────────────────
+  const taskTimePct      = inProgress
+    ? getTaskTimePct(inProgress.start_time, inProgress.end_time ?? null)
+    : null;
+  const taskRemainMins   = inProgress
+    ? getRemainingMinutes(inProgress.start_time, inProgress.end_time ?? null)
+    : null;
+  const taskIsOverdue    = taskTimePct !== null && taskTimePct >= 100;
+  // Focus bar shows time-based pct when there's an active task, else task-completion pct
+  const focusBarPct      = taskTimePct !== null ? Math.min(taskTimePct, 100) : progressPct;
+  const focusBarLabel    = taskTimePct !== null
+    ? (taskIsOverdue
+        ? '⚠ Time up'
+        : taskRemainMins !== null && taskRemainMins <= 5
+          ? `${taskRemainMins}m left`
+          : `${taskTimePct}% elapsed`)
+    : `${progressPct}% of today done`;
+  const savedTimeLabel   = savedMinsToday > 0 ? formatSavedTime(savedMinsToday) : null;
   const today = new Date();
   const todayDow = today.getDay();
   const startOfWeek = new Date(today);
@@ -333,13 +407,38 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                     {inProgress ? inProgress.title : 'No active task'}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                    <div style={{ flex: 1, height: 3, background: 'var(--border2, rgba(255,255,255,.07))', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: 'var(--gradient)', borderRadius: 2, width: `${progressPct}%`, transition: 'width .6s ease' }} />
+                    <div style={{ flex: 1, height: 4, background: 'var(--border2, rgba(255,255,255,.07))', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2,
+                        width: `${focusBarPct}%`,
+                        background: taskIsOverdue
+                          ? 'linear-gradient(90deg,#FF6B8A,#FF3B30)'
+                          : taskTimePct !== null && taskTimePct > 0
+                            ? 'linear-gradient(90deg,#7C6AF0,#00C6FF)'
+                            : 'var(--gradient)',
+                        transition: 'width 1s linear',
+                        boxShadow: taskTimePct !== null && !taskIsOverdue && taskTimePct > 0
+                          ? '0 0 6px rgba(0,198,255,.4)' : 'none',
+                      }} />
                     </div>
-                    <span style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {progressPct}% {inProgress ? '· In Progress' : 'of today done'}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap',
+                      color: taskIsOverdue ? '#FF6B8A'
+                        : taskRemainMins !== null && taskRemainMins <= 5 ? '#FDCB6E'
+                        : 'var(--mid)',
+                    }}>
+                      {focusBarLabel}
                     </span>
                   </div>
+                  {savedTimeLabel && (
+                    <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:3, fontSize:10, fontWeight:700, color:'#00C896' }}>
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 2v3l2 1.5" stroke="#00C896" strokeWidth="1.4" strokeLinecap="round"/>
+                        <circle cx="6" cy="6" r="5" stroke="#00C896" strokeWidth="1.2"/>
+                      </svg>
+                      {savedTimeLabel} saved today
+                    </div>
+                  )}
                 </div>
                 {inProgress && (
                   <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 600, flexShrink: 0 }}>{formatTime(inProgress.start_time)}</div>
@@ -999,6 +1098,21 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           activeSchedule={inProgress}
           todaySchedules={todaySchedules}
           onMarkComplete={handleSessionMarkComplete}
+          onTimeUp={handleSessionTimeUp}
+          onReschedule={handleRescheduleFromPrompt}
+        />
+      )}
+
+      {inProgress && (
+        <TaskCompletionPrompt
+          open={promptOpen && !inProgress.is_completed}
+          schedule={inProgress}
+          onMarkComplete={handleSessionMarkComplete}
+          onReschedule={handleRescheduleFromPrompt}
+          onDismiss={() => {
+            setPromptOpen(false);
+            setPromptDismissedId(inProgress.id);
+          }}
         />
       )}
 
