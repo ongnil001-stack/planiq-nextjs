@@ -106,6 +106,22 @@ const S = {
   },
 };
 
+// ── Today workload: deterministic, today-only, unaffected by AI refresh ──────
+// Each task contributes ~14% base load; critical priority adds weight; 7+ tasks = 100%
+function computeTodayWorkload(schedules: { priority?: string | null }[]): number {
+  if (schedules.length === 0) return 0;
+  const priorityWeight = (p: string | null | undefined) => {
+    if (p === 'critical') return 1.35;
+    if (p === 'high')     return 1.15;
+    if (p === 'low')      return 0.80;
+    return 1.0;
+  };
+  const totalWeight = schedules.reduce((sum, s) => sum + priorityWeight(s.priority), 0);
+  const avgWeight   = totalWeight / schedules.length;
+  const base        = Math.min(schedules.length * 14, 100);
+  return Math.min(Math.round(base * avgWeight), 100);
+}
+
 export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays, focusWins, tasksDone }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -298,10 +314,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
   // Compute fallback score from real data — 0 for new users with no schedules
-  const computedScore = weekSchedules.length > 0
-    ? Math.min(Math.round((weekSchedules.length / 35) * 100), 100)
-    : 0;
-  const workloadScore = liveScore ?? latestAnalysis?.workload_score ?? computedScore;
+  // Workload is derived purely from today's schedules — not weekly, not AI score
+  const workloadScore = computeTodayWorkload(todaySchedules);
 
   const workloadStatus =
     workloadScore >= 85 ? { badgeClass: 'attention', color: ch.full }
@@ -310,7 +324,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     : { badgeClass: 'ok', color: ch.mid };
 
   const scoreLabel =
-    workloadScore >= 85 ? 'Overloaded'
+    workloadScore === 0 ? 'No tasks today'
+    : workloadScore >= 85 ? 'Overloaded'
     : workloadScore >= 65 ? 'Moderate'
     : workloadScore >= 30 ? 'On Track' : 'Light';
 
@@ -671,8 +686,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 6v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--purple)' }}>{workloadScore}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Load</div>
+            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--purple)' }}>{workloadScore === 0 ? '—' : workloadScore}</div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Workload</div>
           </div>
         </div>
       </div>
@@ -741,11 +756,11 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                       style={{ transition: 'stroke-dashoffset .6s ease' }}
                     />
                   </svg>
-                  <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{workloadScore}</div>
+                  <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{workloadScore === 0 ? '—' : workloadScore}</div>
                 </div>
               )}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{scoreLabel}{compact ? ` — ${workloadScore}` : ''}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{scoreLabel}{compact && workloadScore > 0 ? ` — ${workloadScore}` : ''}</div>
                 <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2 }}>
                   <svg width="13" height="13" viewBox="0 0 15 15" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight: 3 }}>
                     <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
@@ -759,7 +774,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
           {!compact && perfExpanded && (
             <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              {[['Load', workloadScore], ['Tasks', totalToday], ['Today', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
+              {[['Workload', workloadScore === 0 ? '—' : workloadScore], ['Tasks', totalToday], ['Today', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
                 <div key={String(lbl)} style={{ display: 'flex', alignItems: 'stretch' }}>
                   {i > 0 && <div style={{ width: 1, background: 'var(--border)', margin: '4px 0', flexShrink: 0 }} />}
                   <div style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
