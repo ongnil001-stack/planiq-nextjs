@@ -364,7 +364,7 @@ export default function WorkloadSheet({
             );
           })}
 
-          <div style={{ height: 40 }} />
+
         </div>
       </div>
 
@@ -379,9 +379,12 @@ export default function WorkloadSheet({
         }
         @keyframes bdFade { from{opacity:0} to{opacity:1} }
 
-        /* Sheet */
+        /* Sheet — fixed height so it NEVER changes size based on content.
+           85dvh uses dynamic viewport height (accounts for browser chrome bar).
+           height:85vh is the fallback for older Safari/Android. */
         .wl-sheet {
-          width:100%; max-height:92vh;
+          width:100%;
+          height:85vh; height:85dvh;
           background:var(--bg2,#111326);
           border-radius:24px 24px 0 0;
           border-top:1px solid var(--border2);
@@ -436,11 +439,13 @@ export default function WorkloadSheet({
         /* AI banner */
         .wl-ai {
           display:flex; align-items:flex-start; gap:10px;
-          margin:10px 18px 0;
+          margin:10px 18px 8px;
           padding:11px 13px;
           background:var(--amber-lt,rgba(253,203,110,.08));
           border:1px solid var(--amber,rgba(253,203,110,.2));
-          border-radius:13px; flex-shrink:0;
+          border-radius:13px;
+          flex-shrink:0;
+          min-height:0;
         }
         .wl-ai-icon {
           width:26px; height:26px; border-radius:8px;
@@ -450,10 +455,16 @@ export default function WorkloadSheet({
         }
         .wl-ai-txt { font-size:12px; color:var(--dark); line-height:1.55; font-weight:500; flex:1; }
 
-        /* Scroll area */
+        /* Scroll area
+           min-height:0 is CRITICAL — without it, a flex child with overflow:auto
+           still expands to fit all content rather than scrolling. */
         .wl-scroll {
-          flex:1; overflow-y:auto; padding:10px 18px 0;
-          -webkit-overflow-scrolling:touch; scrollbar-width:none;
+          flex:1;
+          min-height:0;
+          overflow-y:auto;
+          padding:10px 18px calc(env(safe-area-inset-bottom, 0px) + 80px);
+          -webkit-overflow-scrolling:touch;
+          scrollbar-width:none;
         }
         .wl-scroll::-webkit-scrollbar { display:none; }
 
