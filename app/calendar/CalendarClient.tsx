@@ -267,7 +267,7 @@ function CalDowHeader() {
         <div key={d} style={{
           width: cellSize, flexShrink:0,
           textAlign:'center', fontSize:10, fontWeight:700,
-          color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.5px',
+          color:'var(--dark)', opacity:.45, textTransform:'uppercase', letterSpacing:'.5px',
         }}>{d}</div>
       ))}
     </div>
@@ -1416,12 +1416,20 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
                 return (
                   <button key={mo}
-                    className={`year-month-card${isSel ? ' sel' : ''}${isThisMon ? ' current' : ''}`}
+                    className={`year-month-card${isThisMon ? ' current' : isSel ? ' sel' : ''}`}
                     onClick={() => { setViewDate(new Date(year, mo, 1)); setSelectedDay(mo === today.getMonth() && year === today.getFullYear() ? today.getDate() : 1); setViewMode('monthly'); }}>
+                    {/* Card header: month name + task count badge */}
                     <div className="ymc-header">
-                      <span className="ymc-name">{MONTHS_SH[mo]}</span>
+                      <span className={`ymc-name${isThisMon ? ' cur' : ''}`}>{MONTHS_SH[mo]}</span>
                       {cnt > 0 && <span className="ymc-count">{cnt}</span>}
                     </div>
+                    {/* Day-of-week header row */}
+                    <div className="ymc-dow">
+                      {['S','M','T','W','T','F','S'].map((d, i) => (
+                        <div key={i} className="ymc-dow-cell">{d}</div>
+                      ))}
+                    </div>
+                    {/* Mini calendar grid */}
                     <div className="ymc-grid">
                       {Array.from({ length: firstD }).map((_, i) => <div key={`e${i}`} className="ymc-cell" />)}
                       {Array.from({ length: daysIn }, (_, i) => {
@@ -1429,7 +1437,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         const isT = d === today.getDate() && isThisMon;
                         const hasDot = !!miniDayMap[d];
                         return (
-                          <div key={d} className={`ymc-cell${isT ? ' tod' : ''}${hasDot ? ' has' : ''}`}>
+                          <div key={d} className={`ymc-cell${isT ? ' tod' : hasDot ? ' has' : ''}`}>
                             <span>{d}</span>
                           </div>
                         );
@@ -1498,9 +1506,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .cal-day.active { background:var(--purple) !important; }
         .cal-day.today:not(.active) { box-shadow:0 0 0 2px var(--purple); background:rgba(124,106,240,.10) !important; }
         .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:900; }
-        .cal-day.today:not(.active)::after { content:'·'; display:block; font-size:7px; color:var(--purple); font-weight:900; line-height:1; margin-top:-1px; }
         .cal-day.holiday:not(.active) { background:rgba(255,107,107,.07); }
-        .day-num { font-size:13px; font-weight:600; color:var(--mid); line-height:1; }
+        .day-num { font-size:13px; font-weight:600; color:var(--dark); line-height:1; }
         .cal-day.active .day-num { color:#fff; }
         .cal-day.holiday:not(.active) .day-num { color:var(--coral,#FF6B8A); font-weight:700; }
         .day-indicators { display:flex; gap:2px; align-items:center; min-height:5px; }
@@ -1529,19 +1536,55 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         /* ════ YEARLY ════ */
         .year-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-        .year-month-card { display:flex; flex-direction:column; gap:6px; padding:10px 8px; background:var(--glass-bg2,rgba(255,255,255,.04)); border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); border-radius:14px; cursor:pointer; font-family:inherit; transition:all .14s; text-align:left; }
-        .year-month-card.sel { background:var(--pur-lt,rgba(124,106,240,.14)); border-color:var(--purple); }
-        .year-month-card.current { border-color:var(--purple); }
-        .year-month-card:active { opacity:.8; }
-        .ymc-header { display:flex; align-items:center; justify-content:space-between; }
-        .ymc-name { font-size:12px; font-weight:800; color:var(--dark); }
-        .ymc-count { font-size:9px; font-weight:700; color:var(--purple); background:var(--pur-lt,rgba(124,106,240,.15)); border-radius:8px; padding:1px 6px; }
-        .ymc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+
+        /* Card shell */
+        .year-month-card {
+          display:flex; flex-direction:column; gap:5px;
+          padding:9px 7px 8px;
+          background:var(--glass-bg2,rgba(255,255,255,.04));
+          border:1.5px solid var(--glass-border,rgba(255,255,255,.08));
+          border-radius:14px;
+          cursor:pointer; font-family:inherit;
+          transition:border-color .16s, background .16s, transform .1s;
+          text-align:left; overflow:hidden;
+        }
+        .year-month-card.current {
+          border-color:var(--purple);
+          background:var(--pur-lt,rgba(124,106,240,.07));
+        }
+        .year-month-card.sel:not(.current) { border-color:var(--purple); }
+        .year-month-card:active { transform:scale(.97); opacity:.85; }
+
+        /* Header */
+        .ymc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1px; }
+        .ymc-name { font-size:11px; font-weight:800; color:var(--dark); letter-spacing:-.2px; }
+        .ymc-name.cur { color:var(--purple); }
+        .ymc-count {
+          font-size:8px; font-weight:800;
+          color:var(--purple);
+          background:var(--pur-lt,rgba(124,106,240,.15));
+          border-radius:6px; padding:1px 5px; line-height:1.6;
+        }
+
+        /* Day-of-week header row */
+        .ymc-dow { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; margin-bottom:1px; }
+        .ymc-dow-cell {
+          display:flex; align-items:center; justify-content:center;
+          font-size:5px; font-weight:800; color:var(--mid);
+          text-transform:uppercase; letter-spacing:.3px; line-height:1.5;
+        }
+
+        /* Day grid */
+        .ymc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1.5px; }
         .ymc-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:3px; }
-        .ymc-cell span { font-size:5.5px; color:var(--mid); line-height:1; }
-        .ymc-cell.tod { background:var(--purple); border-radius:3px; }
-        .ymc-cell.tod span { color:#fff; font-weight:700; }
-        .ymc-cell.has { background:rgba(124,106,240,.18); border-radius:3px; }
+        .ymc-cell span { font-size:6.5px; color:var(--dark); line-height:1; font-weight:500; }
+
+        /* Today — filled circle */
+        .ymc-cell.tod { background:var(--purple); border-radius:50%; }
+        .ymc-cell.tod span { color:#fff; font-weight:900; font-size:6px; }
+
+        /* Has activity — tinted bg */
+        .ymc-cell.has { background:rgba(124,106,240,.20); border-radius:3px; }
         .ymc-cell.has span { color:var(--purple); font-weight:700; }
 
         /* ════ SHARED ════ */
