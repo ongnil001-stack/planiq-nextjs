@@ -45,6 +45,9 @@ export default function BottomNav() {
     color: active ? 'var(--purple, #7C6AF0)' : 'rgba(255,255,255,0.40)',
     position: 'relative',
     WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',   // eliminates 300ms tap delay on iOS/Android
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
   });
 
   const ICO: React.CSSProperties = {
@@ -74,6 +77,8 @@ export default function BottomNav() {
     gap: '5px', flex: 1, minWidth: 0, padding: '0 6px',
     minHeight: '52px', position: 'relative',
     WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',
+    userSelect: 'none', WebkitUserSelect: 'none',
     background: 'none', border: 'none', cursor: 'pointer',
     fontFamily: 'inherit',
   };

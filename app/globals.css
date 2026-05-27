@@ -479,3 +479,53 @@ body[data-theme="lady"]     .btn-ghost:active {
   50% { opacity: .6; }
 }
 .pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   PlanIQ — Navigation speed & perceived performance
+   ─────────────────────────────────────────────────────────
+   1. Instant visual tap feedback on nav links (no 300ms ghost)
+   2. Smooth fade-in for page content after skeleton → real
+   3. View Transition API fade (Chrome 111+, Safari 18+)
+   ═══════════════════════════════════════════════════════════ */
+
+/* planiq-nav-speed marker */
+
+/* Tap feedback: nav links dim instantly on press */
+nav a, nav button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;   /* removes 300ms click delay on mobile */
+}
+
+/* Page content fades in smoothly after loading skeleton */
+@keyframes planiq-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.planiq-page-enter {
+  animation: planiq-page-in .22s cubic-bezier(.25,.8,.25,1) both;
+}
+
+/* View Transition API — cross-fade between pages */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) {
+  animation: 180ms ease-out both planiq-vt-out;
+}
+::view-transition-new(root) {
+  animation: 220ms ease-in  both planiq-vt-in;
+}
+@keyframes planiq-vt-out {
+  to   { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes planiq-vt-in  {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* Skeleton shimmer shared class — loading.tsx files use inline styles
+   but this ensures the animation runs at GPU layer */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
