@@ -207,14 +207,10 @@ function LoginForm() {
       {/* ── Email sent confirmation ─────────────────────────── */}
       {emailSent && (
         <div className="email-sent-overlay">
-          <div className="es-icon">📧</div>
-          <h2 className="es-title">Check your inbox</h2>
+          <div className="es-check">✓</div>
+          <h2 className="es-title">Request sent</h2>
           <p className="es-body">
-            We sent a password reset link to<br />
-            <strong>{sentToEmail}</strong>
-          </p>
-          <p className="es-hint">
-            Tap the link in the email — it will open PlanIQ and take you straight to the reset screen. Check your spam folder if you don't see it within a minute.
+            Please check your email for the password reset link. If you don't see it, check your spam folder.
           </p>
           <button className="es-back" onClick={() => { setEmailSent(false); setEmail(''); }}>
             ← Back to Sign In
@@ -466,25 +462,27 @@ function LoginForm() {
         .email-sent-overlay::before {
           content: ''; display: block; width: 40px; height: 4px;
           background: rgba(255,255,255,0.14); border-radius: 2px;
-          margin: 10px auto 24px;
+          margin: 10px auto 28px;
         }
-        .es-icon { font-size: 42px; margin-bottom: 12px; }
-        .es-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; }
+        .es-check {
+          width: 56px; height: 56px; border-radius: 50%;
+          background: rgba(139,92,246,0.18);
+          border: 1.5px solid rgba(139,92,246,0.45);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; color: #A78BFA; font-weight: 700;
+          margin-bottom: 18px;
+        }
+        .es-title { font-size: 21px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -.3px; }
         .es-body {
-          font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.6;
-          margin-bottom: 12px;
-        }
-        .es-body strong { color: #C4B5FD; font-weight: 700; }
-        .es-hint {
-          font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.65;
-          margin-bottom: 28px; max-width: 300px;
+          font-size: 14px; color: rgba(255,255,255,0.48); line-height: 1.65;
+          margin-bottom: 28px; max-width: 280px;
         }
         .es-back {
           width: 100%; background: none;
           border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 14px; padding: 14px;
+          border-radius: 14px; padding: 15px;
           font-family: inherit; font-size: 14px; font-weight: 600;
-          color: rgba(255,255,255,0.55); cursor: pointer;
+          color: rgba(255,255,255,0.5); cursor: pointer;
           transition: background .18s;
         }
         .es-back:active { background: rgba(255,255,255,0.07); }
