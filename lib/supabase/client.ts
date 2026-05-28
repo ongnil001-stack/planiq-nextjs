@@ -1,19 +1,46 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createBrowserClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * Standard SSR-compatible browser client (PKCE + cookie storage).
+ * Used for all normal auth: login, signup, session refresh, protected routes.
+ *
+ * NOTE: @supabase/ssr hardcodes flowType:"pkce" internally and overwrites any
+ * flowType option you pass — it is not configurable here.
+ */
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  ) as any;
+}
+
+/**
+ * Implicit-flow client (localStorage, no PKCE code-verifier).
+ * Used ONLY for password reset.
+ *
+ * Why this exists:
+ * iOS PWAs have isolated storage — cookies and localStorage set inside the
+ * PWA are NOT accessible in a regular Safari tab.  With PKCE, the
+ * code_verifier is written to PWA storage when the user requests a reset;
+ * when the email link opens in Safari the verifier is gone → "Link expired".
+ *
+ * With implicit flow Supabase puts the tokens directly in the URL hash
+ * (#access_token=…&type=recovery) — no verifier lookup needed — so it
+ * works regardless of which browser context opens the link.
+ */
+export function createImplicitClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // Use implicit flow so email links (password reset, magic link)
-        // deliver tokens in the URL hash — no PKCE code_verifier needed.
-        // This fixes the cross-context issue where the verifier stored in
-        // the PWA's localStorage is not accessible when the email link
-        // opens in a regular Safari tab.
         flowType: 'implicit',
+        persistSession: true,
+        detectSessionInUrl: false, // we handle URL parsing manually
+        autoRefreshToken: true,
       },
     }
-  ) as any;
+  );
 }

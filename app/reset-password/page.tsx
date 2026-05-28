@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createImplicitClient } from '@/lib/supabase/client';
 
 /* ─── V3 BeamsBackground ─────────────────────────────────────── */
 function startBeams(container: HTMLDivElement): () => void {
@@ -31,7 +31,7 @@ type Stage = 'loading' | 'form' | 'expired' | 'done';
 
 export default function ResetPasswordPage() {
   const router  = useRouter();
-  const supabase = createClient();
+  // implicit client is created fresh inside init() and handleSubmit
   const beamsRef = useRef<HTMLDivElement>(null);
 
   const [stage,    setStage]    = useState<Stage>('loading');
@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
   /* ── Detect & exchange the Supabase recovery token on load ── */
   useEffect(() => {
     async function init() {
-      const supabaseClient = createClient();
+      const supabaseClient = createImplicitClient();
 
       // 1. Check URL hash — Supabase implicit flow sends tokens here
       const hash = window.location.hash.slice(1);
@@ -111,7 +111,8 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const supabaseClient = createImplicitClient();
+    const { error } = await supabaseClient.auth.updateUser({ password });
     setLoading(false);
 
     if (error) {
@@ -122,7 +123,7 @@ export default function ResetPasswordPage() {
       );
     } else {
       setStage('done');
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       setTimeout(() => router.push('/login?reset=1'), 2500);
     }
   }

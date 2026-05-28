@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, createImplicitClient } from '@/lib/supabase/client';
 
 /* ─── Exact V3 BeamsBackground engine ─────────────────────────
    Direct port of the vanilla-canvas aceternity-ui BeamsBackground
@@ -149,8 +149,12 @@ function LoginForm() {
       return;
     }
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-      // /auth/callback exchanges the PKCE code then redirects to /reset-password
+    // Use implicit client — PKCE client (@supabase/ssr) hardcodes flowType:'pkce'
+    // which stores a code_verifier in PWA storage. That verifier is inaccessible
+    // when the email link opens in Safari → "Link expired". Implicit flow sends
+    // tokens in the URL hash instead, with no verifier requirement.
+    const implicitClient = createImplicitClient();
+    const { error } = await implicitClient.auth.resetPasswordForEmail(trimmed, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setForgotLoading(false);
