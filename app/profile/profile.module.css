@@ -18,6 +18,7 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--glass-border, var(--border));
   box-shadow: 0 4px 24px rgba(0,0,0,.10);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 .profAvWrap {
   position: relative;

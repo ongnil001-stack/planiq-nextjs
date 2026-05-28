@@ -32,5 +32,9 @@ export function saveTheme(id: ThemeId) {
 }
 
 export function applyThemeToBody(id: ThemeId) {
+  // Set on <html> (documentElement) so the no-flash inline script and the CSS
+  // html[data-theme] selectors all align — body always inherits via cascade.
+  document.documentElement.setAttribute('data-theme', id);
+  // Also keep on body as belt-and-suspenders for any residual body[] selectors
   document.body.setAttribute('data-theme', id);
 }

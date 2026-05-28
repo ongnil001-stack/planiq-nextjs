@@ -83,6 +83,7 @@ const S = {
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
     borderBottom: '1px solid var(--glass-border, var(--border))',
+    transition: 'background .25s ease, border-color .25s ease',
   },
   scrl: {
     overflowY: 'auto' as const,
@@ -801,7 +802,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--dark)' }}>Weekly Schedule</div>
               {!compact && <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2 }}>{weekRange} · {weekItemCount} item{weekItemCount !== 1 ? 's' : ''}</div>}
             </div>
-            <div style={{ color: 'rgba(255,255,255,.3)', fontSize: 18 }}>→</div>
+            <div style={{ color: 'var(--mid)', fontSize: 18 }}>→</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: compact ? 0 : 10 }}>
             {weekDays.map((d, i) => {

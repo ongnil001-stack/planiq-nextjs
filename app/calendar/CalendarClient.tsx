@@ -1499,20 +1499,20 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .page { height:100dvh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); overflow:hidden; }
 
         /* ── Header ── */
-        .pg-header { padding:max(env(safe-area-inset-top,0px),14px) 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .pg-header { padding:max(env(safe-area-inset-top,0px),14px) 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); transition:background .25s ease,border-color .25s ease; }
         .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
         .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
         .today-btn { padding:6px 14px; background:var(--glass-bg2,rgba(255,255,255,.07)); border:1px solid var(--glass-border,rgba(255,255,255,.10)); border-radius:20px; color:var(--purple); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .14s; flex-shrink:0; }
         .today-btn:active { background:var(--pur-lt); }
 
         /* ── View switcher ── */
-        .view-switcher { flex-shrink:0; display:flex; gap:6px; padding:10px 16px; background:var(--glass-bg,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .view-switcher { flex-shrink:0; display:flex; gap:6px; padding:10px 16px; background:var(--glass-bg,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
         .view-pill { flex:1; padding:8px 4px; border-radius:10px; border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); background:var(--glass-bg2,rgba(255,255,255,.04)); color:var(--mid); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .14s; letter-spacing:.2px; }
         .view-pill.active { background:var(--purple); border-color:var(--purple); color:#fff; box-shadow:0 2px 12px rgba(124,106,240,.35); }
         .view-pill:not(.active):active { background:var(--pur-lt); color:var(--purple); }
 
         /* ── Month / period navigator ── */
-        .month-nav { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .month-nav { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
         .month-label { font-size:15px; font-weight:700; color:var(--dark); }
         .nav-arrow { background:none; border:none; color:var(--mid); font-size:22px; cursor:pointer; padding:4px 10px; line-height:1; border-radius:8px; }
         .nav-arrow:active { background:var(--surf2); }

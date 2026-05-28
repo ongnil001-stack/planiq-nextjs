@@ -86,7 +86,7 @@
    OCEAN FOCUS — deep navy + electric cyan (replaces Focused & Clean)
    Identity: technological, crisp, high-focus. Like a Bloomberg terminal.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="focused"] {
+html[data-theme="focused"] {
   --bg:#080E1A; --bg2:#0E1628; --surf:#0E1628; --surf2:#152036; --surf3:#1C2A44;
   --g-start:#00C6FF; --g-end:#0066FF;
   --gradient:linear-gradient(135deg,#00C6FF 0%,#0066FF 100%);
@@ -122,7 +122,7 @@ body[data-theme="focused"] {
    DARK & SERIOUS — near-black + cool violet (deepest dark)
    Identity: ultra-focused, midnight, no distractions.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="dark"] {
+html[data-theme="dark"] {
   --bg:#05050F; --bg2:#0A0A18; --surf:#0A0A18; --surf2:#10101F; --surf3:#17172E;
   --g-start:#9B8BFF; --g-end:#5B8FFF;
   --gradient:linear-gradient(135deg,#9B8BFF 0%,#5B8FFF 100%);
@@ -158,7 +158,7 @@ body[data-theme="dark"] {
    SOFT PROFESSIONAL — warm white + deep sapphire + teal pop
    Identity: modern SaaS, calm but confident. Think Notion meets Linear.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="soft"] {
+html[data-theme="soft"] {
   --bg:#C8D0EC; --bg2:#BCC5E4; --surf:#EEF1FA; --surf2:#E8ECFA; --surf3:#DCE1F6;
   --g-start:#4A40D4; --g-end:#7B6FFF;
   --gradient:linear-gradient(135deg,#4A40D4 0%,#7B6FFF 100%);
@@ -194,7 +194,7 @@ body[data-theme="soft"] {
    COLORFUL PRO — warm white + bold coral-amber + teal accent
    Identity: energetic, creative agency, vibrant but structured.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="colorful"] {
+html[data-theme="colorful"] {
   --bg:#E0C8AC; --bg2:#D4BC9E; --surf:#FAEEE2; --surf2:#FFEEDE; --surf3:#FFE2CC;
   --g-start:#FF4560; --g-end:#FF8C00;
   --gradient:linear-gradient(135deg,#FF4560 0%,#FF8C00 100%);
@@ -230,7 +230,7 @@ body[data-theme="colorful"] {
    MINIMAL EXECUTIVE — warm cream + charcoal ink + real gold
    Identity: luxury finance, Bloomberg/WSJ editorial, premium corporate.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="minimal"] {
+html[data-theme="minimal"] {
   --bg:#CCCAB8; --bg2:#C2C0AE; --surf:#F0F0EA; --surf2:#EFEEE8; --surf3:#E6E4DA;
   --g-start:#1C1C28; --g-end:#B8962E;
   --gradient:linear-gradient(135deg,#1C1C28 0%,#B8962E 100%);
@@ -267,7 +267,7 @@ body[data-theme="minimal"] {
    PLAYFUL PIXEL — dark teal + neon green + electric yellow
    Identity: retro terminal, gamified productivity, dev culture.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="pixel"] {
+html[data-theme="pixel"] {
   --bg:#0E1A14; --bg2:#162210; --surf:#162210; --surf2:#1E2E18; --surf3:#263820;
   --g-start:#00E878; --g-end:#C8F020;
   --gradient:linear-gradient(135deg,#00E878 0%,#C8F020 100%);
@@ -306,7 +306,7 @@ body[data-theme="pixel"] {
    LADY PROFESSIONAL — warm ivory + deep berry + dusty mauve
    Identity: high-end editorial, refined feminine, like a luxury planner.
 ══════════════════════════════════════════════════════════ */
-body[data-theme="lady"] {
+html[data-theme="lady"] {
   --bg:#EACFD8; --bg2:#E0C4CE; --surf:#FBF2F6; --surf2:#F4E4EE; --surf3:#ECD4E4;
   --g-start:#A0306A; --g-end:#C86898;
   --gradient:linear-gradient(135deg,#A0306A 0%,#C86898 100%);
@@ -358,7 +358,7 @@ html, body {
 }
 
 /* pixel theme monospace override */
-body[data-theme="pixel"] {
+html[data-theme="pixel"] {
   font-family: 'Courier New', Courier, monospace;
 }
 
@@ -408,6 +408,7 @@ body[data-theme="pixel"] {
 /* Glass nav bar */
 .glass-nav {
   background: var(--nav-glass, var(--nav-bg));
+  transition: background 0.25s ease, border-color 0.25s ease;
   border-top: 1px solid var(--glass-border);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -464,16 +465,16 @@ body[data-theme="pixel"] {
 .btn-ghost:active { background: rgba(255,255,255,.12); }
 
 /* Light-theme ghost override */
-body[data-theme="soft"]     .btn-ghost,
-body[data-theme="colorful"] .btn-ghost,
-body[data-theme="minimal"]  .btn-ghost,
-body[data-theme="lady"]     .btn-ghost {
+html[data-theme="soft"]     .btn-ghost,
+html[data-theme="colorful"] .btn-ghost,
+html[data-theme="minimal"]  .btn-ghost,
+html[data-theme="lady"]     .btn-ghost {
   background: rgba(0,0,0,0.05);
 }
-body[data-theme="soft"]     .btn-ghost:active,
-body[data-theme="colorful"] .btn-ghost:active,
-body[data-theme="minimal"]  .btn-ghost:active,
-body[data-theme="lady"]     .btn-ghost:active {
+html[data-theme="soft"]     .btn-ghost:active,
+html[data-theme="colorful"] .btn-ghost:active,
+html[data-theme="minimal"]  .btn-ghost:active,
+html[data-theme="lady"]     .btn-ghost:active {
   background: rgba(0,0,0,0.10);
 }
 

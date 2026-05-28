@@ -176,14 +176,14 @@ export default function ProgressPage() {
     <div style={{ height:'100dvh', overflow:'hidden', background:'var(--bg)', display:'flex', flexDirection:'column', fontFamily:'inherit', color:'var(--dark)' }}>
 
       {/* ── Header ── */}
-      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),14px) 20px 14px', background:'var(--glass-bg,var(--surf))', backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)', borderBottom:'1px solid var(--glass-border,var(--border))', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),14px) 20px 14px', background:'var(--glass-bg,var(--surf))', backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)', borderBottom:'1px solid var(--glass-border,var(--border))', transition:'background .25s ease,border-color .25s ease', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, letterSpacing:'-.4px', color:'var(--dark)' }}>Progress</div>
           <div style={{ fontSize:12, color:'var(--mid)', marginTop:1 }}>Last 28 days · {totalDone} tasks completed</div>
         </div>
         {/* Streak + score pills */}
         <div style={{ display:'flex', flexDirection:'column', gap:5, alignItems:'flex-end' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:'rgba(124,106,240,.12)', border:'1px solid rgba(124,106,240,.22)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:'var(--pur-lt,rgba(124,106,240,.12))', border:'1px solid var(--border2,rgba(124,106,240,.22))' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2 7 7 7 12a5 5 0 0010 0c0-3-2-6-2-6s-1 2-2 2c-1 0-1-1-1-2z" stroke="var(--purple)" strokeWidth="1.8" strokeLinejoin="round"/></svg>
             <span style={{ fontSize:12, fontWeight:800, color:'var(--purple)' }}>{streak}</span>
             <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>streak</span>
