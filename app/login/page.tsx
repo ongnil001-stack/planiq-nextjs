@@ -151,7 +151,7 @@ function LoginForm() {
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       // /auth/callback exchanges the PKCE code then redirects to /reset-password
-      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     setForgotLoading(false);
     if (error) {
