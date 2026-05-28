@@ -7,6 +7,7 @@ import { COUNTRY_TIMEZONES } from '@/lib/countries';
 import { detectLocation, type GeoResult } from '@/lib/geoDetect';
 import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import SmartScheduleAI from '@/components/SmartScheduleAI';
+import { captureAppError } from '@/lib/sentry';
 
 // ─── Time helpers ─────────────────────────────────────────────────────────────
 
@@ -461,6 +462,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
       onSaved(savedId);
       onClose();
     } catch (e: unknown) {
+      captureAppError(e, 'schedule_save');
       setSaveError(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
       setSaving(false);
     }

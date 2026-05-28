@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { captureAppError } from '@/lib/sentry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FeedbackType = 'bug' | 'feature' | 'general';
@@ -86,6 +87,7 @@ export default function FeedbackSheet({ open, appVersion, userId, onClose }: Pro
       setSent(true);
       setTimeout(() => onClose(), 2200);
     } catch (e: unknown) {
+      captureAppError(e, 'feedback_submit');
       setError((e as { message?: string }).message ?? 'Could not send feedback. Please try again.');
     } finally {
       setSending(false);

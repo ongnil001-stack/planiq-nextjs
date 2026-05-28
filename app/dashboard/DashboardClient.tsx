@@ -23,6 +23,7 @@ import { useChartColors } from '@/lib/useChartColors';
 import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
 import { countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { recordCheckin } from '@/lib/checkin';
+import { captureAppError } from '@/lib/sentry';
 import {
   getTaskTimePct,
   getRemainingMinutes,
@@ -326,7 +327,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       } else {
         toast.error('Could not reach AI. Try again later.');
       }
-    } catch {
+    } catch (e: unknown) {
+      captureAppError(e, 'ai_brief');
       toast.error('AI refresh failed.');
     } finally {
       setRefreshingAI(false);
