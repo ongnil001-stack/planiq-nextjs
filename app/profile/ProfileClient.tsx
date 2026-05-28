@@ -13,6 +13,7 @@ import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { getCheckinData } from '@/lib/checkin';
+import FeedbackSheet from '@/components/FeedbackSheet';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
@@ -71,6 +72,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [hdrH, setHdrH] = useState(90);
   const [visitStreak,    setVisitStreak]    = useState(0);
   const [maxVisitStreak, setMaxVisitStreak] = useState(0);
+  const [feedbackOpen,   setFeedbackOpen]   = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
   useEffect(() => {
@@ -898,6 +900,34 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
             </div>
           )}
 
+
+          {/* ── ROW 3: Help & Feedback ── */}
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+              padding: '13px 16px', background: 'transparent', border: 'none',
+              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(116,185,255,.12)', border: '1px solid rgba(116,185,255,.22)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <path d="M3 10l14-8-4 8 4 8-14-8z" stroke="#74B9FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Help &amp; Feedback</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Report bugs, suggest features, share thoughts</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
+              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
         </div>{/* end settings card */}
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>{/* inner */}
@@ -1120,6 +1150,13 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
         open={showCustomize}
         onClose={() => setShowCustomize(false)}
         onSaved={() => setShowCustomize(false)}
+      />
+
+      <FeedbackSheet
+        open={feedbackOpen}
+        appVersion={appUpdate.currentVersionClean ?? '1.0.0'}
+        userId={user?.id}
+        onClose={() => setFeedbackOpen(false)}
       />
 
       <BottomNav />
