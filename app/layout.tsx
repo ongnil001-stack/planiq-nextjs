@@ -43,11 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="PlanIQ" />
-        <link rel="apple-touch-icon" href="/icons/icon-180.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
-        <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128.png" />
-        <link rel="apple-touch-startup-image" href="/icons/icon-512.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-180.png?v=2" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png?v=2" />
+        <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.png?v=2" />
+        <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128.png?v=2" />
+        <link rel="apple-touch-startup-image" href="/icons/icon-512.png?v=2" />
         {/* No-flash theme script — runs synchronously before first paint */}
         <script
           dangerouslySetInnerHTML={{
