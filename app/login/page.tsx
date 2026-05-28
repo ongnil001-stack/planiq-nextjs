@@ -163,6 +163,11 @@ function LoginForm() {
 
       {/* Mini logo */}
       <div className="sign-top">
+        <img
+          src="/icons/icon-192.png"
+          alt="PlanIQ"
+          style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 10, boxShadow: '0 4px 20px rgba(108,99,255,0.4)' }}
+        />
         <div className="sign-logo">Plan<span>IQ</span></div>
         <div className="sign-tag">Sign in to continue</div>
       </div>

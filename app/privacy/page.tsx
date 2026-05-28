@@ -31,18 +31,11 @@ export default function PrivacyPolicyPage() {
       }}>
         <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, #6C63FF, #3B82F6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" strokeWidth="2"/>
-                <path d="M16 2v4M8 2v4M3 10h18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
+            <img
+              src="/icons/icon-192.png"
+              alt="PlanIQ"
+              style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }}
+            />
             <span style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{APP_NAME}</span>
           </Link>
           <div style={{ flex: 1 }}/>
