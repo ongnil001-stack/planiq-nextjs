@@ -135,12 +135,11 @@ export default function SplashPage() {
         <div className="intr-body">
           {/* Logo mark */}
           <div className="intr-logo-wrap">
-            <div className="intr-logo-box">
-              <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-                <path d="M18 4L22 14H32L24 20L27 30L18 24L9 30L12 20L4 14H14L18 4Z" fill="url(#sg)"/>
-                <defs><linearGradient id="sg" x1="4" y1="4" x2="32" y2="32"><stop stopColor="#fff"/><stop offset="1" stopColor="rgba(255,255,255,.7)"/></linearGradient></defs>
-              </svg>
-            </div>
+            <img
+              src="/icons/icon-192.png"
+              alt="PlanIQ"
+              className="intr-logo-img"
+            />
           </div>
 
           <h1 className="intr-title">Plan<span>IQ</span></h1>
@@ -182,12 +181,11 @@ export default function SplashPage() {
             padding-bottom:80px;
           }
           .intr-logo-wrap { margin-bottom:20px; }
-          .intr-logo-box {
-            width:64px; height:64px;
-            background: linear-gradient(135deg,#6C5CE7,#A78BFA);
-            border-radius:20px;
-            display:flex; align-items:center; justify-content:center;
-            box-shadow:0 0 40px rgba(108,92,231,.6), 0 0 80px rgba(108,92,231,.25);
+          .intr-logo-img {
+            width:88px; height:88px;
+            border-radius:22px;
+            object-fit:cover;
+            box-shadow:0 0 40px rgba(108,92,231,.55), 0 0 80px rgba(108,92,231,.2);
           }
           .intr-title {
             font-size:52px; font-weight:900; color:#fff;
