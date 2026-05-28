@@ -29,14 +29,18 @@ export interface Award {
 }
 
 export interface AwardStats {
-  streakDays: number;
-  tasksDone:  number;
-  avgScore:   number | null;
-  focusWins:  number;
+  streakDays:    number;
+  tasksDone:     number;
+  avgScore:      number | null;
+  focusWins:     number;
+  /** Current consecutive visit-days streak (from localStorage via lib/checkin.ts) */
+  visitStreak:   number;
+  /** All-time peak visit streak — awards never disappear if current streak resets */
+  maxVisitStreak: number;
 }
 
 export function computeAwards(s: AwardStats): Award[] {
-  const { streakDays, tasksDone, avgScore, focusWins } = s;
+  const { streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak } = s;
   return [
     {
       id:       'first_step',
@@ -130,6 +134,48 @@ export function computeAwards(s: AwardStats): Award[] {
       earned:   streakDays >= 30,
       progress: { current: Math.min(streakDays, 30), target: 30 },
     },
+    // ── Visit / Check-in Awards ─────────────────────────────────────────────
+    // These use maxVisitStreak so earned status never resets when streak breaks.
+    {
+      id:       'visit_1',
+      label:    'First Login',
+      desc:     'Open PlanIQ for the very first time.',
+      hint:     'Just open the app to unlock.',
+      icon:     'M15 3H7a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2zM12 17v.01M12 13a1 1 0 100-2 1 1 0 000 2z',
+      color:    '#64748B',
+      earned:   maxVisitStreak >= 1,
+      progress: { current: Math.min(maxVisitStreak, 1), target: 1 },
+    },
+    {
+      id:       'visit_7',
+      label:    'Regular',
+      desc:     'Visit PlanIQ 7 days in a row.',
+      hint:     `${Math.max(0, 7 - visitStreak)} more visit days needed (current streak: ${visitStreak}).`,
+      icon:     'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+      color:    '#0EA5E9',
+      earned:   maxVisitStreak >= 7,
+      progress: { current: Math.min(maxVisitStreak, 7), target: 7 },
+    },
+    {
+      id:       'visit_14',
+      label:    'Habit Builder',
+      desc:     'Check in for 14 days straight — a real habit.',
+      hint:     `${Math.max(0, 14 - visitStreak)} more visit days needed.`,
+      icon:     'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      color:    '#8B5CF6',
+      earned:   maxVisitStreak >= 14,
+      progress: { current: Math.min(maxVisitStreak, 14), target: 14 },
+    },
+    {
+      id:       'visit_30',
+      label:    'Power User',
+      desc:     '30 days of daily check-ins. Truly dedicated.',
+      hint:     `${Math.max(0, 30 - visitStreak)} more visit days needed.`,
+      icon:     'M13 10V3L4 14h7v7l9-11h-7z',
+      color:    '#F59E0B',
+      earned:   maxVisitStreak >= 30,
+      progress: { current: Math.min(maxVisitStreak, 30), target: 30 },
+    },
   ];
 }
 
@@ -139,4 +185,4 @@ export function countEarnedAwards(s: AwardStats): number {
 }
 
 /** Returns total number of awards available */
-export const TOTAL_AWARDS = 9;
+export const TOTAL_AWARDS = 13;

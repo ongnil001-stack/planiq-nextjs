@@ -22,6 +22,7 @@ import {
 import { useChartColors } from '@/lib/useChartColors';
 import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
 import { countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
+import { recordCheckin } from '@/lib/checkin';
 import {
   getTaskTimePct,
   getRemainingMinutes,
@@ -149,6 +150,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   const [rescheduleMinTime, setRescheduleMinTime] = useState<string | undefined>(undefined);
   const hdrRef  = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(80);   // measured header height in px
+  const [visitStreak,    setVisitStreak]    = useState(0);
+  const [maxVisitStreak, setMaxVisitStreak] = useState(0);
 
   // ── Measure real header height so scroll container never exceeds available space ──
   useEffect(() => {
@@ -159,6 +162,23 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     ro.observe(hdrRef.current);
     setHdrH(hdrRef.current.offsetHeight);
     return () => ro.disconnect();
+  }, []);
+
+  // ── Daily check-in — record visit, show streak toast on first open today ──
+  useEffect(() => {
+    const ci = recordCheckin();
+    setVisitStreak(ci.streak);
+    setMaxVisitStreak(ci.maxStreak);
+    if (ci.isNew) {
+      const msg =
+        ci.streak === 1 ? '👋 Welcome back!' :
+        ci.streak === 7 ? '🗓 7-day visit streak! Regular badge unlocked.' :
+        ci.streak === 14 ? '🔥 14 days straight! Habit Builder unlocked.' :
+        ci.streak === 30 ? '⚡ 30-day streak! Power User unlocked.' :
+        `✓ Day ${ci.streak} — keep it up!`;
+      toast.success(msg, { duration: 3500 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshPrefs = useCallback(() => {
@@ -665,7 +685,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)' }}>{streakDays}</div>
             <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Streak</div>
             {(() => {
-              const n = countEarnedAwards({ streakDays, tasksDone, avgScore: null, focusWins });
+              const n = countEarnedAwards({ streakDays, tasksDone, avgScore: null, focusWins, visitStreak, maxVisitStreak });
               return n > 0 ? (
                 <div style={{ fontSize: 9, color: 'var(--amber)', fontWeight: 700, letterSpacing: '.3px', marginTop: -1 }}>
                   {n}/{TOTAL_AWARDS} awards

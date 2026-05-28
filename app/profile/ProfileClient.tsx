@@ -12,6 +12,7 @@ import s from './profile.module.css';
 import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
+import { getCheckinData } from '@/lib/checkin';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
@@ -68,6 +69,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [notifPerm,    setNotifPerm]    = useState<string>('default');
   const hdrRef = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(90);
+  const [visitStreak,    setVisitStreak]    = useState(0);
+  const [maxVisitStreak, setMaxVisitStreak] = useState(0);
 
   // ── Lock body scroll when any modal/sheet is open ──
   useEffect(() => {
@@ -126,6 +129,14 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
     ro.observe(hdrRef.current);
     setHdrH(hdrRef.current.offsetHeight);
     return () => ro.disconnect();
+  }, []);
+
+  // ── Load visit streak from localStorage ──
+  useEffect(() => {
+    const ci = getCheckinData();
+    setVisitStreak(ci.streak);
+    setMaxVisitStreak(ci.maxStreak);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openEdit() {
@@ -307,7 +318,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           </div>
           <div className={s.ps}>
             <div className={s.psV} style={{ color: 'var(--coral)' }}>
-              {countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins })}
+              {countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak })}
               <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--mid)', marginLeft: 1 }}>/{TOTAL_AWARDS}</span>
             </div>
             <div className={s.psL}>Awards</div>
@@ -365,7 +376,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
         {/* Awards & Momentum — computed from real user data */}
         {(() => {
-          const awards = computeAwards({ streakDays, tasksDone, avgScore, focusWins });
+          const awards = computeAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak });
           const earned = awards.filter(a => a.earned);
           const locked = awards.filter(a => !a.earned);
           return (
@@ -390,13 +401,14 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
               {/* Momentum stats strip */}
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+                display: 'grid', gridTemplateColumns: 'repeat(2,1fr)',
                 gap: 8, margin: '0 0 12px',
               }}>
                 {[
                   { label: 'Momentum Streak', value: streakDays === 0 ? '—' : `${streakDays}d`, sub: streakDays === 0 ? 'No streak yet' : streakDays === 1 ? 'Started today!' : 'days in a row', color: 'var(--amber)', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' },
                   { label: 'Focus Wins', value: focusWins === 0 ? '—' : `${focusWins}`, sub: focusWins === 0 ? 'No perfect days yet' : focusWins === 1 ? 'perfect day' : 'perfect days', color: 'var(--mint)', icon: 'M9 11l3 3L22 4M21 12a9 9 0 11-9-9' },
                   { label: 'Tasks Done', value: tasksDone === 0 ? '0' : tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone), sub: tasksDone === 1 ? 'task completed' : 'tasks completed', color: 'var(--purple)', icon: 'M5 13l4 4L19 7' },
+                  { label: 'Visit Streak', value: visitStreak === 0 ? '—' : `${visitStreak}d`, sub: visitStreak === 0 ? 'Open app daily' : visitStreak === 1 ? 'day in a row' : 'days in a row', color: 'var(--sky, #0EA5E9)', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
                 ].map(stat => (
                   <div key={stat.label} style={{
                     background: 'var(--glass-bg2, rgba(255,255,255,.04))',
