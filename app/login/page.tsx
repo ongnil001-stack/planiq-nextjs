@@ -155,10 +155,13 @@ function LoginForm() {
     });
     setForgotLoading(false);
     if (error) {
+      console.error('[ForgotPW] Supabase error:', error.message, error.status);
       toast.error(
-        error.message.includes('rate limit')
+        error.message.includes('rate limit') || error.message.includes('Rate limit')
           ? 'Too many requests. Please wait a minute and try again.'
-          : 'Could not send reset email. Please check the address and try again.'
+          : error.message.includes('not allowed') || error.message.includes('redirect')
+          ? 'Redirect URL not allowed — contact support.'
+          : `Error: ${error.message}`   // Show real error during debug
       );
     } else {
       setSentToEmail(trimmed);
