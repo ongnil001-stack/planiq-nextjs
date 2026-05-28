@@ -42,7 +42,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if ((pathname === '/login' || pathname === '/signup') && user) {
+  // Exception: /reset-password and /auth/callback must stay accessible
+  // for the password-recovery session (which IS authenticated).
+  const isRecoveryRoute = pathname.startsWith('/reset-password') || pathname.startsWith('/auth/callback');
+  if ((pathname === '/login' || pathname === '/signup') && user && !isRecoveryRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

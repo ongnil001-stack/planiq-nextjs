@@ -114,9 +114,12 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
-  const [loading, setLoading]         = useState(false);
-  const [showVerified, setShowVerified] = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [showVerified, setShowVerified]   = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [emailSent, setEmailSent]         = useState(false);
+  const [sentToEmail, setSentToEmail]     = useState('');
+  const [showReset, setShowReset]         = useState(false);
   const beamsRef = useRef<HTMLDivElement>(null);
 
   async function handleLogin(e: React.FormEvent) {
@@ -147,18 +150,25 @@ function LoginForm() {
     }
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      // /auth/callback exchanges the PKCE code then redirects to /reset-password
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
     });
     setForgotLoading(false);
     if (error) {
-      toast.error('Could not send reset email. Please try again.');
+      toast.error(
+        error.message.includes('rate limit')
+          ? 'Too many requests. Please wait a minute and try again.'
+          : 'Could not send reset email. Please check the address and try again.'
+      );
     } else {
-      toast.success('Password reset email sent — check your inbox.');
+      setSentToEmail(trimmed);
+      setEmailSent(true);
     }
   }
 
   useEffect(() => {
     if (searchParams.get('verified') === '1') setShowVerified(true);
+    if (searchParams.get('reset') === '1')    setShowReset(true);
   }, [searchParams]);
 
   useEffect(() => {
@@ -191,8 +201,37 @@ function LoginForm() {
         <div className="sign-tag">Sign in to continue</div>
       </div>
 
+      {/* ── Email sent confirmation ─────────────────────────── */}
+      {emailSent && (
+        <div className="email-sent-overlay">
+          <div className="es-icon">📧</div>
+          <h2 className="es-title">Check your inbox</h2>
+          <p className="es-body">
+            We sent a password reset link to<br />
+            <strong>{sentToEmail}</strong>
+          </p>
+          <p className="es-hint">
+            Tap the link in the email — it will open PlanIQ and take you straight to the reset screen. Check your spam folder if you don't see it within a minute.
+          </p>
+          <button className="es-back" onClick={() => { setEmailSent(false); setEmail(''); }}>
+            ← Back to Sign In
+          </button>
+        </div>
+      )}
+
       {/* Glass bottom-sheet card */}
-      <div className="sign-card">
+      <div className="sign-card" style={emailSent ? {display:'none'} : {}}>
+
+        {/* Password reset success banner */}
+        {showReset && (
+          <div className="verified-banner" style={{ background: 'rgba(139,92,246,.15)', borderColor: 'rgba(139,92,246,.35)' }}>
+            <span className="verified-icon">✓</span>
+            <div>
+              <div className="verified-title">Password updated!</div>
+              <div className="verified-sub">Sign in with your new password below.</div>
+            </div>
+          </div>
+        )}
 
         {/* Email verified banner — shown when redirected from signup confirmation */}
         {showVerified && (
@@ -407,6 +446,45 @@ function LoginForm() {
         .g-btn:active { background: rgba(255,255,255,0.12); }
 
         .footer { text-align: center; font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 18px; }
+
+        /* ── Email sent overlay ── */
+        .email-sent-overlay {
+          position: absolute; bottom: 0; left: 0; right: 0; z-index: 11;
+          background: rgba(13,12,22,0.88);
+          backdrop-filter: blur(32px) saturate(1.6);
+          -webkit-backdrop-filter: blur(32px) saturate(1.6);
+          border-top: 1px solid rgba(255,255,255,0.09);
+          border-radius: 28px 28px 0 0;
+          padding: 8px 24px max(40px,env(safe-area-inset-bottom,40px));
+          box-shadow: 0 -24px 80px rgba(108,92,231,0.12);
+          display: flex; flex-direction: column; align-items: center;
+          text-align: center;
+        }
+        .email-sent-overlay::before {
+          content: ''; display: block; width: 40px; height: 4px;
+          background: rgba(255,255,255,0.14); border-radius: 2px;
+          margin: 10px auto 24px;
+        }
+        .es-icon { font-size: 42px; margin-bottom: 12px; }
+        .es-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; }
+        .es-body {
+          font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.6;
+          margin-bottom: 12px;
+        }
+        .es-body strong { color: #C4B5FD; font-weight: 700; }
+        .es-hint {
+          font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.65;
+          margin-bottom: 28px; max-width: 300px;
+        }
+        .es-back {
+          width: 100%; background: none;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 14px; padding: 14px;
+          font-family: inherit; font-size: 14px; font-weight: 600;
+          color: rgba(255,255,255,0.55); cursor: pointer;
+          transition: background .18s;
+        }
+        .es-back:active { background: rgba(255,255,255,0.07); }
       `}</style>
     </div>
   );
