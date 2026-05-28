@@ -151,7 +151,7 @@ function LoginForm() {
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       // /auth/callback exchanges the PKCE code then redirects to /reset-password
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${window.location.origin}/auth/reset`,
     });
     setForgotLoading(false);
     if (error) {
@@ -170,8 +170,11 @@ function LoginForm() {
   }
 
   useEffect(() => {
-    if (searchParams.get('verified') === '1') setShowVerified(true);
-    if (searchParams.get('reset') === '1')    setShowReset(true);
+    if (searchParams.get('verified') === '1')    setShowVerified(true);
+    if (searchParams.get('reset') === '1')       setShowReset(true);
+    if (searchParams.get('error') === 'reset_link_expired') {
+      toast.error('Reset link has expired. Please request a new one.');
+    }
   }, [searchParams]);
 
   useEffect(() => {
