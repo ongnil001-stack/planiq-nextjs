@@ -223,6 +223,15 @@ function LoginForm() {
             Create free account
           </Link>
         </div>
+        <div style={{ textAlign: 'center', marginTop: 16, display: 'flex', justifyContent: 'center', gap: 16 }}>
+          <Link href="/privacy" style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textDecoration: 'none' }}>
+            Privacy Policy
+          </Link>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>·</span>
+          <a href="mailto:privacy@emlabs.ph" style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textDecoration: 'none' }}>
+            Contact
+          </a>
+        </div>
       </div>
 
       <style jsx>{`

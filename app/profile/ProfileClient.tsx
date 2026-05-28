@@ -963,6 +963,22 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           </button>
 
         </div>{/* end settings card */}
+        {/* Privacy Policy link */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '8px 0 4px' }}>
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>
+            Privacy Policy
+          </a>
+          <span style={{ fontSize: 11, color: 'var(--mid)', opacity: 0.4 }}>·</span>
+          <a
+            href={`mailto:privacy@emlabs.ph`}
+            style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>
+            Contact Us
+          </a>
+        </div>
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>{/* inner */}
       </div>
