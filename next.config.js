@@ -26,10 +26,11 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\/icons\/.*/i,
-      handler: 'CacheFirst',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'planiq-icons',
-        expiration: { maxEntries: 20, maxAgeSeconds: 30 * 24 * 60 * 60 },
+        networkTimeoutSeconds: 5,
+        expiration: { maxEntries: 20, maxAgeSeconds: 24 * 60 * 60 },
       },
     },
     {
