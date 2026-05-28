@@ -15,6 +15,7 @@ import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { getCheckinData } from '@/lib/checkin';
 import { track, resetAnalytics } from '@/lib/analytics';
 import FeedbackSheet from '@/components/FeedbackSheet';
+import DeleteAccountSheet from '@/components/DeleteAccountSheet';
 import {
   isNotificationsEnabled,
   setNotificationsEnabled,
@@ -74,6 +75,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [visitStreak,    setVisitStreak]    = useState(0);
   const [maxVisitStreak, setMaxVisitStreak] = useState(0);
   const [feedbackOpen,   setFeedbackOpen]   = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
   useEffect(() => {
@@ -929,6 +931,37 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
             </svg>
           </button>
 
+          {/* ── ROW 4: Delete Account ── */}
+          <div style={{ height: 1, background: 'rgba(239,68,68,0.12)', margin: '0 16px' }} />
+          <button
+            onClick={() => setDeleteAccountOpen(true)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+              padding: '13px 16px', background: 'transparent', border: 'none',
+              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <polyline points="3 6 5 6 21 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M10 11v6M14 11v6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444' }}>Delete Account</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Permanently remove your account and all data</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: '#EF4444', flexShrink: 0 }}>
+              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
         </div>{/* end settings card */}
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>{/* inner */}
@@ -1158,6 +1191,10 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
         appVersion={appUpdate.currentVersionClean ?? '1.0.0'}
         userId={user?.id}
         onClose={() => setFeedbackOpen(false)}
+      />
+      <DeleteAccountSheet
+        open={deleteAccountOpen}
+        onClose={() => setDeleteAccountOpen(false)}
       />
 
       <BottomNav />
