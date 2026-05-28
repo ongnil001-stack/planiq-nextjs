@@ -13,6 +13,7 @@ import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { getCheckinData } from '@/lib/checkin';
+import { track, resetAnalytics } from '@/lib/analytics';
 import FeedbackSheet from '@/components/FeedbackSheet';
 import {
   isNotificationsEnabled,
@@ -197,7 +198,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut(); router.push('/'); toast.success('Signed out.');
+    await supabase.auth.signOut(); resetAnalytics(); router.push('/'); toast.success('Signed out.');
   }
 
   function maskEmail(email: string): string {

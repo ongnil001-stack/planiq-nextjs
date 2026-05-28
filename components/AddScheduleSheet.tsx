@@ -8,6 +8,7 @@ import { detectLocation, type GeoResult } from '@/lib/geoDetect';
 import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import SmartScheduleAI from '@/components/SmartScheduleAI';
 import { captureAppError } from '@/lib/sentry';
+import { track } from '@/lib/analytics';
 
 // ─── Time helpers ─────────────────────────────────────────────────────────────
 

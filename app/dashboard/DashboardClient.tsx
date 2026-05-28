@@ -24,6 +24,7 @@ import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/not
 import { countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { recordCheckin } from '@/lib/checkin';
 import { captureAppError } from '@/lib/sentry';
+import { track, identifyUser } from '@/lib/analytics';
 import {
   getTaskTimePct,
   getRemainingMinutes,
@@ -170,6 +171,10 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     const ci = recordCheckin();
     setVisitStreak(ci.streak);
     setMaxVisitStreak(ci.maxStreak);
+    // Analytics: identify user + track app open
+    if (profile?.id) identifyUser(profile.id, { streak: streakDays, tasks_done: tasksDone });
+    track('app_opened');
+    if (ci.isNew) track('daily_checkin');
     if (ci.isNew) {
       const msg =
         ci.streak === 1 ? '👋 Welcome back!' :
@@ -323,6 +328,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         const data = await res.json();
         if (typeof data.workload_score === 'number') setLiveScore(data.workload_score);
         if (typeof data.summary === 'string') setLiveSummary(data.summary);
+        track('ai_brief_refreshed', { schedule_count: todaySchedules.length });
         toast.success('AI insights updated!');
       } else {
         toast.error('Could not reach AI. Try again later.');

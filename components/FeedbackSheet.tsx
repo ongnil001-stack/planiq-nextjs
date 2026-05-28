@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { captureAppError } from '@/lib/sentry';
+import { track } from '@/lib/analytics';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FeedbackType = 'bug' | 'feature' | 'general';
@@ -84,6 +85,7 @@ export default function FeedbackSheet({ open, appVersion, userId, onClose }: Pro
         url:         typeof window !== 'undefined' ? window.location.href : null,
       });
       if (dbErr) throw dbErr;
+      track('feedback_submitted', { type });
       setSent(true);
       setTimeout(() => onClose(), 2200);
     } catch (e: unknown) {
