@@ -8,6 +8,34 @@ import { detectLocation, type GeoResult } from '@/lib/geoDetect';
 import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import SmartScheduleAI from '@/components/SmartScheduleAI';
 
+// ─── Time helpers ─────────────────────────────────────────────────────────────
+
+/** Returns current local time as "HH:MM" (floor to current minute) */
+function getNowHHMM(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+/** Returns current time rounded UP to the nearest 15-minute slot */
+function getNextSlotHHMM(): string {
+  const now  = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const ceil = Math.ceil(mins / 15) * 15;
+  const h    = Math.floor(ceil / 60) % 24;
+  const m    = ceil % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+/** True if date d falls on today in local time */
+function isDateToday(d: Date): boolean {
+  const today = new Date();
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth()    === today.getMonth()    &&
+    d.getDate()     === today.getDate()
+  );
+}
+
 // ─── SVG Icon Library ─────────────────────────────────────────────────────────
 
 function Icon({ d, size = 16, stroke = 'currentColor', strokeWidth = 1.6, fill = 'none' }: {
@@ -237,6 +265,8 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
   const [priority,      setPriority]      = useState<Priority>('medium');
   const [startTime,     setStartTime]     = useState('09:00');
   const [endTime,       setEndTime]       = useState('09:30');
+  // effectiveMinTime: computed when sheet opens — HH:MM floor of now when adding for today
+  const [effectiveMinTime, setEffectiveMinTime] = useState<string | undefined>(undefined);
   const [endTouched,    setEndTouched]    = useState(false);
   const [allDay,        setAllDay]        = useState(false);
   const [schedLocation, setSchedLocation] = useState('');
@@ -288,13 +318,16 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         setTitle(editSchedule.title);
         setType(editSchedule.type as ScheduleType);
         setPriority(editSchedule.priority as Priority);
-        // If rescheduling after expiry, clamp start to minTime (current time)
-        const clampedT0 = (minTime && t0 < minTime) ? minTime : t0;
-        const clampedT1 = (minTime && t0 < minTime) ? addMinutes(minTime, 30) : t1;
+        // If rescheduling after expiry, clamp start to effectiveMinTime
+        const editTodayMode = isDateToday(selectedDate);
+        const editEffMin = editTodayMode ? (minTime ?? getNowHHMM()) : minTime;
+        setEffectiveMinTime(editEffMin);
+        const clampedT0 = (editEffMin && t0 < editEffMin) ? editEffMin : t0;
+        const clampedT1 = (editEffMin && t0 < editEffMin) ? addMinutes(editEffMin, 30) : t1;
         setStartTime(clampedT0);
         setEndTime(clampedT1);
         // Keep endTouched=true only when we didn't clamp (user explicitly set it before)
-        setEndTouched(!(minTime && t0 < minTime));
+        setEndTouched(!(editEffMin && t0 < editEffMin));
         setAllDay(editSchedule.all_day ?? false);
         setSchedLocation((editSchedule as Schedule & { location?: string }).location ?? '');
         setNotes((editSchedule as Schedule & { description?: string }).description ?? '');
@@ -303,7 +336,13 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
       } else {
         // Add mode — clear all fields
         setTitle(''); setType('task'); setPriority('medium');
-        const t0 = initialTime ?? '09:00';
+        // Compute effective min time: if adding on today's date, floor to now
+        const todayMode = isDateToday(selectedDate);
+        const effMin = todayMode ? (minTime ?? getNowHHMM()) : minTime;
+        setEffectiveMinTime(effMin);
+        // Default start to next 15-min slot (or initialTime), clamped to effMin
+        const rawT0 = initialTime ?? (todayMode ? getNextSlotHHMM() : '09:00');
+        const t0 = (effMin && rawT0 < effMin) ? effMin : rawT0;
         setStartTime(t0); setEndTime(addMinutes(t0, 30)); setEndTouched(false);
         setAllDay(false); setSchedLocation(''); setNotes('');
         setRecurrence('none'); setCustomDays([]); setRecurrenceEnd('');
@@ -362,6 +401,11 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
 
   async function handleSave() {
     if (!title.trim()) { setSaveError('Please enter a schedule title.'); return; }
+    // Reject saving if the selected time is already in the past (for today's date)
+    if (!allDay && effectiveMinTime && startTime < effectiveMinTime) {
+      setSaveError(`Start time ${startTime} has already passed. Please choose ${effectiveMinTime} or later.`);
+      return;
+    }
     setSaving(true); setSaveError(null);
     try {
       const { data: authData, error: authErr } = await supabase.auth.getUser();
@@ -564,8 +608,8 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
             <div style={fieldWrap}>
               <label style={labelStyle}>Time</label>
 
-              {/* Past-time warning — shown when minTime is set (reschedule mode) */}
-              {minTime && (
+              {/* Past-time warning — shown when scheduling for today (or reschedule) */}
+              {effectiveMinTime && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   background: 'rgba(253,203,110,.09)',
@@ -577,7 +621,7 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
                     <path d="M10 8v4m0 2.5v.01" stroke="#FDCB6E" strokeWidth="1.6" strokeLinecap="round"/>
                   </svg>
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#FDCB6E', lineHeight: 1.4 }}>
-                    Past times disabled — earliest available: <strong>{minTime}</strong>
+                    Past times disabled — earliest available: <strong>{effectiveMinTime}</strong>
                   </span>
                 </div>
               )}
@@ -592,11 +636,11 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
                   <input
                     type="time"
                     value={startTime}
-                    min={minTime}
+                    min={effectiveMinTime}
                     onChange={e => {
                       const val = e.target.value;
-                      if (minTime && val < minTime) {
-                        setStartTime(minTime);
+                      if (effectiveMinTime && val < effectiveMinTime) {
+                        setStartTime(effectiveMinTime);
                       } else {
                         setStartTime(val);
                         setEndTouched(false); // re-enable 30-min auto-end
