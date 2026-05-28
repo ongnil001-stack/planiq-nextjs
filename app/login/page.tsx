@@ -114,8 +114,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
-  const [loading, setLoading]     = useState(false);
+  const [loading, setLoading]         = useState(false);
   const [showVerified, setShowVerified] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const beamsRef = useRef<HTMLDivElement>(null);
 
   async function handleLogin(e: React.FormEvent) {
@@ -135,6 +136,24 @@ function LoginForm() {
       toast.success('Welcome back!');
       router.push('/dashboard');
       router.refresh();
+    }
+  }
+
+  async function handleForgotPassword() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      toast.error('Enter your email address first, then tap Forgot password.');
+      return;
+    }
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast.error('Could not send reset email. Please try again.');
+    } else {
+      toast.success('Password reset email sent — check your inbox.');
     }
   }
 
@@ -197,12 +216,19 @@ function LoginForm() {
             <input className="finp" type="email" placeholder="you@example.com"
               value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
           </div>
-          <div className="fg" style={{ marginBottom: '8px' }}>
+          <div className="fg" style={{ marginBottom: '4px' }}>
             <label className="flbl">Password</label>
             <input className="finp" type="password" placeholder="Your password"
               value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
-          <div className="forgot">Forgot password?</div>
+          <button
+            type="button"
+            className="forgot"
+            onClick={handleForgotPassword}
+            disabled={forgotLoading}
+          >
+            {forgotLoading ? 'Sending…' : 'Forgot password?'}
+          </button>
           <button type="submit" className="spl-btn" disabled={loading}>
             {loading ? <span className="spin">⟳</span> : 'Sign In'}
           </button>
@@ -311,21 +337,22 @@ function LoginForm() {
           -webkit-backdrop-filter: blur(32px) saturate(1.6);
           border-top: 1px solid rgba(255,255,255,0.09);
           border-radius: 28px 28px 0 0;
-          padding: 10px 22px 40px;
+          padding: 8px 24px env(safe-area-inset-bottom, 40px);
+          padding-bottom: max(40px, env(safe-area-inset-bottom, 40px));
           box-shadow: 0 -24px 80px rgba(108,92,231,0.12);
         }
         .sign-card::before {
           content: ''; display: block;
           width: 40px; height: 4px;
           background: rgba(255,255,255,0.14);
-          border-radius: 2px; margin: 10px auto 18px;
+          border-radius: 2px; margin: 10px auto 20px;
         }
-        .sign-card-hd { margin-bottom: 18px; }
-        .sign-card-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; }
-        .sign-card-sub   { font-size: 13px; color: rgba(255,255,255,0.42); }
+        .sign-card-hd { margin-bottom: 20px; }
+        .sign-card-title { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 5px; }
+        .sign-card-sub   { font-size: 13px; color: rgba(255,255,255,0.42); line-height: 1.5; }
 
         /* ── Fields ── */
-        .fg   { margin-bottom: 13px; }
+        .fg   { margin-bottom: 14px; }
         .flbl { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.48); margin-bottom: 6px; display: block; letter-spacing: .3px; }
         .finp {
           width: 100%; padding: 13px 15px;
@@ -337,7 +364,15 @@ function LoginForm() {
         }
         .finp:focus { border-color: rgba(167,139,250,0.6); background: rgba(255,255,255,0.11); }
         .finp::placeholder { color: rgba(255,255,255,0.22); }
-        .forgot { text-align: right; font-size: 12px; color: #C4B5FD; font-weight: 600; cursor: pointer; margin-top: -5px; margin-bottom: 18px; }
+        .forgot {
+          display: block; width: 100%; text-align: right;
+          font-size: 13px; color: #C4B5FD; font-weight: 600;
+          background: none; border: none; font-family: inherit;
+          cursor: pointer; padding: 10px 0; margin-bottom: 14px;
+          min-height: 44px; /* iOS recommended tap target */
+          line-height: 1; letter-spacing: .1px;
+        }
+        .forgot:disabled { opacity: .6; cursor: not-allowed; }
 
         /* ── Sign In button ── */
         .spl-btn {
@@ -355,7 +390,7 @@ function LoginForm() {
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── OR divider ── */
-        .or-row  { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
+        .or-row  { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
         .or-line { flex: 1; height: 1px; background: rgba(255,255,255,0.10); }
         .or-txt  { font-size: 11px; color: rgba(255,255,255,0.28); font-weight: 600; }
 
@@ -371,7 +406,7 @@ function LoginForm() {
         }
         .g-btn:active { background: rgba(255,255,255,0.12); }
 
-        .footer { text-align: center; font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 16px; }
+        .footer { text-align: center; font-size: 13px; color: rgba(255,255,255,0.35); margin-top: 18px; }
       `}</style>
     </div>
   );
