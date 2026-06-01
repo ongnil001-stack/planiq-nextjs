@@ -83,6 +83,17 @@ function fmt12(time24: string) {
   return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
+// Full, unambiguous date+time, e.g. "Monday, May 26, 2026 — 9:00 AM"
+function fmtFull(d: Date): string {
+  const date = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${date} — ${time}`;
+}
+function dateFromParts(dateStr: string, timeHHMM: string): Date | null {
+  try { const d = new Date(`${dateStr}T${(timeHHMM || '00:00')}:00`); return isNaN(d.getTime()) ? null : d; }
+  catch { return null; }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
   const [result,    setResult]    = useState<RescheduleResult | null>(null);
@@ -273,6 +284,16 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
           const conf = CONF[opt.confidence] ?? CONF.medium;
           const isApplying = applying === opt.schedule_id;
           const isEditing  = editMode === opt.schedule_id;
+          // Full date+time strings derived from real data (not the AI's formatting),
+          // so From/To always show the day, date AND time — no cross-day confusion.
+          const origItem = schedules.find(s => s.id === opt.schedule_id);
+          const fromFull = origItem
+            ? fmtFull(new Date(origItem.start_time))
+            : `${opt.current_day}, ${opt.current_date} — ${fmt12(opt.current_time)}`;
+          const toDateObj = dateFromParts(opt.suggested_date, opt.suggested_time);
+          const toFull = toDateObj
+            ? fmtFull(toDateObj)
+            : `${opt.suggested_day}, ${opt.suggested_date} — ${fmt12(opt.suggested_time)}`;
 
           return (
             <div key={opt.schedule_id} style={{
@@ -314,11 +335,9 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                       {/* From */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 10, color: 'var(--lite)', fontWeight: 700, letterSpacing: '.3px', textTransform: 'uppercase' }}>From</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#FF6B8A' }}>
-                          {opt.current_day}
+                        <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 700, color: '#FF6B8A', lineHeight: 1.35 }}>
+                          {fromFull}
                         </p>
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.current_date}</p>
-                        <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(255,107,138,.7)' }}>{fmt12(opt.current_time)}</p>
                       </div>
 
                       {/* Arrow */}
@@ -351,13 +370,9 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                               }} />
                           </div>
                         ) : (
-                          <>
-                            <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#00C896' }}>
-                              {opt.suggested_day}
-                            </p>
-                            <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.suggested_date}</p>
-                            <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(0,200,150,.7)' }}>{fmt12(opt.suggested_time)}</p>
-                          </>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 700, color: '#00C896', lineHeight: 1.35 }}>
+                            {toFull}
+                          </p>
                         )}
                       </div>
                     </div>

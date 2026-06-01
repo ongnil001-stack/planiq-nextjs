@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { fetchExpandedSchedules, setOccurrenceCompletion } from '@/lib/scheduleExpand';
 import type { DisplaySchedule } from '@/lib/recurrence';
 import type { Schedule } from '@/types/database';
 import { formatTime } from '@/lib/utils';
 import SwipeDeleteRow from '@/components/SwipeDeleteRow';
+import AddScheduleSheet from '@/components/AddScheduleSheet';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ViewMode = 'today' | 'week' | 'month';
@@ -162,6 +164,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiBrief,   setAiBrief]   = useState<AiBriefResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState(false);
+  const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
 
   // ── Scroll lock ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -235,10 +238,12 @@ export default function FocusHubSheet({ open, onClose }: Props) {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             mode: viewMode,
             // Pass completed_count separately so the AI can generate win cards
-            // but ONLY send pending schedules for conflict/priority analysis
+            // but ONLY send pending, NON-OVERDUE schedules for conflict/priority analysis.
+            // Overdue items are handled separately in the Overdue section — the AI must
+            // never suggest a future slot for a task whose time has already passed.
             completed_count: scheduleData.filter(s => s.is_completed).length,
             schedules: scheduleData
-              .filter(s => !s.is_completed)   // exclude done items from AI conflict analysis
+              .filter(s => !s.is_completed && !isOverdue(s))   // exclude done AND overdue
               .map(s => {
                 const startD = new Date(s.start_time);
                 const endD   = s.end_time ? new Date(s.end_time) : null;
@@ -266,6 +271,19 @@ export default function FocusHubSheet({ open, onClose }: Props) {
 
       const data = await res.json() as AiBriefResult;
       if (data.headline && Array.isArray(data.items)) {
+        // Surface overdue separately at the top of the brief (the AI only saw
+        // active items, so it can't mention them itself).
+        const overdueCount = scheduleData.filter(s => isOverdue(s)).length;
+        if (overdueCount > 0) {
+          data.items = [
+            {
+              type: 'conflict', accent: '#FF6B8A',
+              title: `${overdueCount} overdue item${overdueCount === 1 ? '' : 's'} need a decision`,
+              body: 'These are past their time — reschedule, mark completed, mark missed, or clear them in the Overdue section below.',
+            },
+            ...data.items,
+          ];
+        }
         setAiBrief(data);
       } else {
         throw new Error('Invalid response shape');
@@ -323,6 +341,26 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     const updated = schedules.filter(s => s.id !== sched.id);
     setSchedules(updated);
     fetchAiBrief(updated, mode);
+  }
+
+  // Mark an overdue item as missed — acknowledges it won't happen and removes it
+  // from the overdue list (same removal as Clear; distinct intent/feedback).
+  async function markMissed(sched: DisplaySchedule) {
+    await deleteSchedule(sched);
+    toast('Marked as missed', { icon: '🚫' });
+  }
+
+  // Reschedule an overdue item: open the editor anchored to TODAY with the start
+  // floored to now, so the user moves it to a live future slot. For a recurring
+  // occurrence, edit the real base row (the series), not the synthetic occurrence id.
+  async function openReschedule(sched: DisplaySchedule) {
+    const baseId = sched._base_id ?? sched.id;
+    if (baseId !== sched.id) {
+      const { data } = await createClient().from('schedules').select('*').eq('id', baseId).single();
+      setRescheduleItem((data as Schedule) ?? sched);
+    } else {
+      setRescheduleItem(sched);
+    }
   }
 
   const now          = new Date(), today = toDateStr(now);
@@ -603,17 +641,27 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                               {s.priority}
                             </span>
                           </div>
-                          {/* Action row */}
+                          {/* Action row — overdue items get practical next steps */}
                           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                            <button onClick={() => openReschedule(s)}
+                              style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(124,106,240,.35)', background:'rgba(124,106,240,.08)', color:'var(--purple,#7C6AF0)', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 108-8M4 4v4h4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              Reschedule
+                            </button>
                             <button onClick={() => markDone(s)} disabled={marking === s.id}
                               style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(0,200,150,.35)', background:'rgba(0,200,150,.08)', color:'#00C896', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              {marking === s.id ? 'Saving…' : 'Mark Done'}
+                              {marking === s.id ? 'Saving…' : 'Completed'}
+                            </button>
+                            <button onClick={() => markMissed(s)}
+                              style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(160,160,180,.30)', background:'rgba(160,160,180,.08)', color:'var(--mid,#8A8AA0)', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><path d="M5.5 5.5l13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                              Missed
                             </button>
                             <button onClick={() => deleteSchedule(s)}
                               style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(255,107,138,.25)', background:'rgba(255,107,138,.07)', color:'#FF6B8A', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
-                              Remove
+                              Clear
                             </button>
                           </div>
                         </div>
@@ -704,6 +752,19 @@ export default function FocusHubSheet({ open, onClose }: Props) {
         </div>
 
       </div>
+
+      {/* Reschedule an overdue item → edit anchored to today, floored to now */}
+      {rescheduleItem && (
+        <AddScheduleSheet
+          open={!!rescheduleItem}
+          selectedDate={new Date()}
+          countryCode=""
+          editSchedule={rescheduleItem}
+          minTime={`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
+          onClose={() => setRescheduleItem(null)}
+          onSaved={() => { setRescheduleItem(null); toast.success('Rescheduled'); load(); }}
+        />
+      )}
     </div>
   );
 }
