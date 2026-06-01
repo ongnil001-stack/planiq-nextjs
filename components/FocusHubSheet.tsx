@@ -44,33 +44,72 @@ function hexToRgb(hex: string) {
   return `${r},${g},${b}`;
 }
 
+// ─── Overdue detection ────────────────────────────────────────────────────────
+function isOverdue(s: Schedule, now: Date = new Date()): boolean {
+  if (s.is_completed) return false;
+  // Use end_time as the deadline when available; otherwise start_time
+  const deadline = s.end_time ? new Date(s.end_time) : new Date(s.start_time);
+  return deadline < now;
+}
+
+function daysOverdue(s: Schedule, now: Date = new Date()): number {
+  const deadline = s.end_time ? new Date(s.end_time) : new Date(s.start_time);
+  return Math.max(0, Math.floor((now.getTime() - deadline.getTime()) / 86_400_000));
+}
+
 // ─── Fallback AI generator (used when Edge Function is unavailable) ───────────
 function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResult {
   const now = new Date(), today = toDateStr(now);
+
+  // Separate overdue items first — these need their own handling
+  const overdue = schedules.filter(s => isOverdue(s, now));
+
   const inRange = mode === 'today'
-    ? schedules.filter(s => toDateStr(new Date(s.start_time)) === today)
-    : schedules.filter(s => { const d = new Date(s.start_time); return d >= startOfWeek(now) && d <= endOfWeek(now); });
+    ? schedules.filter(s => !isOverdue(s, now) && toDateStr(new Date(s.start_time)) === today)
+    : schedules.filter(s => !isOverdue(s, now) && (() => { const d = new Date(s.start_time); return d >= startOfWeek(now) && d <= endOfWeek(now); })());
+
   const pending   = inRange.filter(s => !s.is_completed);
   const completed = inRange.filter(s => s.is_completed);
   const critical  = pending.filter(s => s.priority === 'critical');
   const high      = pending.filter(s => s.priority === 'high');
   const items: AiBriefItem[] = [];
 
+  // ── Overdue card — always shown first if any exist ──
+  if (overdue.length > 0) {
+    const lines = overdue.slice(0, 4).map(s => {
+      const d = daysOverdue(s, now);
+      const due = new Date(s.end_time || s.start_time)
+        .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const dLabel = d === 0 ? 'due today' : d + ' day' + (d === 1 ? '' : 's') + ' overdue';
+      return '\u2022 ' + s.title + ' \u2014 ' + dLabel + ' (was due ' + due + '). \u2192 Reschedule or mark done.';
+    }).join('\n') + (overdue.length > 4 ? '\n+' + (overdue.length - 4) + ' more overdue items.' : '');
+    items.push({
+      type: 'conflict', accent: '#FF6B8A',
+      title: `${overdue.length} overdue activit${overdue.length === 1 ? 'y' : 'ies'} need your attention`,
+      body: lines,
+    });
+  }
+
   const topItems = [...pending].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]).slice(0, 3);
 
   if (topItems.length > 0) {
     items.push({
       type: 'priority', accent: '#7C6AF0',
-      title: mode === 'today' ? `${pending.length} item${pending.length !== 1 ? 's' : ''} need attention today` : `${pending.length} pending this week`,
+      title: mode === 'today'
+        ? `${pending.length} item${pending.length !== 1 ? 's' : ''} on your list today`
+        : `${pending.length} pending this week`,
       body: topItems.map(s => s.title).join(', '),
     });
-  } else {
+  } else if (overdue.length === 0) {
     items.push({
       type: 'win', accent: '#00C896',
       title: mode === 'today' ? 'All clear today' : 'Clean week ahead',
-      body: mode === 'today' ? 'No pending items. Great time to plan ahead or take a breather.' : "No pending items this week. You're on top of things.",
+      body: mode === 'today'
+        ? 'No pending items. Great time to plan ahead or take a breather.'
+        : "No pending items this week. You're on top of things.",
     });
   }
+
   if (critical.length > 0) items.push({
     type: 'conflict', accent: '#FF3B30',
     title: `${critical.length} critical item${critical.length !== 1 ? 's' : ''} need immediate attention`,
@@ -82,17 +121,21 @@ function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResul
     body: high.slice(0, 3).map(s => s.title).join(', ') + (high.length > 3 ? `, +${high.length - 3} more` : ''),
   });
   if (completed.length > 0) {
-    const pct = Math.round(completed.length / (inRange.length || 1) * 100);
+    const pct = Math.round(completed.length / ((inRange.length + completed.length) || 1) * 100);
     items.push({
       type: 'win', accent: '#00C896',
       title: `${completed.length} item${completed.length !== 1 ? 's' : ''} completed — ${pct}% done`,
-      body: mode === 'today' ? `Great progress! ${pending.length} still pending.` : `Strong week! ${completed.length} of ${inRange.length} items wrapped up.`,
+      body: mode === 'today'
+        ? `Great progress! ${pending.length} still pending.`
+        : `Strong week! ${completed.length} of ${inRange.length + completed.length} items wrapped up.`,
     });
   }
 
-  const headline = topItems.length > 0
-    ? (mode === 'today' ? `${pending.length} task${pending.length !== 1 ? 's' : ''} ahead of you today` : `${pending.length} things on your plate this week`)
-    : (mode === 'today' ? 'Clear day — time to get ahead!' : 'Great week so far!');
+  const headline = overdue.length > 0
+    ? `${overdue.length} overdue item${overdue.length === 1 ? '' : 's'} — action needed`
+    : topItems.length > 0
+      ? (mode === 'today' ? `${pending.length} task${pending.length !== 1 ? 's' : ''} ahead of you today` : `${pending.length} things on your plate this week`)
+      : (mode === 'today' ? 'Clear day — time to get ahead!' : 'Great week so far!');
 
   return { headline, items };
 }
@@ -139,9 +182,12 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     const now = new Date();
+    // Fetch this week PLUS overdue items from the past 30 days so the AI
+    // can see what's unfinished — not just what's scheduled for the future.
+    const lookbackDate = new Date(now.getTime() - 30 * 86_400_000);
     const { data } = await supabase.from('schedules').select('*')
       .eq('user_id', user.id)
-      .gte('start_time', startOfWeek(now).toISOString())
+      .gte('start_time', lookbackDate.toISOString())
       .lte('start_time', endOfWeek(now).toISOString())
       .order('start_time', { ascending: true });
     setSchedules(data ?? []);
@@ -263,10 +309,18 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   }
 
   const now          = new Date(), today = toDateStr(now);
-  const todayItems   = schedules.filter(s => toDateStr(new Date(s.start_time)) === today)
+  // Overdue: past their deadline, not completed — always shown separately at top
+  const overdueItems = schedules
+    .filter(s => isOverdue(s, now))
+    .sort((a, b) => new Date(a.end_time || a.start_time).getTime() - new Date(b.end_time || b.start_time).getTime());
+  // Today: scheduled for today, not overdue, not completed
+  const todayItems   = schedules
+    .filter(s => !isOverdue(s, now) && !s.is_completed && toDateStr(new Date(s.start_time)) === today)
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
-  const weekItems    = schedules.filter(s => !s.is_completed)
-    .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
+  // Week: upcoming this week, not overdue, not completed, not already in today
+  const weekItems    = schedules
+    .filter(s => !isOverdue(s, now) && !s.is_completed && (() => { const d = new Date(s.start_time); return d > now && d <= endOfWeek(now); })())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   const displayItems = mode === 'today' ? todayItems : weekItems;
   const dayName      = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateStr      = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
@@ -494,61 +548,96 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 </div>
               ))}
 
-              {/* Schedule items */}
+              {/* ── OVERDUE ITEMS (always shown, all modes) ── */}
+              {overdueItems.length > 0 && (
+                <>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, marginBottom:10 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 9v5m0 2.5v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <p style={{ ...T_SEC, marginBottom:0, color:'#FF6B8A' }}>Overdue · {overdueItems.length}</p>
+                  </div>
+                  {overdueItems.map(s => {
+                    const d = daysOverdue(s, now);
+                    const dueDate = new Date(s.end_time || s.start_time)
+                      .toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+                    return (
+                      <SwipeDeleteRow key={s.id} onDelete={() => deleteSchedule(s.id)} undoLabel={`"${s.title}" deleted`} borderRadius={10}>
+                        <div style={{ ...S_ITEM, background:'rgba(255,107,138,.07)', border:'1px solid rgba(255,107,138,.22)', flexDirection:'column', alignItems:'stretch', gap:8 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <div style={{ width:'3px', height:'36px', borderRadius:'2px', flexShrink:0, background:'#FF6B8A' }} />
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <p style={{ ...S_TITLE(false), color:'var(--dark)' }}>{s.title}</p>
+                              <p style={{ ...S_META, color:'#FF6B8A', fontWeight:700 }}>
+                                {d === 0 ? 'Due today' : `${d} day${d===1?'':'s'} overdue`} · was due {dueDate}
+                              </p>
+                            </div>
+                            <span style={{ fontSize:9, fontWeight:800, color:'#FF6B8A', background:'rgba(255,107,138,.15)', padding:'3px 8px', borderRadius:8, flexShrink:0, textTransform:'uppercase', letterSpacing:'.4px' }}>
+                              {s.priority}
+                            </span>
+                          </div>
+                          {/* Action row */}
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                            <button onClick={() => markDone(s.id)} disabled={marking === s.id}
+                              style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(0,200,150,.35)', background:'rgba(0,200,150,.08)', color:'#00C896', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              {marking === s.id ? 'Saving…' : 'Mark Done'}
+                            </button>
+                            <button onClick={() => deleteSchedule(s.id)}
+                              style={{ padding:'7px 0', borderRadius:10, border:'1px solid rgba(255,107,138,.25)', background:'rgba(255,107,138,.07)', color:'#FF6B8A', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </SwipeDeleteRow>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* ── TODAY'S ITEMS / UPCOMING THIS WEEK ── */}
               {displayItems.length > 0 && (
                 <>
-                  <p style={{ ...T_SEC, marginTop: '8px' }}>
-                    {mode === 'today' ? "Today's Items" : 'Pending This Week'}
+                  <p style={{ ...T_SEC, marginTop: overdueItems.length > 0 ? '16px' : '8px' }}>
+                    {mode === 'today' ? "Today's Schedule" : 'Upcoming This Week'}
                   </p>
                   {displayItems.slice(0, 8).map(s => (
-                    <SwipeDeleteRow
-                      key={s.id}
-                      onDelete={() => deleteSchedule(s.id)}
-                      undoLabel={`"${s.title}" deleted`}
-                      borderRadius={10}
-                    >
+                    <SwipeDeleteRow key={s.id} onDelete={() => deleteSchedule(s.id)} undoLabel={`"${s.title}" deleted`} borderRadius={10}>
                       <div style={S_ITEM}>
-                        <div style={{
-                          width: '3px', height: '36px', borderRadius: '2px', flexShrink: 0,
-                          background: PRIORITY_COLOR[s.priority] ?? 'var(--purple)',
-                        }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ width:'3px', height:'36px', borderRadius:'2px', flexShrink:0, background: PRIORITY_COLOR[s.priority] ?? 'var(--purple)' }} />
+                        <div style={{ flex:1, minWidth:0 }}>
                           <p style={S_TITLE(s.is_completed)}>{s.title}</p>
-                          <p style={S_META}>{formatTime(s.start_time)}<span style={{ marginLeft: '6px', opacity: .7 }}>{s.type}</span></p>
+                          <p style={S_META}>
+                            {mode === 'week' && (
+                              <span style={{ marginRight:6 }}>
+                                {new Date(s.start_time).toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })} ·{' '}
+                              </span>
+                            )}
+                            {formatTime(s.start_time)}
+                            <span style={{ marginLeft:'6px', opacity:.7 }}>{s.type}</span>
+                          </p>
                         </div>
-                        {!s.is_completed ? (
-                          <button onClick={() => markDone(s.id)} disabled={marking === s.id}
-                            style={{
-                              flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
-                              border: '1.5px solid rgba(0,200,150,0.40)',
-                              background: marking === s.id ? 'rgba(0,200,150,0.25)' : 'transparent',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer', WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit',
-                            }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                              <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        ) : (
-                          <div style={{
-                            flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%',
-                            background: 'rgba(0,200,150,0.20)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                              <path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                        )}
+                        <button onClick={() => markDone(s.id)} disabled={marking === s.id}
+                          style={{ flexShrink:0, width:'28px', height:'28px', borderRadius:'50%', border:'1.5px solid rgba(0,200,150,0.40)', background: marking===s.id ? 'rgba(0,200,150,0.25)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', WebkitTapHighlightColor:'transparent', fontFamily:'inherit' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 7" stroke="#00C896" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
                       </div>
                     </SwipeDeleteRow>
                   ))}
                   {displayItems.length > 8 && (
-                    <p style={{ fontSize: '12px', color: 'var(--lite)', textAlign: 'center', marginTop: '4px' }}>
+                    <p style={{ fontSize:'12px', color:'var(--lite)', textAlign:'center', marginTop:'4px' }}>
                       +{displayItems.length - 8} more — view in Schedule
                     </p>
                   )}
                 </>
+              )}
+
+              {overdueItems.length === 0 && displayItems.length === 0 && (
+                <p style={{ textAlign:'center', color:'var(--lite)', fontSize:13, marginTop:24, opacity:.6 }}>
+                  {mode === 'today' ? 'Nothing on your schedule today.' : 'Nothing pending this week.'}
+                </p>
               )}
             </>
           )}

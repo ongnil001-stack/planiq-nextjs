@@ -287,7 +287,8 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                         <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#FF6B8A' }}>
                           {opt.current_day}
                         </p>
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{fmt12(opt.current_time)}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.current_date}</p>
+                        <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(255,107,138,.7)' }}>{fmt12(opt.current_time)}</p>
                       </div>
 
                       {/* Arrow */}
@@ -324,7 +325,8 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                             <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#00C896' }}>
                               {opt.suggested_day}
                             </p>
-                            <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{fmt12(opt.suggested_time)}</p>
+                            <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.suggested_date}</p>
+                            <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(0,200,150,.7)' }}>{fmt12(opt.suggested_time)}</p>
                           </>
                         )}
                       </div>
