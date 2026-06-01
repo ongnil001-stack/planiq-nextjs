@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Schedule } from '@/types/database';
 import { PRIORITY_COLORS } from '@/lib/utils';
 import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/holidays';
@@ -11,6 +11,7 @@ import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 import { createClient } from '@/lib/supabase/client';
 import NotificationPrompt from '@/components/notifications/NotificationPrompt';
 import { checkAndNotify } from '@/lib/notifications';
+import { buildDisplaySchedules, type DisplaySchedule } from '@/lib/recurrence';
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -500,6 +501,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [schedules,  setSchedules]  = useState<Schedule[]>(initialSchedules);
   const [sheetOpen,  setSheetOpen]  = useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DisplaySchedule | null>(null);
   const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
   const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
@@ -531,11 +533,42 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     loadCountry();
   }, [year, month]);
 
-  // Refresh schedules
-  const refreshSchedules = useCallback(async (newId?: string) => {
+  // Helper: fetch this month's schedules + any recurring masters that
+  // started before this month but may have occurrences within it.
+  const fetchMonthSchedules = useCallback(async (y: number, mo: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const monthStart = new Date(y, mo, 1).toISOString();
+    const monthEnd   = new Date(y, mo + 1, 0, 23, 59, 59, 999).toISOString();
 
+    const [{ data: regular }, { data: recurring }] = await Promise.all([
+      // Regular (non-recurring) + same-month recurring base rows
+      supabase.from('schedules').select('*')
+        .eq('user_id', user.id)
+        .gte('start_time', monthStart)
+        .lte('start_time', monthEnd)
+        .order('start_time'),
+
+      // Recurring masters that STARTED before this month but may recur into it
+      supabase.from('schedules').select('*')
+        .eq('user_id', user.id)
+        .not('recurrence_rule', 'is', null)
+        .lt('start_time', monthStart)
+        .or(`recurrence_end.is.null,recurrence_end.gte.${monthStart.slice(0,10)}`)
+        .order('start_time'),
+    ]);
+
+    // Merge — avoid duplicates (base rows already in `regular`)
+    const regularIds = new Set((regular ?? []).map(s => s.id));
+    const merged = [
+      ...(regular ?? []),
+      ...(recurring ?? []).filter(s => !regularIds.has(s.id)),
+    ] as Schedule[];
+    setSchedules(merged);
+  }, []);
+
+  // Refresh schedules (called after save/edit)
+  const refreshSchedules = useCallback(async (newId?: string) => {
     if (newId) {
       const { data: newRow } = await supabase.from('schedules').select('*').eq('id', newId).single();
       if (newRow) {
@@ -548,23 +581,59 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         });
       }
     }
+    await fetchMonthSchedules(year, month);
+  }, [year, month, fetchMonthSchedules]);
 
-    const startOfMonth = new Date(year, month, 1).toISOString();
-    const endOfMonth   = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
-    const { data } = await supabase.from('schedules').select('*')
-      .eq('user_id', user.id)
-      .gte('start_time', startOfMonth)
-      .lte('start_time', endOfMonth)
-      .order('start_time');
-    if (data) setSchedules(data as Schedule[]);
-  }, [year, month]);
+  // Soft-delete helper — shows scope dialog for recurring schedules
+  const deleteSchedule = useCallback((id: string) => {
+    // Find the display schedule being deleted
+    const target = schedules.find(s => s.id === id) as DisplaySchedule | undefined;
+    if (!target) return;
+    if (target.recurrence_rule || target._is_virtual) {
+      // Show scope dialog for recurring schedules / virtual occurrences
+      setDeleteTarget(target);
+    } else {
+      // Non-recurring: delete immediately
+      void (async () => {
+        const supabase = createClient();
+        await supabase.from('schedules').delete().eq('id', id);
+        setSchedules(prev => prev.filter(s => s.id !== id));
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedules]);
 
-  // Delete a schedule and refresh local list
-  const deleteSchedule = useCallback(async (id: string) => {
+  // Handle confirmed delete with scope
+  const confirmDelete = useCallback(async (scope: 'this' | 'future' | 'all') => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    if (!target) return;
     const supabase = createClient();
-    await supabase.from('schedules').delete().eq('id', id);
-    setSchedules(prev => prev.filter(s => s.id !== id));
-  }, []);
+    const baseId = target._base_id ?? target.id;
+    const occDate = target._occurrence_date ?? target.start_time.slice(0, 10);
+
+    if (scope === 'all') {
+      await supabase.from('schedules').delete().eq('id', baseId);
+      setSchedules(prev => prev.filter(s => s.id !== baseId));
+
+    } else if (scope === 'future') {
+      // Set recurrence_end to the day before this occurrence
+      const dayBefore = new Date(occDate + 'T00:00:00Z');
+      dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+      const newEnd = dayBefore.toISOString().slice(0, 10);
+      await supabase.from('schedules').update({ recurrence_end: newEnd }).eq('id', baseId);
+      setSchedules(prev => prev.map(s => s.id === baseId ? { ...s, recurrence_end: newEnd } : s));
+
+    } else {
+      // 'this' — add this date to excluded_dates of the base schedule
+      const { data: base } = await supabase.from('schedules').select('excluded_dates').eq('id', baseId).single();
+      const existing: string[] = base?.excluded_dates ? JSON.parse(base.excluded_dates) : [];
+      if (!existing.includes(occDate)) existing.push(occDate);
+      await supabase.from('schedules').update({ excluded_dates: JSON.stringify(existing) }).eq('id', baseId);
+      setSchedules(prev => prev.map(s => s.id === baseId ? { ...s, excluded_dates: JSON.stringify(existing) } : s));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deleteTarget]);
 
   // Reset monthly tab and fetch schedules when navigating months.
   // This is the fix for future-month activities disappearing: the initial
@@ -579,25 +648,21 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     } else {
       setExpandedDays(new Set());
     }
-    // Fetch schedules for the newly-selected month
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const start = new Date(year, month, 1).toISOString();
-      const end   = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
-      const { data } = await supabase.from('schedules').select('*')
-        .eq('user_id', user.id)
-        .gte('start_time', start)
-        .lte('start_time', end)
-        .order('start_time');
-      if (data) setSchedules(data as Schedule[]);
-    })();
+    // Fetch schedules for the newly-selected month (including recurring masters)
+    fetchMonthSchedules(year, month);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
-  // Build day map
-  const dayMap: Record<number, Schedule[]> = {};
-  schedules.forEach(s => {
+  // Expand recurring schedules into virtual occurrences for this month
+  const displaySchedules = useMemo(() => {
+    const rangeStart = new Date(year, month, 1);
+    const rangeEnd   = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return buildDisplaySchedules(schedules, rangeStart, rangeEnd);
+  }, [schedules, year, month]);
+
+  // Build day map from expanded display schedules
+  const dayMap: Record<number, DisplaySchedule[]> = {};
+  displaySchedules.forEach(s => {
     const d = new Date(s.start_time);
     if (d.getFullYear() === year && d.getMonth() === month) {
       const day = d.getDate();
@@ -1041,7 +1106,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                   {selectedSchedules.map(s => (
                     <SwipeDeleteRow
                       key={s.id}
-                      onDelete={() => deleteSchedule(s.id)}
+                      onDelete={async () => { deleteSchedule(s.id); }}
                       undoLabel={`"${s.title}" deleted`}
                       borderRadius={12}
                     >
@@ -1286,7 +1351,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                           return (
                             <SwipeDeleteRow
                               key={s.id}
-                              onDelete={() => deleteSchedule(s.id)}
+                              onDelete={async () => { deleteSchedule(s.id); }}
                               undoLabel={`"${s.title}" deleted`}
                               borderRadius={10}
                             >
@@ -1534,6 +1599,62 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         onClose={() => { setEditOpen(false); setEditSched(undefined); }}
         onSaved={(id) => { setEditOpen(false); setEditSched(undefined); refreshSchedules(id); }}
       />
+
+      {/* ── Recurring delete scope dialog ────────────────────────────── */}
+      {deleteTarget && (
+        <div
+          onClick={() => setDeleteTarget(null)}
+          style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background:'var(--surf,#131424)', borderRadius:'22px 22px 0 0', border:'1px solid rgba(255,255,255,.09)', borderBottom:'none', boxShadow:'0 -24px 60px rgba(0,0,0,.4)', padding:'0 0 max(20px,env(safe-area-inset-bottom,20px))' }}
+          >
+            <div style={{ width:36, height:4, borderRadius:2, background:'rgba(255,255,255,.14)', margin:'10px auto 18px' }} />
+            <div style={{ padding:'0 20px 18px', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--dark)', marginBottom:4 }}>Delete recurring activity</div>
+              <div style={{ fontSize:12, color:'var(--mid)' }}>
+                &ldquo;{deleteTarget._is_virtual ? deleteTarget.title : deleteTarget.title}&rdquo;
+              </div>
+            </div>
+            <div style={{ padding:'12px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+              {deleteTarget._is_virtual && (
+                <button
+                  type="button"
+                  onClick={() => confirmDelete('this')}
+                  style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,255,255,.10)', background:'rgba(255,255,255,.05)', color:'var(--dark)', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+                >
+                  <div style={{ fontWeight:700 }}>This occurrence only</div>
+                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>Remove only {deleteTarget._occurrence_date}</div>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => confirmDelete('future')}
+                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,107,138,.22)', background:'rgba(255,107,138,.07)', color:'#FF6B8A', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+              >
+                <div style={{ fontWeight:700 }}>This and future occurrences</div>
+                <div style={{ fontSize:11, color:'rgba(255,107,138,.6)', marginTop:2 }}>Stop repeating from this date onwards</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDelete('all')}
+                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,59,48,.25)', background:'rgba(255,59,48,.08)', color:'#FF3B30', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+              >
+                <div style={{ fontWeight:700 }}>All occurrences</div>
+                <div style={{ fontSize:11, color:'rgba(255,59,48,.6)', marginTop:2 }}>Delete the entire recurring series</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                style={{ padding:'12px', borderRadius:14, border:'1px solid rgba(255,255,255,.08)', background:'transparent', color:'var(--mid)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', marginTop:2 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
 

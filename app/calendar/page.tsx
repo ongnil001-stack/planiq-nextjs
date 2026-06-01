@@ -7,9 +7,7 @@ export default async function CalendarPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Pass empty initial schedules — the CalendarClient fetches the correct
-  // month's data client-side on every mount and month navigation.
-  // Previously this pre-loaded only the current month, causing future-month
-  // activities to disappear when the user navigated away and returned.
+  // Pass empty initial schedules — CalendarClient does its own month fetch
+  // plus a separate recurring-schedules fetch on every mount/navigation.
   return <CalendarClient initialSchedules={[]} />;
 }

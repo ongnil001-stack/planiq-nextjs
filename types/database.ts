@@ -56,6 +56,7 @@ export interface Database {
           recurrence_end: string | null;
           timezone: string | null;
           reminder_minutes: number | null;
+          excluded_dates: string | null;
           is_completed: boolean;
           completed_at: string | null;
           days_late: number | null;
