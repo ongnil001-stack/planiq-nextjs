@@ -782,6 +782,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     const start = new Date(selectedDate); start.setDate(selectedDate.getDate() - dow);
     return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
   })();
+  // Expanded occurrences for the visible week (recurring included) — the weekly
+  // view must NOT read raw `schedules`, or recurring items only show on their base week.
+  const weekDisplaySchedules = (() => {
+    const wkStart = new Date(weekDays[0].getFullYear(), weekDays[0].getMonth(), weekDays[0].getDate());
+    const wkEnd   = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59, 999);
+    return buildDisplaySchedules(schedules, wkStart, wkEnd, completions);
+  })();
 
   // Yearly view data
   // Monthly counts for yearly view — expand recurring so each month shows
@@ -1450,7 +1457,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 const isT   = d.toDateString() === today.toDateString();
                 const isSel = d.toDateString() === selectedDate.toDateString();
                 const ds    = toDateStr(d);
-                const cnt   = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length;
+                const cnt   = weekDisplaySchedules.filter(s => toDateStr(new Date(s.start_time)) === ds).length;
                 return (
                   <button key={i}
                     className={`week-day-col${isSel ? ' sel' : ''}${isT ? ' today' : ''}`}
@@ -1477,7 +1484,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               {weekDays.map((d, i) => {
                 const ds   = toDateStr(d);
                 const hol  = holidays.get(ds);
-                const evts = schedules.filter(s => toDateStr(new Date(s.start_time)) === ds);
+                const evts = weekDisplaySchedules.filter(s => toDateStr(new Date(s.start_time)) === ds);
                 const isT  = d.toDateString() === today.toDateString();
                 const isSel = d.toDateString() === selectedDate.toDateString();
                 return (
