@@ -4,6 +4,7 @@ import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchExpandedSchedules } from '@/lib/scheduleExpand';
 import BottomNav from '@/components/layout/BottomNav';
 import SmartReschedulePanel from '@/components/SmartReschedulePanel';
 
@@ -23,6 +24,83 @@ interface BriefItem {
 interface BriefResult {
   headline: string;
   items: BriefItem[];
+}
+
+// ─── Monthly summary (computed client-side) ──────────────────────────────────
+// The edge function only produces today/week briefs, so we build the monthly
+// focus summary deterministically from the (recurrence-expanded) occurrences:
+// totals, busy days, overload risks, high-priority tasks, free days, focus area.
+interface MonthInput { start_time: string; title: string; priority: string; is_completed: boolean; type: string }
+function generateMonthSummary(scheds: MonthInput[], now: Date): BriefResult {
+  const y = now.getFullYear(), m = now.getMonth();
+  const monthStart = new Date(y, m, 1);
+  const monthEnd   = new Date(y, m + 1, 0, 23, 59, 59, 999);
+  const daysInMonth = monthEnd.getDate();
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+  const mon3 = monthName.slice(0, 3);
+
+  const inMonth = scheds.filter(s => { const d = new Date(s.start_time); return d >= monthStart && d <= monthEnd; });
+  const perDay: Record<number, number> = {};
+  for (const s of inMonth) { const d = new Date(s.start_time).getDate(); perDay[d] = (perDay[d] ?? 0) + 1; }
+  const busyDays     = Object.keys(perDay).map(Number).filter(d => perDay[d] >= 4).sort((a, b) => a - b);
+  const overloadDays = Object.keys(perDay).map(Number).filter(d => perDay[d] >= 6).sort((a, b) => a - b);
+  const activeDays   = Object.keys(perDay).length;
+  const todayDate = now.getDate();
+  let freeFuture = 0;
+  for (let d = Math.max(1, todayDate); d <= daysInMonth; d++) if (!perDay[d]) freeFuture++;
+
+  const total     = inMonth.length;
+  const pending   = inMonth.filter(s => !s.is_completed);
+  const completed = inMonth.filter(s => s.is_completed);
+  const high      = pending.filter(s => s.priority === 'high');
+  const typeCounts: Record<string, number> = {};
+  for (const s of pending) typeCounts[s.type] = (typeCounts[s.type] ?? 0) + 1;
+  const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  const fmtDays = (arr: number[]) =>
+    arr.slice(0, 6).map(d => `${mon3} ${d}`).join(', ') + (arr.length > 6 ? ` +${arr.length - 6} more` : '');
+
+  const items: BriefItem[] = [];
+  items.push({
+    type: 'priority', accent: '#7C6AF0',
+    title: `${total} activit${total === 1 ? 'y' : 'ies'} this month`,
+    body: `${pending.length} pending · ${completed.length} done across ${activeDays} active day${activeDays === 1 ? '' : 's'} in ${monthName}.`,
+  });
+  if (overloadDays.length) items.push({
+    type: 'conflict', accent: '#FF6B8A',
+    title: `${overloadDays.length} day${overloadDays.length === 1 ? '' : 's'} at overload risk`,
+    body: `Heavy load on ${fmtDays(overloadDays)}. Consider spreading tasks to lighter days.`,
+  });
+  else if (busyDays.length) items.push({
+    type: 'suggestion', accent: '#00C6FF',
+    title: `${busyDays.length} busy day${busyDays.length === 1 ? '' : 's'} ahead`,
+    body: `Fuller days: ${fmtDays(busyDays)}. Plan buffers around them.`,
+  });
+  if (high.length) items.push({
+    type: 'priority', accent: '#FDCB6E',
+    title: `${high.length} high-priority task${high.length === 1 ? '' : 's'}`,
+    body: high.slice(0, 4).map(s => s.title).join(', ') + (high.length > 4 ? `, +${high.length - 4} more` : ''),
+  });
+  if (freeFuture > 0) items.push({
+    type: 'win', accent: '#00C896',
+    title: `${freeFuture} open day${freeFuture === 1 ? '' : 's'} remaining`,
+    body: 'Free days left this month — good for deep work, catch-up, or rest.',
+  });
+  if (topType && pending.length > 1) items.push({
+    type: 'suggestion', accent: '#7C6AF0',
+    title: `Focus area: ${topType}`,
+    body: `Most pending items are ${topType}s — batch them together for momentum.`,
+  });
+  if (!total) items.push({
+    type: 'win', accent: '#00C896',
+    title: `${monthName} is wide open`,
+    body: 'Nothing scheduled yet — a clean slate to plan around your goals.',
+  });
+
+  const headline = total
+    ? `${total} activit${total === 1 ? 'y' : 'ies'} in ${monthName}${busyDays.length ? ` · ${busyDays.length} busy day${busyDays.length === 1 ? '' : 's'}` : ''}`
+    : `${monthName} is clear — plan ahead!`;
+  return { headline, items };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,7 +212,7 @@ function SkeletonCard() {
 interface ExistingSchedule {
   id: string; title: string; type: string; priority: string;
   start_time: string; end_time: string | null;
-  all_day: boolean; is_completed: boolean;
+  all_day: boolean; is_completed: boolean; timezone: string | null;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -194,6 +272,7 @@ export default function AIAnalysisPage() {
         id: s.id, title: s.title, type: s.type, priority: s.priority,
         start_time: s.start_time, end_time: s.end_time,
         all_day: s.all_day ?? false, is_completed: s.is_completed,
+        timezone: s.timezone ?? null,
       })));
       setInitLoading(false);
     }
@@ -221,11 +300,14 @@ export default function AIAnalysisPage() {
     const mEnd     = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const lookback = new Date(now.getTime() - 30 * 86_400_000); // 30 days back for overdue
 
+    // Base rows (for the reschedule panel, which acts on real DB rows) +
+    // recurrence-expanded occurrences (so the AI briefs reflect recurring activities).
     const { data: scheds } = await supabase.from('schedules').select('*')
       .eq('user_id', user!.id)
       .gte('start_time', lookback.toISOString())
       .lte('start_time', mEnd.toISOString())
       .order('start_time', { ascending: true });
+    const expandedScheds = await fetchExpandedSchedules(supabase, user!.id, lookback, mEnd);
 
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
@@ -235,14 +317,16 @@ export default function AIAnalysisPage() {
       id: s.id, title: s.title, type: s.type, priority: s.priority,
       start_time: s.start_time, end_time: s.end_time,
       all_day: s.all_day ?? false, is_completed: s.is_completed,
+      timezone: s.timezone ?? null,
     }));
     setWeekSchedules(rawSchedules.filter(s => {
       const d = new Date(s.start_time);
       return d >= wStart && d <= wEnd;
     }));
 
-    // Build enriched schedule list with overdue flags for the AI
-    const schedules = rawSchedules.map(s => {
+    // Build enriched schedule list with overdue flags for the AI — uses the
+    // recurrence-expanded occurrences so weekly/monthly briefs count recurring items.
+    const schedules = expandedScheds.map(s => {
       const sd = new Date(s.start_time);
       const ed = s.end_time ? new Date(s.end_time) : null;
       const over = isOverdue(s);
@@ -262,7 +346,7 @@ export default function AIAnalysisPage() {
 
     // Fire all 4 in parallel
     try {
-      const [wRes, todayRes, weekRes, monthRes] = await Promise.allSettled([
+      const [wRes, todayRes, weekRes] = await Promise.allSettled([
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
           body: JSON.stringify({
@@ -280,11 +364,10 @@ export default function AIAnalysisPage() {
           method:'POST', headers,
           body: JSON.stringify({ action:'daily_brief', mode:'week', overdue_count: overdueCount, schedules, timezone: tz }),
         }),
-        fetch(`${BASE}/functions/v1/analyze-schedule`, {
-          method:'POST', headers,
-          body: JSON.stringify({ action:'daily_brief', mode:'month', overdue_count: overdueCount, schedules, timezone: tz }),
-        }),
       ]);
+
+      // Monthly brief is computed client-side (the edge function only does today/week).
+      setMonthBrief(generateMonthSummary(expandedScheds, now));
 
       if (wRes.status === 'fulfilled' && wRes.value.ok) {
         const d = await wRes.value.json();
@@ -297,10 +380,6 @@ export default function AIAnalysisPage() {
       if (weekRes.status === 'fulfilled' && weekRes.value.ok) {
         const d = await weekRes.value.json();
         setWeekBrief(d);
-      }
-      if (monthRes.status === 'fulfilled' && monthRes.value.ok) {
-        const d = await monthRes.value.json();
-        setMonthBrief(d);
       }
       setLastRun(new Date().toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -452,6 +531,7 @@ export default function AIAnalysisPage() {
                         id: s.id, title: s.title, type: s.type, priority: s.priority,
                         start_time: s.start_time, end_time: s.end_time,
                         all_day: s.all_day ?? false, is_completed: s.is_completed,
+                        timezone: s.timezone ?? null,
                       }))));
                   });
                 }}

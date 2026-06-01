@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { fetchExpandedSchedules } from '@/lib/scheduleExpand';
 import DashboardClient from './DashboardClient';
 
-// Cache this page for 30 s — subsequent visits within the window are instant.
-// Next.js revalidates in the background so the data stays fresh.
-export const revalidate = 30;
+// Always render fresh per-user data. This route is already dynamic (reads auth
+// cookies), and a time-based cache let a cross-route mutation (e.g. adding a
+// schedule on /schedule/new) show stale data on the next soft navigation here.
+export const revalidate = 0;
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -27,37 +29,20 @@ export default async function DashboardPage() {
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
 
-  // ── Run ALL queries in parallel — was sequential, saves ~300-500 ms ──
+  // Wide window: 28 days back (for streak) through 60 days ahead (for upcoming).
+  // Recurring schedules are expanded into occurrences and per-occurrence
+  // completion is applied, so every derived list below is recurrence-aware.
+  const rangeEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60, 23, 59, 59, 999);
+  const nowMs = Date.now();
+
   const [
     { data: profile },
-    { data: todaySchedules },
-    { data: weekSchedules },
-    { data: upcomingSchedules },
     { data: latestAnalysis },
-    { data: streakSchedules },
-    { data: overdueSchedules },
-    { count: tasksDone },
+    allExpanded,
+    { count: doneNonRecurring },
+    { count: doneOccurrences },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-
-    supabase.from('schedules').select('*')
-      .eq('user_id', user.id)
-      .gte('start_time', startOfDay)
-      .lte('start_time', endOfDay)
-      .order('start_time'),
-
-    supabase.from('schedules').select('*')
-      .eq('user_id', user.id)
-      .gte('start_time', startOfWeek.toISOString())
-      .lte('start_time', endOfWeek.toISOString())
-      .order('start_time'),
-
-    supabase.from('schedules').select('*')
-      .eq('user_id', user.id)
-      .eq('is_completed', false)
-      .gte('start_time', new Date().toISOString())
-      .order('start_time')
-      .limit(20),
 
     supabase.from('ai_analyses').select('*')
       .eq('user_id', user.id)
@@ -65,59 +50,62 @@ export default async function DashboardPage() {
       .limit(1)
       .single(),
 
-    // 28-day history for streak computation — lightweight (only 2 columns)
-    supabase.from('schedules')
-      .select('start_time, is_completed')
-      .eq('user_id', user.id)
-      .gte('start_time', streakStart.toISOString())
-      .lte('start_time', endOfDay)
-      .order('start_time', { ascending: false }),
+    fetchExpandedSchedules(supabase, user.id, streakStart, rangeEnd),
 
-    // Overdue: past due, not completed, within last 30 days
-    supabase.from('schedules')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_completed', false)
-      .lt('start_time', new Date().toISOString())
-      .gte('start_time', new Date(Date.now() - 30 * 86400000).toISOString())
-      .order('start_time', { ascending: false })
-      .limit(15),
-
-    // Total completed tasks ever — for awards count in quick stats
+    // Total completed ever (for awards): non-recurring completed rows…
     supabase.from('schedules')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('is_completed', true),
+      .eq('is_completed', true)
+      .is('recurrence_rule', null),
+
+    // …plus per-occurrence completions (null count if table not yet migrated)
+    supabase.from('schedule_completions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id),
   ]);
 
-  // Compute streak server-side.
+  const startOfDayD = new Date(startOfDay);
+  const endOfDayD   = new Date(endOfDay);
+  const inWindow = (iso: string, a: Date, b: Date) => {
+    const t = new Date(iso).getTime();
+    return t >= a.getTime() && t <= b.getTime();
+  };
+
+  const todaySchedules    = allExpanded.filter(s => inWindow(s.start_time, startOfDayD, endOfDayD));
+  const weekSchedules     = allExpanded.filter(s => inWindow(s.start_time, startOfWeek, endOfWeek));
+  const upcomingSchedules = allExpanded
+    .filter(s => !s.is_completed && new Date(s.start_time).getTime() >= nowMs)
+    .slice(0, 20);
+  const overdueSchedules  = allExpanded
+    .filter(s => !s.is_completed && new Date(s.start_time).getTime() < nowMs)
+    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+    .slice(0, 15);
+
+  const tasksDone = (doneNonRecurring ?? 0) + (doneOccurrences ?? 0);
+
+  // ── Streak + focus wins from the last 28 days of (expanded) occurrences ──
   // Rule: walk backward from YESTERDAY first, then add today if today already has completions.
-  // This prevents today-in-progress (e.g. morning with no tasks done yet) from zeroing a real streak.
+  const histSchedules = allExpanded.filter(s => inWindow(s.start_time, streakStart, endOfDayD));
   const completedDays = new Set(
-    (streakSchedules ?? [])
-      .filter((s: { is_completed: boolean }) => s.is_completed)
-      .map((s: { start_time: string }) => s.start_time.slice(0, 10))
+    histSchedules.filter(s => s.is_completed).map(s => s.start_time.slice(0, 10))
   );
   let streakDays = 0;
-  // Walk from yesterday backward
   for (let i = 1; i <= 28; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    if (completedDays.has(dateStr)) streakDays++;
+    if (completedDays.has(d.toISOString().slice(0, 10))) streakDays++;
     else break;
   }
-  // Only count today if you've already completed at least one task today
   const todayStr = today.toISOString().slice(0, 10);
   if (completedDays.has(todayStr)) streakDays++;
 
-  // Focus wins: days in last 28 where every planned task was completed
   const fwMap = new Map<string, { total: number; done: number }>();
-  for (const s of streakSchedules ?? []) {
-    const d = (s as { start_time: string; is_completed: boolean }).start_time.slice(0, 10);
+  for (const s of histSchedules) {
+    const d = s.start_time.slice(0, 10);
     const e = fwMap.get(d) ?? { total: 0, done: 0 };
     e.total++;
-    if ((s as { is_completed: boolean }).is_completed) e.done++;
+    if (s.is_completed) e.done++;
     fwMap.set(d, e);
   }
   const focusWins = Array.from(fwMap.values()).filter(e => e.total > 0 && e.done === e.total).length;

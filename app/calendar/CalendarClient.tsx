@@ -11,7 +11,8 @@ import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 import { createClient } from '@/lib/supabase/client';
 import NotificationPrompt from '@/components/notifications/NotificationPrompt';
 import { checkAndNotify } from '@/lib/notifications';
-import { buildDisplaySchedules, type DisplaySchedule } from '@/lib/recurrence';
+import { buildDisplaySchedules, type DisplaySchedule, type CompletionMap } from '@/lib/recurrence';
+import { fetchCompletions } from '@/lib/scheduleExpand';
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -499,6 +500,11 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [holidays,   setHolidays]   = useState<Map<string, Holiday>>(new Map());
   const [countryCode,setCountryCode]= useState('');
   const [schedules,  setSchedules]  = useState<Schedule[]>(initialSchedules);
+  // Per-occurrence completion map for the visible month (recurring schedules).
+  const [completions, setCompletions] = useState<CompletionMap>(new Map());
+  // Mirror of the EXPANDED schedules (recurring occurrences included) so the
+  // long-lived reminder interval reads the latest, occurrence-aware list.
+  const schedulesRef = useRef<DisplaySchedule[]>([]);
   const [sheetOpen,  setSheetOpen]  = useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DisplaySchedule | null>(null);
@@ -565,6 +571,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       ...(recurring ?? []).filter(s => !regularIds.has(s.id)),
     ] as Schedule[];
     setSchedules(merged);
+    // Per-occurrence completions for this month (recurring schedules)
+    setCompletions(await fetchCompletions(supabase, user.id, monthStart, monthEnd));
   }, []);
 
   // Refresh schedules (called after save/edit)
@@ -657,8 +665,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const displaySchedules = useMemo(() => {
     const rangeStart = new Date(year, month, 1);
     const rangeEnd   = new Date(year, month + 1, 0, 23, 59, 59, 999);
-    return buildDisplaySchedules(schedules, rangeStart, rangeEnd);
-  }, [schedules, year, month]);
+    return buildDisplaySchedules(schedules, rangeStart, rangeEnd, completions);
+  }, [schedules, year, month, completions]);
+
+  // Keep the reminder interval's source current, and re-check on every change.
+  // Uses expanded occurrences so recurring reminders fire in the foreground too.
+  useEffect(() => {
+    schedulesRef.current = displaySchedules;
+    checkAndNotify(displaySchedules);
+  }, [displaySchedules]);
 
   // Build day map from expanded display schedules
   const dayMap: Record<number, DisplaySchedule[]> = {};
@@ -700,23 +715,29 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   useEffect(() => {
     // Show the permission prompt once after component mounts (subtle, not on load)
     const t = setTimeout(() => setShowNotifPrompt(true), 3000);
-    // Run immediately then every 60 seconds
-    checkAndNotify(schedules);
-    const interval = setInterval(() => checkAndNotify(schedules), 60_000);
+    // Run immediately then every 60 seconds. Read the LATEST schedules via ref so
+    // the long-lived interval never checks a stale (mount-time) array.
+    checkAndNotify(schedulesRef.current);
+    const interval = setInterval(() => checkAndNotify(schedulesRef.current), 60_000);
     return () => { clearTimeout(t); clearInterval(interval); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Re-run check whenever schedules change (e.g. after month navigation)
-  useEffect(() => { checkAndNotify(schedules); }, [schedules]);
 
   function handleDayClick(d: number) {
     if (d === selectedDay) { setSheetTime(undefined); setSheetOpen(true); }
     else setSelectedDay(d);
   }
 
-  function openEditSheet(s: Schedule) {
-    setEditSched(s);
+  async function openEditSheet(s: Schedule) {
+    // For a recurring occurrence (synthetic id) load the real base row so edits
+    // apply to the series, not a phantom id.
+    const baseId = (s as DisplaySchedule)._base_id ?? s.id;
+    if (baseId !== s.id) {
+      const { data } = await supabase.from('schedules').select('*').eq('id', baseId).single();
+      setEditSched((data as Schedule) ?? s);
+    } else {
+      setEditSched(s);
+    }
     setEditOpen(true);
   }
 

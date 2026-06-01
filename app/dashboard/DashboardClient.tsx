@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
-import { completePayload, lateNote } from '@/lib/timeProgress';
+import { lateNote } from '@/lib/timeProgress';
+import { setOccurrenceCompletion } from '@/lib/scheduleExpand';
 import WorkloadSheet from '@/components/WorkloadSheet';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
 import ProgressDetailsSheet from '@/components/ProgressDetailsSheet';
@@ -21,7 +22,7 @@ import {
   ALL_SHORTCUTS,
 } from '@/lib/dashboardPrefs';
 import { useChartColors } from '@/lib/useChartColors';
-import { isNotificationsEnabled, scheduleAllTodayNotifications } from '@/lib/notifications';
+import { isNotificationsEnabled, scheduleAllTodayNotifications, cancelAllNotifications } from '@/lib/notifications';
 import { countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import { recordCheckin } from '@/lib/checkin';
 import { captureAppError } from '@/lib/sentry';
@@ -210,16 +211,24 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   async function toggleComplete(schedule: Schedule) {
     setCompletingId(schedule.id);
-    const payload = schedule.is_completed
-      ? { is_completed: false, completed_at: null, days_late: null }
-      : completePayload(schedule.start_time);
-    const { error } = await supabase
-      .from('schedules')
-      .update(payload)
-      .eq('id', schedule.id);
+    const { error } = await setOccurrenceCompletion(
+      supabase, schedule, profile?.id ?? '', !schedule.is_completed,
+    );
     if (error) toast.error('Could not update task');
     else router.refresh();
     setCompletingId(null);
+  }
+
+  // Open the edit sheet. For a recurring occurrence (synthetic id) we load the
+  // real base row so edits apply to the actual series, not a phantom id.
+  async function requestEdit(schedule: Schedule) {
+    const baseId = (schedule as { _base_id?: string })._base_id ?? schedule.id;
+    if (baseId !== schedule.id) {
+      const { data } = await supabase.from('schedules').select('*').eq('id', baseId).single();
+      setEditSchedule((data as Schedule) ?? schedule);
+    } else {
+      setEditSchedule(schedule);
+    }
   }
 
   // ── Real-time ticker (every 10s) — drives focus bar + end-of-task prompt ────
@@ -246,6 +255,9 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!isNotificationsEnabled()) return;
+    // Purge stale timers first so a rescheduled/completed task can't fire at its
+    // old time, then re-arm from the current start_times.
+    cancelAllNotifications();
     scheduleAllTodayNotifications(
       todaySchedules.filter(s => !s.is_completed)
     );
@@ -265,9 +277,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       }
     }
     const sched2 = todaySchedules.find(s => s.id === id);
-    await supabase.from('schedules')
-      .update(completePayload(sched2?.start_time ?? new Date().toISOString()))
-      .eq('id', id);
+    if (sched2) await setOccurrenceCompletion(supabase, sched2, profile?.id ?? '', true);
     setCompletingId(null);
     setSessionOpen(false);
     setPromptOpen(false);
@@ -350,9 +360,9 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
-  // Compute fallback score from real data — 0 for new users with no schedules
-  // Workload is derived purely from today's schedules — not weekly, not AI score
-  const workloadScore = computeTodayWorkload(todaySchedules);
+  // Prefer the AI-computed workload score: live (just-refreshed) → last persisted
+  // analysis → locally-derived fallback from today's schedules (0 for new users).
+  const workloadScore = liveScore ?? latestAnalysis?.workload_score ?? computeTodayWorkload(todaySchedules);
 
   const workloadStatus =
     workloadScore >= 85 ? { badgeClass: 'attention', color: ch.full }
@@ -500,7 +510,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                         background: taskIsOverdue
                           ? 'linear-gradient(90deg,#FF6B8A,#FF3B30)'
                           : taskTimePctRaw !== null && taskTimePctRaw > 0
-                            ? 'linear-gradient(90deg,#7C6AF0,#00C6FF)'
+                            ? `linear-gradient(90deg,${ch.c1},${ch.c2})`
                             : 'var(--gradient)',
                         // On first render: no transition so bar jumps instantly to correct position.
                         // After mount: 10s linear transition = bar animates at exactly real-time speed
@@ -509,7 +519,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                           ? 'none'
                           : 'width 10s linear, background .4s ease',
                         boxShadow: taskTimePctRaw !== null && !taskIsOverdue && taskTimePctRaw > 0
-                          ? '0 0 8px rgba(0,198,255,.35)' : 'none',
+                          ? `0 0 8px ${ch.c1}59` : 'none',
                       }} />
                     </div>
                     <span style={{
@@ -650,7 +660,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
                 {/* Body — tapping opens edit sheet */}
                 <button
-                  onClick={() => setEditSchedule(s)}
+                  onClick={() => requestEdit(s)}
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', gap: 10,
                     padding: '12px 14px 12px 4px', background: 'transparent',
@@ -676,8 +686,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                   </div>
                   <div style={{
                     fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
-                    background: (s.priority === 'critical' || s.priority === 'high') ? ch.full + '28' : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
-                    color: (s.priority === 'critical' || s.priority === 'high') ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
+                    background: s.priority === 'high' ? ch.full + '28' : s.priority === 'medium' ? ch.warn + '28' : ch.ok + '28',
+                    color: s.priority === 'high' ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
                   }}>
                     {s.priority.toUpperCase()}
                   </div>
@@ -741,7 +751,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                   </button>
                   {/* Body */}
                   <button
-                    onClick={() => setEditSchedule(s)}
+                    onClick={() => requestEdit(s)}
                     style={{
                       flex: 1, display: 'flex', alignItems: 'center', gap: 10,
                       padding: '11px 14px 11px 4px', background: 'transparent',
@@ -868,7 +878,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               {!compact && (
                 <div style={{ width: 54, height: 54, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg style={{ position: 'absolute', top: 0, left: 0 }} viewBox="0 0 54 54" width="54" height="54">
-                    <circle cx="27" cy="27" r="22.5" fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="4"/>
+                    <circle cx="27" cy="27" r="22.5" fill="none" stroke="var(--border2)" strokeWidth="4"/>
                     <circle
                       cx="27" cy="27" r="22.5" fill="none"
                       stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
@@ -1177,7 +1187,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                   </div>
                   <div style={{
                     fontSize: 9, fontWeight: 700, flexShrink: 0, letterSpacing: '.3px',
-                    color: s.priority === 'critical' || s.priority === 'high' ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
+                    color: s.priority === 'high' ? ch.full : s.priority === 'medium' ? ch.warn : ch.ok,
                   }}>
                     {s.priority.toUpperCase()}
                   </div>
@@ -1222,8 +1232,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         {/* Greeting text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0, lineHeight: 1.2 }}>{GREETING()}, {firstName}</h2>
-          {(profile?.designation || profile?.role_title) && (
-            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 2, fontWeight: 500, margin: '2px 0 0', lineHeight: 1 }}>{profile?.designation || profile?.role_title}</p>
+          {profile?.designation && (
+            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 2, fontWeight: 500, margin: '2px 0 0', lineHeight: 1 }}>{profile.designation}</p>
           )}
         </div>
         {/* Avatar — 42px, centred next to text */}

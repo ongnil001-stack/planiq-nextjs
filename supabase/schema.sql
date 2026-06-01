@@ -10,12 +10,14 @@ CREATE TYPE priority_level AS ENUM ('high', 'medium', 'low');
 -- ── PROFILES ───────────────────────────────────────────────
 -- Auto-created when a user signs up via trigger below
 CREATE TABLE public.profiles (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email       TEXT NOT NULL,
-  full_name   TEXT,
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
+  id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email        TEXT NOT NULL,
+  full_name    TEXT,
+  avatar_url   TEXT,
+  designation  TEXT,
+  country_code TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at   TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- ── SCHEDULES ──────────────────────────────────────────────
@@ -30,6 +32,7 @@ CREATE TABLE public.schedules (
   end_time      TIMESTAMPTZ,
   all_day       BOOLEAN DEFAULT FALSE NOT NULL,
   color         TEXT,
+  location      TEXT,
   is_completed  BOOLEAN DEFAULT FALSE NOT NULL,
   created_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL
@@ -38,6 +41,21 @@ CREATE TABLE public.schedules (
 -- Index for fast per-user date-range queries
 CREATE INDEX idx_schedules_user_start ON public.schedules (user_id, start_time);
 CREATE INDEX idx_schedules_user_completed ON public.schedules (user_id, is_completed);
+
+-- ── SCHEDULE COMPLETIONS (per-occurrence completion for recurring) ──
+-- Recurring schedules are one row; each occurrence's completion is tracked here.
+-- Non-recurring schedules use schedules.is_completed instead.
+CREATE TABLE public.schedule_completions (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id     UUID        NOT NULL REFERENCES public.schedules(id) ON DELETE CASCADE,
+  user_id         UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  occurrence_date DATE        NOT NULL,
+  completed_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  days_late       INTEGER,
+  UNIQUE (schedule_id, occurrence_date)
+);
+CREATE INDEX idx_sched_compl_user  ON public.schedule_completions (user_id);
+CREATE INDEX idx_sched_compl_sched ON public.schedule_completions (schedule_id, occurrence_date);
 
 -- ── AI ANALYSES ─────────────────────────────────────────────
 CREATE TABLE public.ai_analyses (
@@ -62,6 +80,7 @@ CREATE INDEX idx_ai_analyses_user_date ON public.ai_analyses (user_id, analysis_
 ALTER TABLE public.profiles    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schedules   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_analyses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.schedule_completions ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 CREATE POLICY "Users can view own profile"
@@ -96,6 +115,12 @@ CREATE POLICY "Users can view own analyses"
 
 CREATE POLICY "Users can insert own analyses"
   ON public.ai_analyses FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Schedule completions (per-occurrence)
+CREATE POLICY "Users manage own schedule completions"
+  ON public.schedule_completions FOR ALL
+  USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- ═══════════════════════════════════════════════════════════

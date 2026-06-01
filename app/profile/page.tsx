@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ProfileClient from './ProfileClient';
 
-// Cache profile for 60 s — profile data changes rarely
-export const revalidate = 60;
+// Always render fresh per-user data so profile edits (name, designation, photo,
+// country) are reflected immediately on the next navigation, not up to 60s later.
+export const revalidate = 0;
 
 export default async function ProfilePage() {
   const supabase = createClient();

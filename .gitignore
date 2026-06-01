@@ -38,3 +38,8 @@ public/sw.js
 public/workbox-*.js
 public/sw.js.map
 public/workbox-*.js.map
+public/worker-*.js
+public/fallback-*.js
+
+# Supabase CLI scratch
+supabase/.temp/

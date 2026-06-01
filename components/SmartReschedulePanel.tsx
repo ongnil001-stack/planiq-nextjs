@@ -3,6 +3,36 @@
 import { useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+// Convert a wall-clock date+time in an IANA timezone to a true UTC instant.
+// Mirrors AddScheduleSheet.buildISO so reschedules persist the same instants saves do.
+function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
+  try {
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [h, mi]    = timeHHMM.split(':').map(Number);
+    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    for (let i = 0; i < 2; i++) {
+      const parts: Record<string, string> = {};
+      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
+      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
+      const diffMs = (
+        (Number(parts.year) - y) * 365 * 86400000 +
+        (Number(parts.month) - mo) * 30 * 86400000 +
+        (Number(parts.day) - d) * 86400000 +
+        (localH - h) * 3600000 +
+        (Number(parts.minute) - mi) * 60000
+      );
+      candidate -= diffMs;
+    }
+    return new Date(candidate).toISOString();
+  } catch {
+    return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Optimization {
   schedule_id: string;
@@ -32,6 +62,7 @@ interface ExistingSchedule {
   end_time: string | null;
   all_day: boolean;
   is_completed: boolean;
+  timezone: string | null;
 }
 
 interface Props {
@@ -121,16 +152,15 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
     const useDate = overrideDate || opt.suggested_date;
     const useTime = overrideTime || opt.suggested_time;
 
-    // Find the original item to preserve duration
+    // Find the original item to preserve duration and honor its stored timezone
     const orig = schedules.find(s => s.id === opt.schedule_id);
+    const tz = orig?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const newStartISO = buildISO(useDate, useTime, tz);
     let endISO: string | null = null;
     if (orig?.end_time && orig?.start_time) {
       const dur = new Date(orig.end_time).getTime() - new Date(orig.start_time).getTime();
-      const newStart = new Date(`${useDate}T${useTime}:00`);
-      endISO = new Date(newStart.getTime() + dur).toISOString();
+      endISO = new Date(new Date(newStartISO).getTime() + dur).toISOString();
     }
-
-    const newStartISO = new Date(`${useDate}T${useTime}:00`).toISOString();
 
     const { error: dbErr } = await supabase.from('schedules')
       .update({ start_time: newStartISO, ...(endISO ? { end_time: endISO } : {}) })
