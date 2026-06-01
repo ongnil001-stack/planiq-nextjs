@@ -33,10 +33,23 @@ b. **Add env vars in Vercel → Project → Settings → Environment Variables**
    - `CRON_SECRET` = any random string (Vercel also injects this for cron auth)
    - `SUPABASE_SERVICE_ROLE_KEY` = from Supabase → Settings → API (server-only)
 
-c. **Enable the per-minute cron.** `vercel.json` registers `/api/notifications/cron`
-   at `* * * * *`. **Per-minute crons require a Vercel Pro plan.** On Hobby, either
-   upgrade, or switch to Supabase `pg_cron` (see the commented block in
-   `supabase/migrations/20240601_notifications.sql`).
+c. **Enable a per-minute cron to call `/api/notifications/cron`.**
+   The Vercel cron was removed from `vercel.json` because **per-minute crons
+   require a Vercel Pro plan** (this account is Hobby — the cron blocked all deploys).
+
+   **Hobby (recommended): use Supabase `pg_cron` (free, per-minute).** In Supabase:
+   - Database → Extensions → enable `pg_cron` and `pg_net`.
+   - SQL Editor → run (replace the URL with your deployed domain and CRON_SECRET):
+     ```sql
+     select cron.schedule('planiq-reminders', '* * * * *', $$
+       select net.http_get(
+         url := 'https://YOUR-DOMAIN.vercel.app/api/notifications/cron',
+         headers := '{"Authorization":"Bearer YOUR_CRON_SECRET"}'::jsonb
+       );
+     $$);
+     ```
+   **Pro:** instead re-add to `vercel.json`:
+   `"crons": [{ "path": "/api/notifications/cron", "schedule": "* * * * *" }]`.
 
 d. Redeploy. Then in the app, open the notification prompt and tap **Enable** to
    register the device's push subscription.

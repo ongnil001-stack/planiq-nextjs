@@ -1,8 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/notifications/cron",
-      "schedule": "* * * * *"
-    }
-  ]
+  "$comment": "Per-minute cron requires Vercel Pro. On Hobby, use Supabase pg_cron (free) to hit /api/notifications/cron every minute — see SETUP_AFTER_DEPLOY.md. To restore the Vercel cron on Pro, add: \"crons\": [{ \"path\": \"/api/notifications/cron\", \"schedule\": \"* * * * *\" }]"
 }
