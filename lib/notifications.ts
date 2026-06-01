@@ -115,6 +115,9 @@ const _timers: ReturnType<typeof setTimeout>[] = [];
 export function cancelAllNotifications(): void {
   _timers.forEach(t => clearTimeout(t));
   _timers.length = 0;
+  // Clear the dedupe set too so reminders can be re-armed from fresh start_times
+  // after a reschedule/edit (the dedupe key is id+mins and ignores start_time).
+  _scheduled.clear();
 }
 
 // ── Schedule notifications for today's items ──────────────────────────────

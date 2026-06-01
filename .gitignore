@@ -38,3 +38,11 @@ public/sw.js
 public/workbox-*.js
 public/sw.js.map
 public/workbox-*.js.map
+public/worker-*.js
+public/fallback-*.js
+
+# Supabase CLI scratch
+supabase/.temp/
+
+# Claude Code local (machine-specific) settings — may contain tokens
+.claude/settings.local.json

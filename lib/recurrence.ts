@@ -24,6 +24,16 @@ export interface DisplaySchedule extends Omit<Schedule, 'id'> {
   _base_id?: string;          // id of the parent recurring schedule (virtual only)
 }
 
+// ── Per-occurrence completion ─────────────────────────────────────────────────
+/** Details of a single completed occurrence (from the schedule_completions table). */
+export interface CompletionInfo { completed_at: string | null; days_late: number | null }
+/** Map key: `${schedule_id}|${YYYY-MM-DD}` → completion info (present iff completed). */
+export type CompletionMap = Map<string, CompletionInfo>;
+
+export function completionKey(scheduleId: string, occurrenceDate: string): string {
+  return `${scheduleId}|${occurrenceDate}`;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const DAY_MS = 86_400_000;
 
@@ -62,6 +72,7 @@ export function expandRecurring(
   base: Schedule,
   rangeStart: Date,
   rangeEnd: Date,
+  completions?: CompletionMap,
 ): DisplaySchedule[] {
   const rule = base.recurrence_rule;
   if (!rule) return [];
@@ -168,10 +179,16 @@ export function expandRecurring(
       ? new Date(d.getTime() + duration).toISOString()
       : null;
 
+    const comp = completions?.get(completionKey(base.id, dateStr));
+
     results.push({
       ...base,
       start_time:       d.toISOString(),
       end_time:         occEnd,
+      // Per-occurrence completion (not the base row's is_completed)
+      is_completed:     !!comp,
+      completed_at:     comp?.completed_at ?? null,
+      days_late:        comp?.days_late ?? null,
       _is_virtual:      true,
       _occurrence_date: dateStr,
       _base_id:         base.id,
@@ -195,13 +212,31 @@ export function buildDisplaySchedules(
   schedules: Schedule[],
   rangeStart: Date,
   rangeEnd: Date,
+  completions?: CompletionMap,
 ): DisplaySchedule[] {
-  const base = schedules.map(s => ({ ...s } as DisplaySchedule));
+  // Base rows. For a recurring schedule, its own row is the FIRST occurrence —
+  // tag it with _base_id/_occurrence_date and source its completion from the
+  // per-occurrence map (not the base row's is_completed column).
+  const base = schedules.map(s => {
+    if (s.recurrence_rule) {
+      const dateStr = s.start_time.slice(0, 10);
+      const comp = completions?.get(completionKey(s.id, dateStr));
+      return {
+        ...s,
+        is_completed:     !!comp,
+        completed_at:     comp?.completed_at ?? null,
+        days_late:        comp?.days_late ?? null,
+        _base_id:         s.id,
+        _occurrence_date: dateStr,
+      } as DisplaySchedule;
+    }
+    return { ...s } as DisplaySchedule;
+  });
   const virtual: DisplaySchedule[] = [];
 
   for (const s of schedules) {
     if (s.recurrence_rule) {
-      virtual.push(...expandRecurring(s, rangeStart, rangeEnd));
+      virtual.push(...expandRecurring(s, rangeStart, rangeEnd, completions));
     }
   }
 

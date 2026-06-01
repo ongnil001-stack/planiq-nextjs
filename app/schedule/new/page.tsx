@@ -67,7 +67,6 @@ const PRIORITIES: { value: Priority; label: string; iconKey: IconKey; color: str
   { value: 'low',      label: 'Low',      iconKey: 'flagLow',      color: 'var(--mint,  #2DD4BF)', bg: 'rgba(45,212,191,.13)'  },
   { value: 'medium',   label: 'Medium',   iconKey: 'flagMedium',   color: 'var(--amber, #FDCB6E)', bg: 'rgba(253,203,110,.13)' },
   { value: 'high',     label: 'High',     iconKey: 'flagHigh',     color: 'var(--coral, #FF6B8A)', bg: 'rgba(255,107,138,.13)' },
-  { value: 'critical', label: 'Critical', iconKey: 'flagCritical', color: 'var(--red,   #FF3B30)', bg: 'rgba(255,59,48,.13)'   },
 ];
 
 const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string; iconKey: IconKey }[] = [

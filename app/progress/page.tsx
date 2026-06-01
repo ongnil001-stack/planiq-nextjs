@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { lateNote } from '@/lib/timeProgress';
 import { createClient } from '@/lib/supabase/client';
+import { fetchExpandedSchedules, setOccurrenceCompletion } from '@/lib/scheduleExpand';
+import type { DisplaySchedule } from '@/lib/recurrence';
 import BottomNav from '@/components/layout/BottomNav';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -31,11 +33,12 @@ export default function ProgressPage() {
   const [streak,        setStreak]        = useState(0);
   const [totalDone,     setTotalDone]     = useState(0);
   const [totalPlanned,  setTotalPlanned]  = useState(0);
-  const [completedList, setCompletedList] = useState<Schedule[]>([]);
-  const [overdueList,   setOverdueList]   = useState<Schedule[]>([]);
-  const [pendingList,   setPendingList]   = useState<Schedule[]>([]);
+  const [completedList, setCompletedList] = useState<DisplaySchedule[]>([]);
+  const [overdueList,   setOverdueList]   = useState<DisplaySchedule[]>([]);
+  const [pendingList,   setPendingList]   = useState<DisplaySchedule[]>([]);
+  const [userId,        setUserId]        = useState('');
   const [tab,           setTab]           = useState<'week'|'month'|'activity'>('week');
-  const [modal,         setModal]         = useState<'done'|'pending'|'overdue'|null>(null);
+  const [modal,         setModal]         = useState<'done'|'pending'|'overdue'|'summary'|null>(null);
 
   const hdrRef = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(84);
@@ -62,18 +65,15 @@ export default function ProgressPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
 
+      setUserId(user.id);
       const now   = new Date();
       const today = startOfDay(now);
       const from  = addDays(today, -27);
+      // Window: 28 days back through 60 days ahead, recurring expanded with
+      // per-occurrence completion so Progress reflects recurring activities too.
+      const rangeEnd = addDays(today, 60); rangeEnd.setHours(23, 59, 59, 999);
 
-      const { data: rows } = await supabase
-        .from('schedules')
-        .select('id, title, start_time, end_time, priority, is_completed, days_late, completed_at')
-        .eq('user_id', user.id)
-        .gte('start_time', from.toISOString())
-        .order('start_time', { ascending: true });
-
-      const schedules: Schedule[] = rows ?? [];
+      const schedules = await fetchExpandedSchedules(supabase, user.id, from, rangeEnd);
 
       // ── Day buckets (28 days) ──
       const map: Record<string, DayBucket> = {};
@@ -177,10 +177,15 @@ export default function ProgressPage() {
   const cardHdr: React.CSSProperties = { padding:'13px 16px 10px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:7 };
   const sectionTitle: React.CSSProperties = { fontSize:13, fontWeight:800, color:'var(--dark)' };
 
-  async function deleteCompleted(id: string) {
-    const supabase = createClient();
-    await supabase.from('schedules').delete().eq('id', id);
-    setCompletedList(prev => prev.filter(s => s.id !== id));
+  async function deleteCompleted(s: DisplaySchedule) {
+    const db = createClient();
+    if (s.recurrence_rule || s._is_virtual) {
+      // Recurring occurrence — just un-mark this occurrence (don't delete the series)
+      await setOccurrenceCompletion(db, s, userId, false);
+    } else {
+      await db.from('schedules').delete().eq('id', s.id);
+    }
+    setCompletedList(prev => prev.filter(x => x.id !== s.id));
   }
 
   return (
@@ -194,15 +199,15 @@ export default function ProgressPage() {
         </div>
         {/* Streak + score pills */}
         <div style={{ display:'flex', flexDirection:'column', gap:5, alignItems:'flex-end' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:'var(--pur-lt,rgba(124,106,240,.12))', border:'1px solid var(--border2,rgba(124,106,240,.22))' }}>
+          <button type="button" onClick={() => setModal('summary')} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:'var(--pur-lt,rgba(124,106,240,.12))', border:'1px solid var(--border2,rgba(124,106,240,.22))', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2 7 7 7 12a5 5 0 0010 0c0-3-2-6-2-6s-1 2-2 2c-1 0-1-1-1-2z" stroke="var(--purple)" strokeWidth="1.8" strokeLinejoin="round"/></svg>
             <span style={{ fontSize:12, fontWeight:800, color:'var(--purple)' }}>{streak}</span>
             <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>streak</span>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, background:`rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.12)`, border:`1px solid rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.25)` }}>
+          </button>
+          <button type="button" onClick={() => setModal('summary')} style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:10, cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation', background:`rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.12)`, border:`1px solid rgba(${prodScore>=80?'45,212,191':prodScore>=60?'0,198,255':prodScore>=40?'253,203,110':'255,107,138'},.25)` }}>
             <span style={{ fontSize:12, fontWeight:800, color:scoreColor(prodScore) }}>{prodScore}</span>
             <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>score</span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -233,11 +238,14 @@ export default function ProgressPage() {
             <div style={{ fontSize:18, fontWeight:900, color:overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)', letterSpacing:'-.4px' }}>{overdueList.length}</div>
             <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Overdue</div>
           </button>
-          {/* Rate — display only */}
-          <div style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
+          {/* Rate — clickable → productivity summary */}
+          <button
+            type="button"
+            onClick={() => setModal('summary')}
+            style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation', display:'block', width:'100%' }}>
             <div style={{ fontSize:18, fontWeight:900, color:scoreColor(overallRate), letterSpacing:'-.4px' }}>{overallRate}%</div>
             <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Rate</div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -245,8 +253,8 @@ export default function ProgressPage() {
       <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'12px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
       <div style={{ paddingBottom:'16px' }}>
 
-        {/* ── Productivity score bar ── */}
-        <div style={{ ...card, padding:'14px 16px' }}>
+        {/* ── Productivity score bar — tap for details ── */}
+        <div onClick={() => setModal('summary')} style={{ ...card, padding:'14px 16px', cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
             <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)' }}>Productivity Score</div>
             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -454,7 +462,7 @@ export default function ProgressPage() {
               : completedList.slice(0,8).map((s, i) => (
                 <SwipeDeleteRow
                   key={s.id}
-                  onDelete={() => deleteCompleted(s.id)}
+                  onDelete={() => deleteCompleted(s)}
                   undoLabel={`"${s.title}" deleted`}
                   borderRadius={0}
                 >
@@ -516,8 +524,9 @@ export default function ProgressPage() {
                 {modal === 'done'    && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--mint,#2DD4BF)" strokeWidth="1.5"/><polyline points="6.5,10 9,12.5 13.5,7.5" stroke="var(--mint,#2DD4BF)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 {modal === 'pending' && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/><path d="M10 7v3.5l2 2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 {modal === 'overdue' && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3L2 17h16L10 3z" stroke="#FF6B8A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 8.5v4m0 2v.5" stroke="#FF6B8A" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                {modal === 'summary' && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M3 17V9m5 8V4m4 13v-6m4 6V7" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round"/></svg>}
                 <span style={{ fontSize:15, fontWeight:800, color:'var(--dark)', letterSpacing:'-.2px' }}>
-                  {modal === 'done' ? `Completed (${completedList.length})` : modal === 'pending' ? `Pending (${pendingList.length})` : `Overdue (${overdueList.length})`}
+                  {modal === 'done' ? `Completed (${completedList.length})` : modal === 'pending' ? `Pending (${pendingList.length})` : modal === 'overdue' ? `Overdue (${overdueList.length})` : 'Productivity Summary'}
                 </span>
               </div>
               <button onClick={() => setModal(null)} style={{ width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.10)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
@@ -608,6 +617,41 @@ export default function ProgressPage() {
                       </div>
                     );
                   })
+              )}
+
+              {/* ── SUMMARY ── */}
+              {modal === 'summary' && (
+                <div style={{ padding:'16px 20px max(20px,env(safe-area-inset-bottom,20px))' }}>
+                  {/* Score ring + label */}
+                  <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:18 }}>
+                    <div style={{ position:'relative', width:64, height:64, flexShrink:0 }}>
+                      <svg width="64" height="64" viewBox="0 0 64 64">
+                        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--border2)" strokeWidth="5"/>
+                        <circle cx="32" cy="32" r="27" fill="none" stroke={scoreColor(prodScore)} strokeWidth="5"
+                          strokeDasharray={`${Math.round(prodScore * 1.696)} 169.6`} strokeLinecap="round" transform="rotate(-90 32 32)"/>
+                      </svg>
+                      <span style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:900, color:scoreColor(prodScore) }}>{prodScore}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:800, color:scoreColor(prodScore) }}>{scoreLabel(prodScore)}</div>
+                      <div style={{ fontSize:12, color:'var(--mid)', marginTop:2, lineHeight:1.5 }}>Productivity score blends your weekly completion rate (60%) with your streak (40%).</div>
+                    </div>
+                  </div>
+                  {/* Metric rows */}
+                  {[
+                    ['This week completion', `${thisWeekRate}%`, `${thisWeekDone}/${thisWeekPlanned} tasks done`],
+                    ['28-day completion', `${overallRate}%`, `${totalDone}/${totalPlanned} tasks done`],
+                    ['Current streak', `${streak} ${streak === 1 ? 'day' : 'days'}`, 'Consecutive days with a completed task'],
+                  ].map(([label, value, sub]) => (
+                    <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'12px 0', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>{label}</div>
+                        <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>{sub}</div>
+                      </div>
+                      <div style={{ fontSize:18, fontWeight:900, color:'var(--purple)', flexShrink:0 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
               )}
 
             </div>

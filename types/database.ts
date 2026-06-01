@@ -15,7 +15,6 @@ export interface Database {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
-          role_title: string | null;
           designation: string | null;
           country_code: string | null;
           created_at: string;
@@ -46,7 +45,7 @@ export interface Database {
           title: string;
           description: string | null;
           type: 'task' | 'event' | 'reminder' | 'block';
-          priority: 'high' | 'medium' | 'low' | 'critical';
+          priority: 'high' | 'medium' | 'low';
           start_time: string;
           end_time: string | null;
           all_day: boolean;
@@ -69,7 +68,7 @@ export interface Database {
           title: string;
           description?: string | null;
           type?: 'task' | 'event' | 'reminder' | 'block';
-          priority?: 'high' | 'medium' | 'low' | 'critical';
+          priority?: 'high' | 'medium' | 'low';
           start_time: string;
           end_time?: string | null;
           all_day?: boolean;
@@ -89,7 +88,7 @@ export interface Database {
           title?: string;
           description?: string | null;
           type?: 'task' | 'event' | 'reminder' | 'block';
-          priority?: 'high' | 'medium' | 'low' | 'critical';
+          priority?: 'high' | 'medium' | 'low';
           start_time?: string;
           end_time?: string | null;
           all_day?: boolean;
@@ -127,12 +126,34 @@ export interface Database {
         };
         Update: never;
       };
+      schedule_completions: {
+        Row: {
+          id: string;
+          schedule_id: string;
+          user_id: string;
+          occurrence_date: string;
+          completed_at: string;
+          days_late: number | null;
+        };
+        Insert: {
+          id?: string;
+          schedule_id: string;
+          user_id: string;
+          occurrence_date: string;
+          completed_at?: string;
+          days_late?: number | null;
+        };
+        Update: {
+          completed_at?: string;
+          days_late?: number | null;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
       schedule_type: 'task' | 'event' | 'reminder' | 'block';
-      priority_level: 'high' | 'medium' | 'low' | 'critical';
+      priority_level: 'high' | 'medium' | 'low';
     };
   };
 }
@@ -149,8 +170,9 @@ export type PushSubscription = {
 };
 
 export type Schedule = Database['public']['Tables']['schedules']['Row'];
+export type ScheduleCompletion = Database['public']['Tables']['schedule_completions']['Row'];
 export type AiAnalysis = Database['public']['Tables']['ai_analyses']['Row'];
 export type NewSchedule = Database['public']['Tables']['schedules']['Insert'];
 export type ScheduleType = 'task' | 'event' | 'reminder' | 'block';
-export type Priority = 'high' | 'medium' | 'low' | 'critical';
+export type Priority = 'high' | 'medium' | 'low';
 export type RecurrenceRule = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';

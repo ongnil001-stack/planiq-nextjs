@@ -172,7 +172,6 @@ const PRIORITIES: { value: Priority; label: string; iconKey: keyof typeof ICONS;
   { value: 'low',      label: 'Low',      iconKey: 'flagLow',      color: 'var(--mint,  #2DD4BF)', bg: 'rgba(45,212,191,.13)'  },
   { value: 'medium',   label: 'Medium',   iconKey: 'flagMedium',   color: 'var(--amber, #FDCB6E)', bg: 'rgba(253,203,110,.13)' },
   { value: 'high',     label: 'High',     iconKey: 'flagHigh',     color: 'var(--coral, #FF6B8A)', bg: 'rgba(255,107,138,.13)' },
-  { value: 'critical', label: 'Critical', iconKey: 'flagCritical', color: 'var(--red,   #FF3B30)', bg: 'rgba(255,59,48,.13)'   },
 ];
 
 // ── RRULE → RecurrenceRule shorthand ─────────────────────────────────────────
@@ -390,6 +389,31 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
       setHoliday(findHoliday(toDateStr(selectedDate), hols));
     });
   }, [open, selectedDate, countryCode]);
+
+  // Load the user's other schedules on the selected day so SmartScheduleAI can
+  // detect real conflicts. Without this, daySchedules stays [] and the AI panel
+  // never finds overlaps.
+  useEffect(() => {
+    if (!open) { setDaySchedules([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      if (!user) return;
+      const dayStr   = toDateStr(selectedDate);
+      const startISO = `${dayStr}T00:00:00.000Z`;
+      const endISO   = `${dayStr}T23:59:59.999Z`;
+      let q = supabase.from('schedules').select('*')
+        .eq('user_id', user.id)
+        .gte('start_time', startISO)
+        .lte('start_time', endISO);
+      if (editSchedule) q = q.neq('id', editSchedule.id); // don't conflict-check against self
+      const { data, error } = await q;
+      if (cancelled || error || !data) return;
+      setDaySchedules(data as Schedule[]);
+    })();
+    return () => { cancelled = true; };
+  }, [open, selectedDate, editSchedule, supabase]);
 
   const detectGps = useCallback(() => {
     setGpsDetecting(true);
@@ -891,18 +915,13 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
               start_time: (() => {
                 try {
                   const tz = activeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-                  const dateStr2 = selectedDate.toISOString().slice(0,10);
-                  const [h, m] = startTime.split(':').map(Number);
-                  const d = new Date(`${dateStr2}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
-                  void tz; return d.toISOString();
+                  return buildISO(dateStr, startTime, tz);
                 } catch { return ''; }
               })(),
               end_time: endTime ? (() => {
                 try {
-                  const dateStr2 = selectedDate.toISOString().slice(0,10);
-                  const [h, m] = endTime.split(':').map(Number);
-                  const d = new Date(`${dateStr2}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
-                  return d.toISOString();
+                  const tz = activeTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                  return buildISO(dateStr, endTime, tz);
                 } catch { return null; }
               })() : null,
             } : null}

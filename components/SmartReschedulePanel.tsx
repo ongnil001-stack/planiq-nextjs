@@ -3,6 +3,36 @@
 import { useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+// Convert a wall-clock date+time in an IANA timezone to a true UTC instant.
+// Mirrors AddScheduleSheet.buildISO so reschedules persist the same instants saves do.
+function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
+  try {
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [h, mi]    = timeHHMM.split(':').map(Number);
+    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    for (let i = 0; i < 2; i++) {
+      const parts: Record<string, string> = {};
+      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
+      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
+      const diffMs = (
+        (Number(parts.year) - y) * 365 * 86400000 +
+        (Number(parts.month) - mo) * 30 * 86400000 +
+        (Number(parts.day) - d) * 86400000 +
+        (localH - h) * 3600000 +
+        (Number(parts.minute) - mi) * 60000
+      );
+      candidate -= diffMs;
+    }
+    return new Date(candidate).toISOString();
+  } catch {
+    return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Optimization {
   schedule_id: string;
@@ -32,6 +62,7 @@ interface ExistingSchedule {
   end_time: string | null;
   all_day: boolean;
   is_completed: boolean;
+  timezone: string | null;
 }
 
 interface Props {
@@ -50,6 +81,17 @@ function fmt12(time24: string) {
   const [h, m] = time24.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// Full, unambiguous date+time, e.g. "Monday, May 26, 2026 — 9:00 AM"
+function fmtFull(d: Date): string {
+  const date = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${date} — ${time}`;
+}
+function dateFromParts(dateStr: string, timeHHMM: string): Date | null {
+  try { const d = new Date(`${dateStr}T${(timeHHMM || '00:00')}:00`); return isNaN(d.getTime()) ? null : d; }
+  catch { return null; }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -121,16 +163,15 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
     const useDate = overrideDate || opt.suggested_date;
     const useTime = overrideTime || opt.suggested_time;
 
-    // Find the original item to preserve duration
+    // Find the original item to preserve duration and honor its stored timezone
     const orig = schedules.find(s => s.id === opt.schedule_id);
+    const tz = orig?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const newStartISO = buildISO(useDate, useTime, tz);
     let endISO: string | null = null;
     if (orig?.end_time && orig?.start_time) {
       const dur = new Date(orig.end_time).getTime() - new Date(orig.start_time).getTime();
-      const newStart = new Date(`${useDate}T${useTime}:00`);
-      endISO = new Date(newStart.getTime() + dur).toISOString();
+      endISO = new Date(new Date(newStartISO).getTime() + dur).toISOString();
     }
-
-    const newStartISO = new Date(`${useDate}T${useTime}:00`).toISOString();
 
     const { error: dbErr } = await supabase.from('schedules')
       .update({ start_time: newStartISO, ...(endISO ? { end_time: endISO } : {}) })
@@ -243,6 +284,16 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
           const conf = CONF[opt.confidence] ?? CONF.medium;
           const isApplying = applying === opt.schedule_id;
           const isEditing  = editMode === opt.schedule_id;
+          // Full date+time strings derived from real data (not the AI's formatting),
+          // so From/To always show the day, date AND time — no cross-day confusion.
+          const origItem = schedules.find(s => s.id === opt.schedule_id);
+          const fromFull = origItem
+            ? fmtFull(new Date(origItem.start_time))
+            : `${opt.current_day}, ${opt.current_date} — ${fmt12(opt.current_time)}`;
+          const toDateObj = dateFromParts(opt.suggested_date, opt.suggested_time);
+          const toFull = toDateObj
+            ? fmtFull(toDateObj)
+            : `${opt.suggested_day}, ${opt.suggested_date} — ${fmt12(opt.suggested_time)}`;
 
           return (
             <div key={opt.schedule_id} style={{
@@ -284,11 +335,9 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                       {/* From */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 10, color: 'var(--lite)', fontWeight: 700, letterSpacing: '.3px', textTransform: 'uppercase' }}>From</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#FF6B8A' }}>
-                          {opt.current_day}
+                        <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 700, color: '#FF6B8A', lineHeight: 1.35 }}>
+                          {fromFull}
                         </p>
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.current_date}</p>
-                        <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(255,107,138,.7)' }}>{fmt12(opt.current_time)}</p>
                       </div>
 
                       {/* Arrow */}
@@ -321,13 +370,9 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
                               }} />
                           </div>
                         ) : (
-                          <>
-                            <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#00C896' }}>
-                              {opt.suggested_day}
-                            </p>
-                            <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)' }}>{opt.suggested_date}</p>
-                            <p style={{ margin: '1px 0 0', fontSize: 11, color: 'rgba(0,200,150,.7)' }}>{fmt12(opt.suggested_time)}</p>
-                          </>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 700, color: '#00C896', lineHeight: 1.35 }}>
+                            {toFull}
+                          </p>
                         )}
                       </div>
                     </div>

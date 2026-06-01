@@ -114,7 +114,7 @@ export default function WorkloadSheet({
   const totalTasks    = weekDays.reduce((s, d) => s + (scheduleDayMap[d.toDateString()]?.length || 0), 0);
   const overloadCount = weekWorkload.filter(l => l >= 90).length;
   const heavyCount    = weekWorkload.filter(l => l >= 70 && l < 90).length;
-  const balancedCount = weekWorkload.filter(l => l >= 40 && l < 90).length;
+  const balancedCount = weekWorkload.filter(l => l >= 40 && l < 70).length;
   const conflictCount = weekDays.filter(d => hasConflict(scheduleDayMap[d.toDateString()] || [])).length;
 
   // Filter days based on active chip
@@ -125,7 +125,7 @@ export default function WorkloadSheet({
     switch (activeFilter) {
       case 'overloaded': return load >= 90;
       case 'heavy':      return load >= 70 && load < 90;
-      case 'balanced':   return load >= 40 && load < 90;
+      case 'balanced':   return load >= 40 && load < 70;
       case 'light':      return load < 40;
       case 'conflict':   return conflict;
       default:           return true;
