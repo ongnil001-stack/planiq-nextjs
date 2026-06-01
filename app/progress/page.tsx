@@ -16,7 +16,7 @@ const DAY3  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 interface Schedule {
   id: string; title: string; start_time: string; end_time: string;
-  priority: string; is_completed: boolean; days_late?: number | null;
+  priority: string; is_completed: boolean; days_late?: number | null; completed_at?: string | null;
 }
 interface DayBucket { date: string; planned: number; done: number; }
 interface WeekSummary { label: string; planned: number; done: number; rate: number; }
@@ -35,6 +35,7 @@ export default function ProgressPage() {
   const [overdueList,   setOverdueList]   = useState<Schedule[]>([]);
   const [pendingList,   setPendingList]   = useState<Schedule[]>([]);
   const [tab,           setTab]           = useState<'week'|'month'|'activity'>('week');
+  const [modal,         setModal]         = useState<'done'|'pending'|'overdue'|null>(null);
 
   const hdrRef = useRef<HTMLDivElement>(null);
   const [hdrH, setHdrH] = useState(84);
@@ -58,7 +59,7 @@ export default function ProgressPage() {
 
       const { data: rows } = await supabase
         .from('schedules')
-        .select('id, title, start_time, end_time, priority, is_completed')
+        .select('id, title, start_time, end_time, priority, is_completed, days_late, completed_at')
         .eq('user_id', user.id)
         .gte('start_time', from.toISOString())
         .order('start_time', { ascending: true });
@@ -202,17 +203,26 @@ export default function ProgressPage() {
 
         {/* ── Stat pills row ── */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
-          {[
-            { label:'Done',    value:String(totalDone),         color:'var(--mint,#2DD4BF)' },
-            { label:'Pending', value:String(pendingList.length), color:'var(--cyan,#00C6FF)' },
-            { label:'Overdue', value:String(overdueList.length), color: overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)' },
-            { label:'Rate',    value:`${overallRate}%`,          color:scoreColor(overallRate) },
-          ].map(st => (
-            <div key={st.label} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
-              <div style={{ fontSize:17, fontWeight:900, color:st.color, letterSpacing:'-.4px' }}>{st.value}</div>
-              <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>{st.label}</div>
-            </div>
-          ))}
+          {/* Done — clickable */}
+          <button onClick={() => setModal('done')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+            <div style={{ fontSize:17, fontWeight:900, color:'var(--mint,#2DD4BF)', letterSpacing:'-.4px' }}>{totalDone}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Done</div>
+          </button>
+          {/* Pending — clickable */}
+          <button onClick={() => setModal('pending')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+            <div style={{ fontSize:17, fontWeight:900, color:'var(--cyan,#00C6FF)', letterSpacing:'-.4px' }}>{pendingList.length}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Pending</div>
+          </button>
+          {/* Overdue — clickable */}
+          <button onClick={() => setModal('overdue')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border: overdueList.length > 0 ? '1px solid rgba(255,107,138,.35)' : '1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+            <div style={{ fontSize:17, fontWeight:900, color:overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)', letterSpacing:'-.4px' }}>{overdueList.length}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Overdue</div>
+          </button>
+          {/* Rate — not clickable */}
+          <div style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
+            <div style={{ fontSize:17, fontWeight:900, color:scoreColor(overallRate), letterSpacing:'-.4px' }}>{overallRate}%</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Rate</div>
+          </div>
         </div>
 
         {/* ── Productivity score bar ── */}
@@ -466,6 +476,124 @@ export default function ProgressPage() {
 
       </div>{/* inner */}
       </div>{/* scroll */}
+
+      {/* ══ Activity Detail Modal ══════════════════════════════════════════ */}
+      {modal && (
+        <div
+          onClick={() => setModal(null)}
+          style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background:'var(--surf,#131424)', borderRadius:'22px 22px 0 0', border:'1px solid rgba(255,255,255,.09)', borderBottom:'none', maxHeight:'80dvh', display:'flex', flexDirection:'column', boxShadow:'0 -24px 60px rgba(0,0,0,.4)' }}
+          >
+            {/* Handle */}
+            <div style={{ width:36, height:4, borderRadius:2, background:'rgba(255,255,255,.14)', margin:'10px auto 0', flexShrink:0 }} />
+
+            {/* Modal header */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px 12px', borderBottom:'1px solid rgba(255,255,255,.07)', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                {modal === 'done'    && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--mint,#2DD4BF)" strokeWidth="1.5"/><polyline points="6.5,10 9,12.5 13.5,7.5" stroke="var(--mint,#2DD4BF)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                {modal === 'pending' && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/><path d="M10 7v3.5l2 2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                {modal === 'overdue' && <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3L2 17h16L10 3z" stroke="#FF6B8A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 8.5v4m0 2v.5" stroke="#FF6B8A" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                <span style={{ fontSize:15, fontWeight:800, color:'var(--dark)', letterSpacing:'-.2px' }}>
+                  {modal === 'done' ? `Completed (${completedList.length})` : modal === 'pending' ? `Pending (${pendingList.length})` : `Overdue (${overdueList.length})`}
+                </span>
+              </div>
+              <button onClick={() => setModal(null)} style={{ width:30, height:30, borderRadius:'50%', background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.10)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+
+            {/* Modal body — scrollable */}
+            <div style={{ overflowY:'auto', overscrollBehavior:'contain', flex:1, padding:'8px 0 max(20px,env(safe-area-inset-bottom,20px))' }}>
+
+              {/* ── DONE list ── */}
+              {modal === 'done' && (
+                completedList.length === 0
+                  ? <div style={{ padding:'32px 20px', textAlign:'center', fontSize:13, color:'var(--mid)', opacity:.6 }}>No completed activities in the last 28 days.</div>
+                  : completedList.map((s, i) => {
+                    const onTime = !s.days_late || s.days_late === 0;
+                    const completedDate = s.completed_at
+                      ? new Date(s.completed_at).toLocaleDateString('en-US',{ month:'short', day:'numeric', year:'numeric' })
+                      : formatDate(s.start_time);
+                    return (
+                      <div key={s.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'13px 20px', borderBottom: i < completedList.length-1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                        <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(45,212,191,.12)', border:'1px solid rgba(45,212,191,.30)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
+                          <svg width="9" height="7" viewBox="0 0 13 10" fill="none"><polyline points="1,5 5,9 12,1" stroke="var(--mint,#2DD4BF)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)', textDecoration:'line-through', opacity:.7, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
+                          <div style={{ fontSize:11, color:'var(--mid)', marginTop:3 }}>Completed {completedDate}</div>
+                          {onTime
+                            ? <div style={{ fontSize:10, color:'var(--mint,#2DD4BF)', fontWeight:700, marginTop:2 }}>✓ On time</div>
+                            : <div style={{ fontSize:10, color:'#FF6B8A', fontWeight:700, marginTop:2 }}>Completed {s.days_late} {s.days_late === 1 ? 'day' : 'days'} late</div>
+                          }
+                        </div>
+                        <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.4px', marginTop:3 }}>{s.priority}</span>
+                      </div>
+                    );
+                  })
+              )}
+
+              {/* ── PENDING list ── */}
+              {modal === 'pending' && (
+                pendingList.length === 0
+                  ? <div style={{ padding:'32px 20px', textAlign:'center', fontSize:13, color:'var(--mid)', opacity:.6 }}>No pending activities.</div>
+                  : pendingList.map((s, i) => {
+                    const startMs   = new Date(s.start_time).getTime();
+                    const diffMs    = startMs - Date.now();
+                    const diffMins  = Math.round(diffMs / 60_000);
+                    let timeLabel = '';
+                    if      (diffMins < 0)     timeLabel = 'Starts soon';
+                    else if (diffMins < 60)    timeLabel = `In ${diffMins} min`;
+                    else if (diffMins < 1440)  timeLabel = `In ${Math.round(diffMins/60)} hr`;
+                    else                       timeLabel = `In ${Math.round(diffMins/1440)} days`;
+                    return (
+                      <div key={s.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'13px 20px', borderBottom: i < pendingList.length-1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                        <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(0,198,255,.08)', border:'1.5px solid rgba(0,198,255,.3)', flexShrink:0, marginTop:1 }} />
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
+                          <div style={{ fontSize:11, color:'var(--mid)', marginTop:3 }}>
+                            {new Date(s.start_time).toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
+                            {' · '}{formatTime(s.start_time)}
+                          </div>
+                          <div style={{ fontSize:10, color:'var(--cyan,#00C6FF)', fontWeight:700, marginTop:2 }}>{timeLabel}</div>
+                        </div>
+                        <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.4px', marginTop:3 }}>{s.priority}</span>
+                      </div>
+                    );
+                  })
+              )}
+
+              {/* ── OVERDUE list ── */}
+              {modal === 'overdue' && (
+                overdueList.length === 0
+                  ? <div style={{ padding:'32px 20px', textAlign:'center', fontSize:13, color:'var(--mid)', opacity:.6 }}>No overdue activities. Great work!</div>
+                  : overdueList.map((s, i) => {
+                    const daysOver = Math.floor((Date.now() - new Date(s.end_time || s.start_time).getTime()) / 86_400_000);
+                    return (
+                      <div key={s.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'13px 20px', borderBottom: i < overdueList.length-1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}>
+                        <div style={{ width:22, height:22, borderRadius:'50%', background:'rgba(255,107,138,.10)', border:'1.5px solid rgba(255,107,138,.35)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1, fontSize:11, color:'#FF6B8A', fontWeight:800 }}>!</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
+                          <div style={{ fontSize:11, color:'var(--mid)', marginTop:3 }}>
+                            Due {new Date(s.end_time || s.start_time).toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
+                          </div>
+                          <div style={{ fontSize:10, color:'#FF6B8A', fontWeight:700, marginTop:2 }}>
+                            {daysOver <= 0 ? 'Due today' : daysOver === 1 ? '1 day overdue' : `${daysOver} days overdue`}
+                          </div>
+                        </div>
+                        <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.4px', marginTop:3 }}>{s.priority}</span>
+                      </div>
+                    );
+                  })
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
