@@ -175,6 +175,28 @@ const PRIORITIES: { value: Priority; label: string; iconKey: keyof typeof ICONS;
   { value: 'critical', label: 'Critical', iconKey: 'flagCritical', color: 'var(--red,   #FF3B30)', bg: 'rgba(255,59,48,.13)'   },
 ];
 
+// ── RRULE → RecurrenceRule shorthand ─────────────────────────────────────────
+// The DB stores full RRULE strings ('FREQ=DAILY', 'FREQ=WEEKLY;BYDAY=MO,WE').
+// The UI state uses shorthand: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | 'none'.
+function rruleToShorthand(rrule: string | null | undefined): RecurrenceRule {
+  if (!rrule) return 'none';
+  if (rrule.includes('FREQ=DAILY'))   return 'daily';
+  if (rrule.includes('FREQ=WEEKLY') && rrule.includes('BYDAY=')) return 'custom';
+  if (rrule.includes('FREQ=WEEKLY'))  return 'weekly';
+  if (rrule.includes('FREQ=MONTHLY')) return 'monthly';
+  if (rrule.includes('FREQ=YEARLY'))  return 'yearly';
+  return 'none';
+}
+
+// Extract selected weekday numbers from 'FREQ=WEEKLY;BYDAY=MO,WE,FR' → [1,3,5]
+function rruleToCustomDays(rrule: string | null | undefined): number[] {
+  if (!rrule) return [];
+  const m = rrule.match(/BYDAY=([^;]+)/);
+  if (!m) return [];
+  const codeMap: Record<string,number> = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+  return m[1].split(',').map(c => codeMap[c.trim()]).filter(n => n !== undefined) as number[];
+}
+
 const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string; iconKey: keyof typeof ICONS }[] = [
   { value: 'none',    label: 'No Repeat', iconKey: 'noRepeat' },
   { value: 'daily',   label: 'Daily',     iconKey: 'daily'    },
@@ -333,8 +355,12 @@ export default function AddScheduleSheet({ open, selectedDate, countryCode, init
         setAllDay(editSchedule.all_day ?? false);
         setSchedLocation((editSchedule as Schedule & { location?: string }).location ?? '');
         setNotes((editSchedule as Schedule & { description?: string }).description ?? '');
-        setRecurrence((editSchedule.recurrence_rule ? editSchedule.recurrence_rule : 'none') as RecurrenceRule);
-        setCustomDays([]); setRecurrenceEnd(editSchedule.recurrence_end ?? '');
+        // Parse stored RRULE string back to the shorthand the UI expects
+        const parsedRecurrence = rruleToShorthand(editSchedule.recurrence_rule);
+        setRecurrence(parsedRecurrence);
+        // Restore custom BYDAY days if applicable
+        setCustomDays(parsedRecurrence === 'custom' ? rruleToCustomDays(editSchedule.recurrence_rule) : []);
+        setRecurrenceEnd(editSchedule.recurrence_end ?? '');
       } else {
         // Add mode — clear all fields
         setTitle(''); setType('task'); setPriority('medium');
