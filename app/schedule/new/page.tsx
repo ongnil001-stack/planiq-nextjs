@@ -255,7 +255,7 @@ export default function AddSchedulePage() {
       });
       if (error) { setSaveError(`Database error: ${error.message}`); setSaving(false); return; }
       toast.success('Schedule added!');
-      router.push('/dashboard');
+      router.push('/calendar');
     } catch (e: unknown) {
       setSaveError(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
       setSaving(false);

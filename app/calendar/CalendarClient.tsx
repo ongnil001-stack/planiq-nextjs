@@ -546,16 +546,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       }
     }
 
-    const sd = new Date(year, month, selectedDay);
-    const startOfMonth = new Date(sd.getFullYear(), sd.getMonth(), 1).toISOString();
-    const endOfMonth   = new Date(sd.getFullYear(), sd.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const startOfMonth = new Date(year, month, 1).toISOString();
+    const endOfMonth   = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
     const { data } = await supabase.from('schedules').select('*')
       .eq('user_id', user.id)
       .gte('start_time', startOfMonth)
       .lte('start_time', endOfMonth)
       .order('start_time');
     if (data) setSchedules(data as Schedule[]);
-  }, [year, month, selectedDay]);
+  }, [year, month]);
 
   // Delete a schedule and refresh local list
   const deleteSchedule = useCallback(async (id: string) => {
@@ -564,7 +563,10 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setSchedules(prev => prev.filter(s => s.id !== id));
   }, []);
 
-  // Reset monthly tab when navigating months
+  // Reset monthly tab and fetch schedules when navigating months.
+  // This is the fix for future-month activities disappearing: the initial
+  // server load only covers the current month, so we must re-fetch from
+  // Supabase whenever the user switches to a different month.
   useEffect(() => {
     setMonthlyTab('overview');
     // Auto-expand today's date if it falls in the current month
@@ -574,6 +576,20 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     } else {
       setExpandedDays(new Set());
     }
+    // Fetch schedules for the newly-selected month
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const start = new Date(year, month, 1).toISOString();
+      const end   = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+      const { data } = await supabase.from('schedules').select('*')
+        .eq('user_id', user.id)
+        .gte('start_time', start)
+        .lte('start_time', end)
+        .order('start_time');
+      if (data) setSchedules(data as Schedule[]);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
   // Build day map
