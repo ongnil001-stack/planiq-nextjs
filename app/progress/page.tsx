@@ -206,33 +206,44 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {/* ── Scrollable body ── */}
-      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'14px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
-      <div style={{ paddingBottom:'16px' }}>
-
-        {/* ── Stat pills row ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
+      {/* ── Stat pills — OUTSIDE scroll container so iOS touch events are reliable ── */}
+      <div style={{ flexShrink:0, padding:'12px 16px 0', background:'var(--bg)' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
           {/* Done — clickable */}
-          <button onClick={() => setModal('done')} onPointerDown={() => setModal('done')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
-            <div style={{ fontSize:17, fontWeight:900, color:'var(--mint,#2DD4BF)', letterSpacing:'-.4px' }}>{totalDone}</div>
-            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Done</div>
+          <button
+            type="button"
+            onClick={() => setModal('done')}
+            style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation', display:'block', width:'100%' }}>
+            <div style={{ fontSize:18, fontWeight:900, color:'var(--mint,#2DD4BF)', letterSpacing:'-.4px' }}>{totalDone}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Done</div>
           </button>
           {/* Pending — clickable */}
-          <button onClick={() => setModal('pending')} onPointerDown={() => setModal('pending')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
-            <div style={{ fontSize:17, fontWeight:900, color:'var(--cyan,#00C6FF)', letterSpacing:'-.4px' }}>{pendingList.length}</div>
-            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Pending</div>
+          <button
+            type="button"
+            onClick={() => setModal('pending')}
+            style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation', display:'block', width:'100%' }}>
+            <div style={{ fontSize:18, fontWeight:900, color:'var(--cyan,#00C6FF)', letterSpacing:'-.4px' }}>{pendingList.length}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Pending</div>
           </button>
           {/* Overdue — clickable */}
-          <button onClick={() => setModal('overdue')} onPointerDown={() => setModal('overdue')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border: overdueList.length > 0 ? '1px solid rgba(255,107,138,.35)' : '1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
-            <div style={{ fontSize:17, fontWeight:900, color:overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)', letterSpacing:'-.4px' }}>{overdueList.length}</div>
-            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Overdue</div>
+          <button
+            type="button"
+            onClick={() => setModal('overdue')}
+            style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border: overdueList.length > 0 ? '1px solid rgba(255,107,138,.35)' : '1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation', display:'block', width:'100%' }}>
+            <div style={{ fontSize:18, fontWeight:900, color:overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)', letterSpacing:'-.4px' }}>{overdueList.length}</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Overdue</div>
           </button>
-          {/* Rate — not clickable */}
-          <div style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
-            <div style={{ fontSize:17, fontWeight:900, color:scoreColor(overallRate), letterSpacing:'-.4px' }}>{overallRate}%</div>
-            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Rate</div>
+          {/* Rate — display only */}
+          <div style={{ padding:'12px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)' }}>
+            <div style={{ fontSize:18, fontWeight:900, color:scoreColor(overallRate), letterSpacing:'-.4px' }}>{overallRate}%</div>
+            <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:3, textTransform:'uppercase', letterSpacing:'.3px' }}>Rate</div>
           </div>
         </div>
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'12px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
+      <div style={{ paddingBottom:'16px' }}>
 
         {/* ── Productivity score bar ── */}
         <div style={{ ...card, padding:'14px 16px' }}>
