@@ -48,6 +48,15 @@ export default function ProgressPage() {
     return () => ro.disconnect();
   }, []);
 
+  // Lock body scroll when modal is open (iOS PWA fix)
+  useEffect(() => {
+    if (modal) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [modal]);
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -204,17 +213,17 @@ export default function ProgressPage() {
         {/* ── Stat pills row ── */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
           {/* Done — clickable */}
-          <button onClick={() => setModal('done')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+          <button onClick={() => setModal('done')} onPointerDown={() => setModal('done')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
             <div style={{ fontSize:17, fontWeight:900, color:'var(--mint,#2DD4BF)', letterSpacing:'-.4px' }}>{totalDone}</div>
             <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Done</div>
           </button>
           {/* Pending — clickable */}
-          <button onClick={() => setModal('pending')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+          <button onClick={() => setModal('pending')} onPointerDown={() => setModal('pending')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
             <div style={{ fontSize:17, fontWeight:900, color:'var(--cyan,#00C6FF)', letterSpacing:'-.4px' }}>{pendingList.length}</div>
             <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Pending</div>
           </button>
           {/* Overdue — clickable */}
-          <button onClick={() => setModal('overdue')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border: overdueList.length > 0 ? '1px solid rgba(255,107,138,.35)' : '1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+          <button onClick={() => setModal('overdue')} onPointerDown={() => setModal('overdue')} style={{ padding:'10px 6px', borderRadius:12, textAlign:'center', background:'var(--surf)', border: overdueList.length > 0 ? '1px solid rgba(255,107,138,.35)' : '1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,.06)', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', touchAction:'manipulation' }}>
             <div style={{ fontSize:17, fontWeight:900, color:overdueList.length > 0 ? 'var(--coral,#FF6B8A)' : 'var(--mid)', letterSpacing:'-.4px' }}>{overdueList.length}</div>
             <div style={{ fontSize:9, color:'var(--mid)', fontWeight:700, marginTop:2, textTransform:'uppercase', letterSpacing:'.3px' }}>Overdue</div>
           </button>
@@ -481,7 +490,7 @@ export default function ProgressPage() {
       {modal && (
         <div
           onClick={() => setModal(null)}
-          style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
+          style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
         >
           <div
             onClick={e => e.stopPropagation()}
