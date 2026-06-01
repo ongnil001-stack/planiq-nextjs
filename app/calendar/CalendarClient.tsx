@@ -763,12 +763,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   })();
 
   // Yearly view data
-  const monthCounts = Array.from({ length: 12 }, (_, mo) =>
-    schedules.filter(s => {
-      const d = new Date(s.start_time);
-      return d.getFullYear() === year && d.getMonth() === mo;
-    }).length
-  );
+  // Monthly counts for yearly view — expand recurring so each month shows
+  // the actual number of occurrences, not just the base start_time count.
+  const monthCounts = Array.from({ length: 12 }, (_, mo) => {
+    const rStart = new Date(year, mo, 1);
+    const rEnd   = new Date(year, mo + 1, 0, 23, 59, 59, 999);
+    return buildDisplaySchedules(schedules, rStart, rEnd)
+      .filter(s => { const d = new Date(s.start_time); return d.getFullYear() === year && d.getMonth() === mo; })
+      .length;
+  });
 
   // Helper: navigate to a specific day in Daily view
   function goToDay(d: number, m: number = month, y: number = year) {
@@ -1051,10 +1054,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 month={month}
                 selectedDay={selectedDay}
                 dayMapFn={(y, mo) => {
-                  const map: Record<number, Schedule[]> = {};
-                  schedules
+                  // Expand recurring schedules for the requested month so dots
+                  // appear on every occurrence, not just the base start_time date.
+                  const rStart = new Date(y, mo, 1);
+                  const rEnd   = new Date(y, mo + 1, 0, 23, 59, 59, 999);
+                  const expanded = buildDisplaySchedules(schedules, rStart, rEnd);
+                  const map: Record<number, DisplaySchedule[]> = {};
+                  expanded
                     .filter(s => { const d = new Date(s.start_time); return d.getFullYear()===y && d.getMonth()===mo; })
-                    .forEach(s => { const d = new Date(s.start_time).getDate(); (map[d] ??= []).push(s); });
+                    .forEach(s => { const d = new Date(s.start_time).getDate(); (map[d] ??= []).push(s as DisplaySchedule); });
                   return map;
                 }}
                 holidaysFn={(y, mo) => {
