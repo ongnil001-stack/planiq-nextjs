@@ -9,7 +9,7 @@ import { formatTime } from '@/lib/utils';
 import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ViewMode = 'today' | 'week';
+type ViewMode = 'today' | 'week' | 'month';
 
 interface AiBriefItem {
   type: 'priority' | 'conflict' | 'suggestion' | 'win';
@@ -39,6 +39,12 @@ function startOfWeek(d: Date) {
 function endOfWeek(d: Date) {
   const c = startOfWeek(d); c.setDate(c.getDate() + 6); c.setHours(23, 59, 59, 999); return c;
 }
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+function endOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+}
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return `${r},${g},${b}`;
@@ -66,7 +72,9 @@ function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResul
 
   const inRange = mode === 'today'
     ? schedules.filter(s => !isOverdue(s, now) && toDateStr(new Date(s.start_time)) === today)
-    : schedules.filter(s => !isOverdue(s, now) && (() => { const d = new Date(s.start_time); return d >= startOfWeek(now) && d <= endOfWeek(now); })());
+    : mode === 'week'
+    ? schedules.filter(s => !isOverdue(s, now) && (() => { const d = new Date(s.start_time); return d >= startOfWeek(now) && d <= endOfWeek(now); })())
+    : schedules.filter(s => !isOverdue(s, now) && (() => { const d = new Date(s.start_time); return d >= startOfMonth(now) && d <= endOfMonth(now); })());
 
   const pending   = inRange.filter(s => !s.is_completed);
   const completed = inRange.filter(s => s.is_completed);
@@ -95,18 +103,20 @@ function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResul
   if (topItems.length > 0) {
     items.push({
       type: 'priority', accent: '#7C6AF0',
-      title: mode === 'today'
-        ? `${pending.length} item${pending.length !== 1 ? 's' : ''} on your list today`
-        : `${pending.length} pending this week`,
+      title: mode === 'today'  ? `${pending.length} item${pending.length !== 1 ? 's' : ''} on your list today`
+              : mode === 'week'   ? `${pending.length} pending this week`
+              :                    `${pending.length} activit${pending.length !== 1 ? 'ies' : 'y'} this month`,
       body: topItems.map(s => s.title).join(', '),
     });
   } else if (overdue.length === 0) {
     items.push({
       type: 'win', accent: '#00C896',
-      title: mode === 'today' ? 'All clear today' : 'Clean week ahead',
-      body: mode === 'today'
-        ? 'No pending items. Great time to plan ahead or take a breather.'
-        : "No pending items this week. You're on top of things.",
+      title: mode === 'today'  ? 'All clear today'
+              : mode === 'week'   ? 'Clean week ahead'
+              :                    'Month looking clear',
+      body: mode === 'today'  ? 'No pending items. Great time to plan ahead or take a breather.'
+           : mode === 'week'  ? "No pending items this week. You're on top of things."
+           :                    "Nothing pending this month. Excellent planning — use this time to get ahead.",
     });
   }
 
@@ -134,8 +144,12 @@ function generateLocalBrief(schedules: Schedule[], mode: ViewMode): AiBriefResul
   const headline = overdue.length > 0
     ? `${overdue.length} overdue item${overdue.length === 1 ? '' : 's'} — action needed`
     : topItems.length > 0
-      ? (mode === 'today' ? `${pending.length} task${pending.length !== 1 ? 's' : ''} ahead of you today` : `${pending.length} things on your plate this week`)
-      : (mode === 'today' ? 'Clear day — time to get ahead!' : 'Great week so far!');
+      ? mode === 'today'  ? `${pending.length} task${pending.length !== 1 ? 's' : ''} ahead of you today`
+      : mode === 'week'   ? `${pending.length} things on your plate this week`
+      :                     `${pending.length} activit${pending.length !== 1 ? 'ies' : 'y'} scheduled this month`
+      : mode === 'today'  ? 'Clear day — time to get ahead!'
+      : mode === 'week'   ? 'Great week so far!'
+      :                     'Month looking clear — great planning!';
 
   return { headline, items };
 }
@@ -182,13 +196,14 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     const now = new Date();
-    // Fetch this week PLUS overdue items from the past 30 days so the AI
-    // can see what's unfinished — not just what's scheduled for the future.
+    // Load: overdue history (30 days back) + full current month ahead
+    // This covers Today, This Week, AND This Month views in one query.
     const lookbackDate = new Date(now.getTime() - 30 * 86_400_000);
+    const monthEnd     = endOfMonth(now);
     const { data } = await supabase.from('schedules').select('*')
       .eq('user_id', user.id)
       .gte('start_time', lookbackDate.toISOString())
-      .lte('start_time', endOfWeek(now).toISOString())
+      .lte('start_time', monthEnd.toISOString())
       .order('start_time', { ascending: true });
     setSchedules(data ?? []);
     setLoading(false);
@@ -317,11 +332,15 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const todayItems   = schedules
     .filter(s => !isOverdue(s, now) && !s.is_completed && toDateStr(new Date(s.start_time)) === today)
     .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
-  // Week: upcoming this week, not overdue, not completed, not already in today
+  // Week: upcoming this week, not overdue, not completed
   const weekItems    = schedules
     .filter(s => !isOverdue(s, now) && !s.is_completed && (() => { const d = new Date(s.start_time); return d > now && d <= endOfWeek(now); })())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const displayItems = mode === 'today' ? todayItems : weekItems;
+  // Month: everything in the current month, not overdue, not completed
+  const monthItems   = schedules
+    .filter(s => !isOverdue(s, now) && !s.is_completed && (() => { const d = new Date(s.start_time); return d >= startOfMonth(now) && d <= endOfMonth(now); })())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  const displayItems = mode === 'today' ? todayItems : mode === 'week' ? weekItems : monthItems;
   const dayName      = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateStr      = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
@@ -449,13 +468,18 @@ export default function FocusHubSheet({ open, onClose }: Props) {
             FOCUS HUB
           </div>
           <h2 style={T_TITLE}>{dayName}</h2>
-          <p style={T_SUB}>{dateStr} · AI-powered daily brief</p>
+          <p style={T_SUB}>
+            {mode === 'today' ? `${dateStr} · AI-powered daily brief`
+             : mode === 'week' ? `Week of ${now.toLocaleDateString('en-US',{month:'long',day:'numeric'})} · AI analysis`
+             : `${now.toLocaleDateString('en-US',{month:'long',year:'numeric'})} · Monthly AI analysis`}
+          </p>
         </div>
 
         {/* Toggle */}
-        <div style={{ display: 'flex', gap: '8px', padding: '14px 20px 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '6px', padding: '14px 20px 0', flexShrink: 0 }}>
           <button style={TAB(mode === 'today')} onClick={() => setMode('today')}>Today</button>
           <button style={TAB(mode === 'week')}  onClick={() => setMode('week')}>This Week</button>
+          <button style={TAB(mode === 'month')} onClick={() => setMode('month')}>This Month</button>
         </div>
 
         {/* Content */}
@@ -601,7 +625,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
               {displayItems.length > 0 && (
                 <>
                   <p style={{ ...T_SEC, marginTop: overdueItems.length > 0 ? '16px' : '8px' }}>
-                    {mode === 'today' ? "Today's Schedule" : 'Upcoming This Week'}
+                    {mode === 'today' ? "Today's Schedule" : mode === 'week' ? 'Upcoming This Week' : 'This Month'}
                   </p>
                   {displayItems.slice(0, 8).map(s => (
                     <SwipeDeleteRow key={s.id} onDelete={() => deleteSchedule(s.id)} undoLabel={`"${s.title}" deleted`} borderRadius={10}>
@@ -610,7 +634,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                         <div style={{ flex:1, minWidth:0 }}>
                           <p style={S_TITLE(s.is_completed)}>{s.title}</p>
                           <p style={S_META}>
-                            {mode === 'week' && (
+                            {(mode === 'week' || mode === 'month') && (
                               <span style={{ marginRight:6 }}>
                                 {new Date(s.start_time).toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })} ·{' '}
                               </span>
@@ -636,7 +660,9 @@ export default function FocusHubSheet({ open, onClose }: Props) {
 
               {overdueItems.length === 0 && displayItems.length === 0 && (
                 <p style={{ textAlign:'center', color:'var(--lite)', fontSize:13, marginTop:24, opacity:.6 }}>
-                  {mode === 'today' ? 'Nothing on your schedule today.' : 'Nothing pending this week.'}
+                  {mode === 'today' ? 'Nothing on your schedule today.'
+                   : mode === 'week' ? 'Nothing pending this week.'
+                   : 'Nothing scheduled for the rest of this month.'}
                 </p>
               )}
             </>
