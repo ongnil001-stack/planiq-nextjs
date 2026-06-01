@@ -81,6 +81,16 @@ const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string; iconKey: IconK
 
 const CUSTOM_DAYS  = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const REMINDER_OPTIONS = [
+  { value: 0,   label: 'No reminder'   },
+  { value: 5,   label: '5 min before'  },
+  { value: 10,  label: '10 min before' },
+  { value: 15,  label: '15 min before' },
+  { value: 30,  label: '30 min before' },
+  { value: 60,  label: '1 hour before' },
+  { value: 120, label: '2 hrs before'  },
+];
 const DAYS_FULL    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -162,6 +172,7 @@ export default function AddSchedulePage() {
   const [recurrence,    setRecurrence]    = useState<RecurrenceRule>('none');
   const [customDays,    setCustomDays]    = useState<number[]>([]);
   const [recurrenceEnd, setRecurrenceEnd] = useState('');
+  const [reminderMinutes, setReminderMinutes] = useState<number>(15);
   const [saving,        setSaving]        = useState(false);
   const [saveError,     setSaveError]     = useState<string | null>(null);
   const [holiday,       setHoliday]       = useState<Holiday | null>(null);
@@ -252,6 +263,7 @@ export default function AddSchedulePage() {
         start_time: startISO, end_time: endISO, all_day: allDay,
         location: schedLocation.trim() || null, description: notes.trim() || null,
         recurrence_rule: rrule, recurrence_end: recurrenceEnd || null, timezone: tz,
+        reminder_minutes: reminderMinutes > 0 ? reminderMinutes : null,
       });
       if (error) { setSaveError(`Database error: ${error.message}`); setSaving(false); return; }
       toast.success('Schedule added!');
@@ -493,6 +505,45 @@ export default function AddSchedulePage() {
                 style={{ ...inputBase, colorScheme: 'dark' }} />
             </div>
           )}
+        </div>
+
+        {/* Reminder */}
+        <div style={fieldWrap}>
+          <label style={labelBase}>Reminder</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+            {REMINDER_OPTIONS.slice(0, 4).map(r => {
+              const active = reminderMinutes === r.value;
+              return (
+                <button key={r.value} type="button" onClick={() => setReminderMinutes(r.value)} style={{
+                  padding: '9px 4px 8px', borderRadius: 12,
+                  background: active ? 'var(--pur-lt, rgba(124,106,240,.15))' : 'var(--glass-bg2, rgba(255,255,255,.04))',
+                  border: `1.5px solid ${active ? 'var(--purple)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
+                  color: active ? 'var(--purple)' : 'var(--lite)',
+                  fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all .14s',
+                }}>
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 8 }}>
+            {REMINDER_OPTIONS.slice(4).map(r => {
+              const active = reminderMinutes === r.value;
+              return (
+                <button key={r.value} type="button" onClick={() => setReminderMinutes(r.value)} style={{
+                  padding: '9px 4px 8px', borderRadius: 12,
+                  background: active ? 'var(--pur-lt, rgba(124,106,240,.15))' : 'var(--glass-bg2, rgba(255,255,255,.04))',
+                  border: `1.5px solid ${active ? 'var(--purple)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
+                  color: active ? 'var(--purple)' : 'var(--lite)',
+                  fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all .14s',
+                }}>
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Location */}

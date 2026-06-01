@@ -55,6 +55,7 @@ export interface Database {
           recurrence_rule: string | null;
           recurrence_end: string | null;
           timezone: string | null;
+          reminder_minutes: number | null;
           is_completed: boolean;
           created_at: string;
           updated_at: string;
@@ -74,6 +75,7 @@ export interface Database {
           recurrence_rule?: string | null;
           recurrence_end?: string | null;
           timezone?: string | null;
+          reminder_minutes?: number | null;
           is_completed?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -132,6 +134,15 @@ export interface Database {
 
 // Convenience types
 export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type PushSubscription = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+};
+
 export type Schedule = Database['public']['Tables']['schedules']['Row'];
 export type AiAnalysis = Database['public']['Tables']['ai_analyses']['Row'];
 export type NewSchedule = Database['public']['Tables']['schedules']['Insert'];

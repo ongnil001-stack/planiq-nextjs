@@ -1,134 +1,187 @@
-/**
- * lib/notifications.ts
- * ─────────────────────────────────────────────────────────────
- * Client-side helpers for PlanIQ activity notifications.
- *
- * Architecture:
- *   • Permission is requested via the standard Notification API.
- *   • Scheduling is delegated to the Service Worker via postMessage
- *     so notifications fire even when the PWA is backgrounded.
- *   • For a completely-closed PWA you'd need Web Push (VAPID) —
- *     that's a future upgrade; this covers all minimised / background cases.
- */
+// ─── PlanIQ Notification Utilities ───────────────────────────────────────────
+// Handles: permission, push subscriptions, foreground polling, legacy compat.
 
-const STORAGE_KEY = 'planiq_notifications_enabled';
+export const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 
-// ── Preference helpers ────────────────────────────────────────────────────────
+const ENABLED_KEY = 'planiq_notifications_enabled';
 
-export function isNotificationsEnabled(): boolean {
-  try { return localStorage.getItem(STORAGE_KEY) === 'true'; } catch { return false; }
+// ── Support checks ────────────────────────────────────────────────────────
+export function notificationsSupported(): boolean {
+  return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator;
 }
 
-export function setNotificationsEnabled(enabled: boolean): void {
-  try { localStorage.setItem(STORAGE_KEY, enabled ? 'true' : 'false'); } catch {}
-}
-
-// ── Permission ────────────────────────────────────────────────────────────────
-
-export function getNotificationPermission(): NotificationPermission | 'unsupported' {
-  if (typeof window === 'undefined') return 'unsupported';
-  if (!('Notification' in window)) return 'unsupported';
+export function notificationPermission(): NotificationPermission {
+  if (!notificationsSupported()) return 'denied';
   return Notification.permission;
 }
 
-/** Ask for permission; returns true if granted. */
-export async function requestPermission(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied')  return false;
-  const result = await Notification.requestPermission();
-  return result === 'granted';
+/** Legacy alias used by ProfileClient */
+export function getNotificationPermission(): NotificationPermission {
+  return notificationPermission();
 }
 
-// ── Service-worker bridge ─────────────────────────────────────────────────────
-
-async function getSW(): Promise<ServiceWorkerRegistration | null> {
-  if (typeof window === 'undefined') return null;
-  if (!('serviceWorker' in navigator)) return null;
-  try { return await navigator.serviceWorker.ready; } catch { return null; }
+// ── User preference (localStorage) ───────────────────────────────────────
+export function isNotificationsEnabled(): boolean {
+  if (!notificationsSupported()) return false;
+  if (Notification.permission !== 'granted') return false;
+  return localStorage.getItem(ENABLED_KEY) !== 'false';
 }
 
-// ── Schedule helpers ──────────────────────────────────────────────────────────
+export function setNotificationsEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ENABLED_KEY, enabled ? 'true' : 'false');
+}
 
-export interface NotifScheduleItem {
+// ── Permission ────────────────────────────────────────────────────────────
+export async function requestPermission(): Promise<NotificationPermission> {
+  if (!notificationsSupported()) return 'denied';
+  if (Notification.permission === 'granted') return 'granted';
+  return Notification.requestPermission();
+}
+
+// ── VAPID key conversion ──────────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const arr = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
+  return arr;
+}
+
+// ── Push subscription ─────────────────────────────────────────────────────
+export async function getPushSubscription(): Promise<PushSubscription | null> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  } catch { return null; }
+}
+
+export async function subscribeToPush(): Promise<PushSubscription | null> {
+  if (!VAPID_PUBLIC_KEY) return null;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return existing;
+    return await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as unknown as ArrayBuffer,
+    });
+  } catch (err) {
+    console.error('[PlanIQ] Push subscribe failed:', err);
+    return null;
+  }
+}
+
+export async function unsubscribeFromPush(): Promise<void> {
+  const sub = await getPushSubscription();
+  if (!sub) return;
+  await sub.unsubscribe().catch(() => {});
+  await fetch('/api/notifications/subscribe', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: sub.endpoint }),
+  }).catch(() => {});
+}
+
+export async function saveSubscription(sub: PushSubscription): Promise<boolean> {
+  try {
+    const json = sub.toJSON();
+    const res = await fetch('/api/notifications/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(json),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+// Full setup: permission → subscribe → save
+export async function setupPushNotifications(): Promise<'granted' | 'denied' | 'unsupported'> {
+  if (!notificationsSupported()) return 'unsupported';
+  const permission = await requestPermission();
+  if (permission !== 'granted') return 'denied';
+  setNotificationsEnabled(true);
+  const sub = await subscribeToPush();
+  if (sub) await saveSubscription(sub);
+  return 'granted';
+}
+
+// ── Cancel all scheduled (setTimeout-based) notifications ────────────────
+const _timers: ReturnType<typeof setTimeout>[] = [];
+
+export function cancelAllNotifications(): void {
+  _timers.forEach(t => clearTimeout(t));
+  _timers.length = 0;
+}
+
+// ── Schedule notifications for today's items ──────────────────────────────
+// Called by DashboardClient on mount/change. Uses setTimeout for foreground use.
+interface ScheduleLike {
   id: string;
   title: string;
-  start_time: string | null; // "HH:MM" or "HH:MM:SS"
-  is_completed?: boolean | null;
+  start_time: string;
+  reminder_minutes?: number | null;
+  location?: string | null;
+  timezone?: string | null;
 }
 
-/** Milliseconds until a given "HH:MM" time today. Returns negative if past. */
-function msUntilTime(timeStr: string): number {
-  const now = new Date();
-  const [h, m] = timeStr.split(':').map(Number);
-  const target = new Date(now);
-  target.setHours(h, m, 0, 0);
-  return target.getTime() - now.getTime();
-}
+const _scheduled = new Set<string>();
 
-/** Schedule a notification for a single activity. No-op if already past. */
-export async function scheduleNotification(item: NotifScheduleItem): Promise<void> {
-  if (!item.start_time || item.is_completed) return;
-  const delay = msUntilTime(item.start_time);
-  if (delay <= 0) return;
-
-  const sw = await getSW();
-  if (!sw?.active) return;
-
-  const displayTime = item.start_time.slice(0, 5); // "HH:MM"
-  sw.active.postMessage({
-    type: 'SCHEDULE_NOTIFICATION',
-    payload: {
-      tag:   `planiq-schedule-${item.id}`,
-      title: `▶ ${item.title}`,
-      body:  `Your activity starts at ${displayTime}`,
-      delay,
-      url:   '/dashboard',
-    },
-  });
-}
-
-/**
- * Cancel all pending SW notifications, then reschedule every pending
- * (not completed, not past) activity for today.
- */
-export async function scheduleAllTodayNotifications(
-  items: NotifScheduleItem[]
-): Promise<void> {
-  if (getNotificationPermission() !== 'granted') return;
-
-  const sw = await getSW();
-  if (!sw?.active) return;
-
-  // Wipe previous batch
-  sw.active.postMessage({ type: 'CANCEL_ALL_NOTIFICATIONS', payload: {} });
-
-  let scheduled = 0;
-  for (const item of items) {
-    if (!item.start_time || item.is_completed) continue;
-    const delay = msUntilTime(item.start_time);
-    if (delay <= 0) continue;
-
-    const displayTime = item.start_time.slice(0, 5);
-    sw.active.postMessage({
-      type: 'SCHEDULE_NOTIFICATION',
-      payload: {
-        tag:   `planiq-schedule-${item.id}`,
-        title: `▶ ${item.title}`,
-        body:  `Your activity starts at ${displayTime}`,
-        delay,
-        url:   '/dashboard',
-      },
-    });
-    scheduled++;
+export function scheduleAllTodayNotifications(schedules: ScheduleLike[]): void {
+  if (!isNotificationsEnabled()) return;
+  const now = Date.now();
+  for (const s of schedules) {
+    const mins = s.reminder_minutes ?? 15;
+    if (mins <= 0) continue;
+    const notifyAt = new Date(s.start_time).getTime() - mins * 60_000;
+    const delay = notifyAt - now;
+    const key = `${s.id}-${mins}`;
+    if (delay <= 0 || delay > 8 * 60 * 60_000 || _scheduled.has(key)) continue;
+    _scheduled.add(key);
+    const t = setTimeout(() => {
+      if (!isNotificationsEnabled()) return;
+      const startLocal = new Date(s.start_time).toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+        timeZone: s.timezone ?? undefined,
+      });
+      const n = new Notification(`⏰ ${s.title}`, {
+        body: `Starting at ${startLocal}${s.location ? ` · ${s.location}` : ''}`,
+        icon: '/icons/icon-192.png',
+        tag: key,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    }, delay);
+    _timers.push(t);
   }
-  return; // returns void; caller can ignore
 }
 
-/** Cancel all queued SW notifications immediately. */
-export async function cancelAllNotifications(): Promise<void> {
-  const sw = await getSW();
-  if (!sw?.active) return;
-  sw.active.postMessage({ type: 'CANCEL_ALL_NOTIFICATIONS', payload: {} });
+// ── Foreground polling (used by CalendarClient) ───────────────────────────
+// Checks schedules right now — used for 90-second sliding window check.
+const _notified = new Set<string>();
+
+export function checkAndNotify(schedules: ScheduleLike[]): void {
+  if (!isNotificationsEnabled()) return;
+  const now = Date.now();
+  for (const s of schedules) {
+    const mins = s.reminder_minutes ?? 0;
+    if (mins <= 0) continue;
+    const notifyAt = new Date(s.start_time).getTime() - mins * 60_000;
+    const key = `${s.id}-${mins}`;
+    if (now >= notifyAt && now < notifyAt + 90_000 && !_notified.has(key)) {
+      _notified.add(key);
+      const startLocal = new Date(s.start_time).toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit', hour12: true,
+        timeZone: s.timezone ?? undefined,
+      });
+      const n = new Notification(`⏰ ${s.title}`, {
+        body: `Starting at ${startLocal}${s.location ? ` · ${s.location}` : ''}`,
+        icon: '/icons/icon-192.png',
+        tag: key,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    }
+  }
 }

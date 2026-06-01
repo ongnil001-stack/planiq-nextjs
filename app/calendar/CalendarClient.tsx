@@ -9,6 +9,8 @@ import BottomNav from '@/components/layout/BottomNav';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
 import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 import { createClient } from '@/lib/supabase/client';
+import NotificationPrompt from '@/components/notifications/NotificationPrompt';
+import { checkAndNotify } from '@/lib/notifications';
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -497,6 +499,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [countryCode,setCountryCode]= useState('');
   const [schedules,  setSchedules]  = useState<Schedule[]>(initialSchedules);
   const [sheetOpen,  setSheetOpen]  = useState(false);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
   const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
@@ -624,6 +627,23 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     const targetHour = isToday(selectedDay) ? Math.max(0, today.getHours() - 1) : 8;
     timelineRef.current.scrollTo({ top: targetHour * hourHeight, behavior: 'smooth' });
   }, [viewMode, selectedDay]);
+
+  // ── Foreground reminder polling ─────────────────────────────────────────────
+  // Checks every 60 s whether any scheduled activity has a reminder due.
+  // Uses the browser Notification API — works when the app is in the foreground.
+  // Background notifications are handled by the service worker via Web Push.
+  useEffect(() => {
+    // Show the permission prompt once after component mounts (subtle, not on load)
+    const t = setTimeout(() => setShowNotifPrompt(true), 3000);
+    // Run immediately then every 60 seconds
+    checkAndNotify(schedules);
+    const interval = setInterval(() => checkAndNotify(schedules), 60_000);
+    return () => { clearTimeout(t); clearInterval(interval); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-run check whenever schedules change (e.g. after month navigation)
+  useEffect(() => { checkAndNotify(schedules); }, [schedules]);
 
   function handleDayClick(d: number) {
     if (d === selectedDay) { setSheetTime(undefined); setSheetOpen(true); }
@@ -785,6 +805,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {/* ── MONTHLY VIEW ── */}
         {viewMode === 'monthly' && (
           <>
+            {/* ── Notification permission prompt ── */}
+            {showNotifPrompt && (
+              <div style={{ padding: '14px 14px 0' }}>
+                <NotificationPrompt onDismiss={() => setShowNotifPrompt(false)} />
+              </div>
+            )}
+
             {/* ── Expandable: Busy Days ── */}
             {monthlyTab === 'busy' && (
               <div style={{
