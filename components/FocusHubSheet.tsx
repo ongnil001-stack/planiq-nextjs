@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { completePayload } from '@/lib/timeProgress';
 import { createClient } from '@/lib/supabase/client';
 import type { Schedule } from '@/types/database';
 import { formatTime } from '@/lib/utils';

@@ -3,6 +3,7 @@ import SwipeDeleteRow from '@/components/SwipeDeleteRow';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { lateNote } from '@/lib/timeProgress';
 import { createClient } from '@/lib/supabase/client';
 import BottomNav from '@/components/layout/BottomNav';
 
@@ -15,7 +16,7 @@ const DAY3  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 interface Schedule {
   id: string; title: string; start_time: string; end_time: string;
-  priority: string; is_completed: boolean;
+  priority: string; is_completed: boolean; days_late?: number | null;
 }
 interface DayBucket { date: string; planned: number; done: number; }
 interface WeekSummary { label: string; planned: number; done: number; rate: number; }
@@ -434,6 +435,9 @@ export default function ProgressPage() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:12, fontWeight:600, color:'var(--dark)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textDecoration:'line-through', opacity:.7 }}>{s.title}</div>
                       <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{formatDate(s.start_time)} · {formatTime(s.start_time)}</div>
+                      {lateNote(s.days_late) && (
+                        <div style={{ fontSize:10, color:'#FF6B8A', fontWeight:700, marginTop:1 }}>{lateNote(s.days_late)}</div>
+                      )}
                     </div>
                     <span style={{ fontSize:9, fontWeight:800, color:PCOL[s.priority]||'var(--mid)', flexShrink:0, textTransform:'uppercase', letterSpacing:'.3px' }}>{s.priority}</span>
                   </div>

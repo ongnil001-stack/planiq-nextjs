@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     { data: upcomingSchedules },
     { data: latestAnalysis },
     { data: streakSchedules },
+    { data: overdueSchedules },
     { count: tasksDone },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -71,6 +72,16 @@ export default async function DashboardPage() {
       .gte('start_time', streakStart.toISOString())
       .lte('start_time', endOfDay)
       .order('start_time', { ascending: false }),
+
+    // Overdue: past due, not completed, within last 30 days
+    supabase.from('schedules')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_completed', false)
+      .lt('start_time', new Date().toISOString())
+      .gte('start_time', new Date(Date.now() - 30 * 86400000).toISOString())
+      .order('start_time', { ascending: false })
+      .limit(15),
 
     // Total completed tasks ever — for awards count in quick stats
     supabase.from('schedules')
@@ -121,6 +132,7 @@ export default async function DashboardPage() {
       streakDays={streakDays}
       focusWins={focusWins}
       tasksDone={tasksDone ?? 0}
+      overdueSchedules={overdueSchedules ?? []}
     />
   );
 }

@@ -121,3 +121,42 @@ export function formatSavedTime(mins: number): string {
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
+
+// ─── Late completion helpers ──────────────────────────────────────────────────
+
+/**
+ * Returns how many calendar days late a completion is.
+ * Compares the scheduled date (start_time's date) vs today's date.
+ * Returns 0 if completed on time or early, positive number if late.
+ */
+export function calcDaysLate(startTime: string, completedAt?: Date): number {
+  const schedDate = new Date(startTime);
+  const doneDate  = completedAt ?? new Date();
+  // Compare calendar dates (strip time component)
+  const schedDay = Date.UTC(schedDate.getUTCFullYear(), schedDate.getUTCMonth(), schedDate.getUTCDate());
+  const doneDay  = Date.UTC(doneDate.getUTCFullYear(),  doneDate.getUTCMonth(),  doneDate.getUTCDate());
+  return Math.max(0, Math.floor((doneDay - schedDay) / 86_400_000));
+}
+
+/**
+ * Returns a human-readable late note, e.g. "Completed 3 days late"
+ * Returns null if completed on time.
+ */
+export function lateNote(daysLate: number | null | undefined): string | null {
+  if (!daysLate || daysLate <= 0) return null;
+  if (daysLate === 1) return 'Completed 1 day late';
+  return `Completed ${daysLate} days late`;
+}
+
+/**
+ * Build the Supabase update payload for marking a schedule complete.
+ * Always sets is_completed, completed_at, and days_late together.
+ */
+export function completePayload(startTime: string) {
+  const now = new Date();
+  return {
+    is_completed: true,
+    completed_at: now.toISOString(),
+    days_late:    calcDaysLate(startTime, now),
+  };
+}

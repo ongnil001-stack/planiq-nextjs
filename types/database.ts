@@ -57,6 +57,8 @@ export interface Database {
           timezone: string | null;
           reminder_minutes: number | null;
           is_completed: boolean;
+          completed_at: string | null;
+          days_late: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -77,6 +79,8 @@ export interface Database {
           timezone?: string | null;
           reminder_minutes?: number | null;
           is_completed?: boolean;
+          completed_at?: string | null;
+          days_late?: number | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Profile, Schedule, AiAnalysis } from '@/types/database';
 import { formatTime, PRIORITY_COLORS, TYPE_ICONS } from '@/lib/utils';
 import BottomNav from '@/components/layout/BottomNav';
+import { completePayload, lateNote } from '@/lib/timeProgress';
 import WorkloadSheet from '@/components/WorkloadSheet';
 import AddScheduleSheet from '@/components/AddScheduleSheet';
 import ProgressDetailsSheet from '@/components/ProgressDetailsSheet';
@@ -44,6 +45,7 @@ interface Props {
   streakDays:       number;  // consecutive days with ≥1 completed task
   focusWins:        number;  // days in last 28 with 100% task completion
   tasksDone:        number;  // total all-time completed tasks (for awards count)
+  overdueSchedules: Schedule[];  // past-due, not completed, last 30 days
 }
 
 const GREETING = () => {
@@ -126,7 +128,7 @@ function computeTodayWorkload(schedules: { priority?: string | null }[]): number
   return Math.min(Math.round(base * avgWeight), 100);
 }
 
-export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays, focusWins, tasksDone }: Props) {
+export default function DashboardClient({ profile, todaySchedules, weekSchedules, upcomingSchedules, latestAnalysis, streakDays, focusWins, tasksDone, overdueSchedules }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const ch = useChartColors();
@@ -208,9 +210,12 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   async function toggleComplete(schedule: Schedule) {
     setCompletingId(schedule.id);
+    const payload = schedule.is_completed
+      ? { is_completed: false, completed_at: null, days_late: null }
+      : completePayload(schedule.start_time);
     const { error } = await supabase
       .from('schedules')
-      .update({ is_completed: !schedule.is_completed })
+      .update(payload)
       .eq('id', schedule.id);
     if (error) toast.error('Could not update task');
     else router.refresh();
@@ -259,7 +264,10 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         toast.success(`⚡ ${formatSavedTime(saved)} saved!`, { duration: 3000 });
       }
     }
-    await supabase.from('schedules').update({ is_completed: true }).eq('id', id);
+    const sched2 = todaySchedules.find(s => s.id === id);
+    await supabase.from('schedules')
+      .update(completePayload(sched2?.start_time ?? new Date().toISOString()))
+      .eq('id', id);
     setCompletingId(null);
     setSessionOpen(false);
     setPromptOpen(false);
@@ -660,6 +668,11 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                     <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 2 }}>
                       {TYPE_ICONS[s.type]} {s.end_time ? `${formatTime(s.start_time)} – ${formatTime(s.end_time)}` : formatTime(s.start_time)}
                     </div>
+                    {lateNote(s.days_late) && (
+                      <div style={{ fontSize: 10, color: '#FF6B8A', fontWeight: 700, marginTop: 2 }}>
+                        {lateNote(s.days_late)}
+                      </div>
+                    )}
                   </div>
                   <div style={{
                     fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
@@ -680,7 +693,86 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     );
   }
 
-  // ── Render: Quick Stats ───────────────────────────────────────────────
+  // ── Render: Overdue Items ─────────────────────────────────────────────────
+  function renderOverdue() {
+    if (overdueSchedules.length === 0) return null;
+    return (
+      <div key="overdue" style={S.widget}>
+        <div style={S.card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 9v5m0 3v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#FF6B8A' }}>
+                Overdue · {overdueSchedules.length}
+              </div>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600 }}>From previous days</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {overdueSchedules.map(s => {
+              const daysAgo = Math.floor((Date.now() - new Date(s.start_time).getTime()) / 86_400_000);
+              return (
+                <div key={s.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 0,
+                  background: 'rgba(255,107,138,.06)', borderRadius: 14,
+                  border: '1px solid rgba(255,107,138,.18)', position: 'relative', overflow: 'hidden',
+                }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: '#FF6B8A', borderRadius: '3px 0 0 3px' }} />
+                  {/* Complete button */}
+                  <button
+                    onClick={e => { e.stopPropagation(); toggleComplete(s); }}
+                    title="Mark done"
+                    style={{
+                      flexShrink: 0, width: 48, alignSelf: 'stretch',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      paddingLeft: 10, WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      border: '1.5px solid rgba(255,107,138,0.5)',
+                      background: 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }} />
+                  </button>
+                  {/* Body */}
+                  <button
+                    onClick={() => setEditSchedule(s)}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '11px 14px 11px 4px', background: 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left',
+                      fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: PRIORITY_COLORS[s.priority] }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.title}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#FF6B8A', marginTop: 2, fontWeight: 600 }}>
+                        {daysAgo === 1 ? 'Yesterday' : daysAgo === 0 ? 'Earlier today' : `${daysAgo} days ago`}
+                        {' · '}{new Date(s.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, background: 'rgba(255,107,138,.15)', color: '#FF6B8A' }}>
+                      OVERDUE
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render: Quick Stats ───────────────────────────────────────────────────────
   function renderQuickStats() {
     const compact = isCompact('quickStats');
     return (
@@ -1153,6 +1245,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
         {/* Inner content — collapses to card heights only.
             paddingBottom = small breathe gap above nav bar. */}
         <div style={{ paddingBottom: '16px' }}>
+          {/* Overdue items always shown at the top if any exist */}
+          {renderOverdue()}
           {cardOrder.map(key => {
             if (!isVisible(key)) return null;
             const renderer = cardRenderers[key];
