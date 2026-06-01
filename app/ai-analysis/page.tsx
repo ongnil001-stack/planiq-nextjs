@@ -35,6 +35,15 @@ function hexRgb(hex: string) {
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `${r},${g},${b}`;
 }
+function isOverdue(s: ExistingSchedule): boolean {
+  if (s.is_completed) return false;
+  const deadline = s.end_time ? new Date(s.end_time) : new Date(s.start_time);
+  return deadline < new Date();
+}
+function daysOverdueCount(s: ExistingSchedule): number {
+  const deadline = s.end_time ? new Date(s.end_time) : new Date(s.start_time);
+  return Math.max(0, Math.floor((Date.now() - deadline.getTime()) / 86_400_000));
+}
 function scoreColor(s: number) {
   return s >= 80 ? '#FF6B8A' : s >= 60 ? '#FF9F43' : s >= 30 ? '#00C896' : '#00C6FF';
 }
@@ -136,6 +145,7 @@ export default function AIAnalysisPage() {
   const [weeklyResult, setWeeklyResult]   = useState<WeeklyResult | null>(null);
   const [todayBrief,   setTodayBrief]     = useState<BriefResult | null>(null);
   const [weekBrief,    setWeekBrief]      = useState<BriefResult | null>(null);
+  const [monthBrief,   setMonthBrief]     = useState<BriefResult | null>(null);
   const [analyzing,    setAnalyzing]      = useState(false);
   const [lastRun,      setLastRun]        = useState<string | null>(null);
   const [schedCount,   setSchedCount]     = useState(0);
@@ -203,51 +213,76 @@ export default function AIAnalysisPage() {
       Authorization: `Bearer ${session.access_token}`,
     };
 
-    // Load schedules for this week
+    // Load schedules: overdue (30 days back) + this week + rest of month
     const { data: { user } } = await supabase.auth.getUser();
     const now = new Date();
-    const wStart = new Date(now); wStart.setDate(now.getDate() - now.getDay()); wStart.setHours(0,0,0,0);
-    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6); wEnd.setHours(23,59,59,999);
+    const wStart   = new Date(now); wStart.setDate(now.getDate() - now.getDay()); wStart.setHours(0,0,0,0);
+    const wEnd     = new Date(wStart); wEnd.setDate(wStart.getDate() + 6); wEnd.setHours(23,59,59,999);
+    const mEnd     = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const lookback = new Date(now.getTime() - 30 * 86_400_000); // 30 days back for overdue
+
     const { data: scheds } = await supabase.from('schedules').select('*')
       .eq('user_id', user!.id)
-      .gte('start_time', wStart.toISOString())
-      .lte('start_time', wEnd.toISOString());
+      .gte('start_time', lookback.toISOString())
+      .lte('start_time', mEnd.toISOString())
+      .order('start_time', { ascending: true });
 
-    const schedules = (scheds ?? []).map(s => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+    const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+
+    const rawSchedules: ExistingSchedule[] = (scheds ?? []).map(s => ({
+      id: s.id, title: s.title, type: s.type, priority: s.priority,
+      start_time: s.start_time, end_time: s.end_time,
+      all_day: s.all_day ?? false, is_completed: s.is_completed,
+    }));
+    setWeekSchedules(rawSchedules.filter(s => {
+      const d = new Date(s.start_time);
+      return d >= wStart && d <= wEnd;
+    }));
+
+    // Build enriched schedule list with overdue flags for the AI
+    const schedules = rawSchedules.map(s => {
       const sd = new Date(s.start_time);
       const ed = s.end_time ? new Date(s.end_time) : null;
-      const timeFmt: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-      const dateFmt: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+      const over = isOverdue(s);
       return {
         id: s.id, title: s.title, type: s.type, priority: s.priority,
         start_time: s.start_time, end_time: s.end_time,
         all_day: s.all_day ?? false, is_completed: s.is_completed,
+        is_overdue: over,
+        days_overdue: over ? daysOverdueCount(s) : 0,
         start_display: s.all_day ? 'All day' : sd.toLocaleTimeString('en-US', timeFmt),
         end_display:   ed && !s.all_day ? ed.toLocaleTimeString('en-US', timeFmt) : undefined,
         date_display:  sd.toLocaleDateString('en-US', dateFmt),
       };
     });
-    setWeekSchedules(schedules);
 
-    // Fire all 3 in parallel
+    const overdueCount = schedules.filter(s => s.is_overdue).length;
+
+    // Fire all 4 in parallel
     try {
-      const [wRes, todayRes, weekRes] = await Promise.allSettled([
+      const [wRes, todayRes, weekRes, monthRes] = await Promise.allSettled([
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
           body: JSON.stringify({
-            action: 'weekly_analysis',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            schedules,
+            action: 'weekly_analysis', timezone: tz,
+            schedules: schedules.filter(s => { const d=new Date(s.start_time); return d>=wStart&&d<=wEnd; }),
+            overdue_count: overdueCount,
             dateRange: { from: wStart.toDateString(), to: wEnd.toDateString() },
           }),
         }),
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
-          body: JSON.stringify({ action: 'daily_brief', mode: 'today', schedules, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+          body: JSON.stringify({ action:'daily_brief', mode:'today', overdue_count: overdueCount, schedules, timezone: tz }),
         }),
         fetch(`${BASE}/functions/v1/analyze-schedule`, {
           method:'POST', headers,
-          body: JSON.stringify({ action: 'daily_brief', mode: 'week', schedules, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+          body: JSON.stringify({ action:'daily_brief', mode:'week', overdue_count: overdueCount, schedules, timezone: tz }),
+        }),
+        fetch(`${BASE}/functions/v1/analyze-schedule`, {
+          method:'POST', headers,
+          body: JSON.stringify({ action:'daily_brief', mode:'month', overdue_count: overdueCount, schedules, timezone: tz }),
         }),
       ]);
 
@@ -262,6 +297,10 @@ export default function AIAnalysisPage() {
       if (weekRes.status === 'fulfilled' && weekRes.value.ok) {
         const d = await weekRes.value.json();
         setWeekBrief(d);
+      }
+      if (monthRes.status === 'fulfilled' && monthRes.value.ok) {
+        const d = await monthRes.value.json();
+        setMonthBrief(d);
       }
       setLastRun(new Date().toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -582,9 +621,45 @@ export default function AIAnalysisPage() {
               )}
             </div>
 
-            {/* ── 5. PRODUCTIVITY NOTES ── */}
+            {/* ── 5. THIS MONTH'S FOCUS ── */}
             <div style={SECTION}>
-              <p style={SEC_LABEL}>5 · Productivity Notes</p>
+              <p style={SEC_LABEL}>5 · This Month&apos;s Focus</p>
+              <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8"/>
+                  <path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M7 14h4M7 17h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>} title="This Month's Focus"
+                sub={new Date().toLocaleDateString('en-US', { month:'long', year:'numeric' })} />
+
+              {monthBrief ? (
+                <>
+                  <p style={{ fontSize:15, fontWeight:700, color:'var(--dark)', marginBottom:12, lineHeight:1.4 }}>
+                    {monthBrief.headline}
+                  </p>
+                  {monthBrief.items.map((item, i) => (
+                    <Card key={i} accent={item.accent}>
+                      <div style={{ display:'flex', gap:10 }}>
+                        <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color: item.accent ?? 'var(--purple)', flexShrink:0, marginTop:1 }}><TypeIconSVG type={item.type} /></span>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ margin:0, fontSize:13, fontWeight:700, color:item.accent, marginBottom:4 }}>{item.title}</p>
+                          <p style={{ margin:0, fontSize:12, color:'var(--mid)', lineHeight:1.6 }}>{item.body}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </>
+              ) : (
+                <Card>
+                  <p style={{ margin:0, fontSize:13, color:'var(--mid)', textAlign:'center', padding:'8px 0' }}>
+                    Tap <strong style={{ color:'var(--purple)' }}>Analyze</strong> to get your monthly focus summary
+                  </p>
+                </Card>
+              )}
+            </div>
+
+            {/* ── 6. PRODUCTIVITY NOTES ── */}
+            <div style={SECTION}>
+              <p style={SEC_LABEL}>6 · Productivity Notes</p>
               <SectionHeader icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <path d="M4 18L9 11l4 4 3-4 4 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M4 21h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
