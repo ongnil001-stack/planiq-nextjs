@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
 import { detectLocation, type GeoResult } from '@/lib/geoDetect';
+import { buildISO } from '@/lib/datetime';
 import type { ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import BottomNav from '@/components/layout/BottomNav';
 
@@ -93,26 +94,9 @@ const REMINDER_OPTIONS = [
 const DAYS_FULL    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
-  try {
-    const [y, mo, d] = dateStr.split('-').map(Number);
-    const [h, mi]    = timeHHMM.split(':').map(Number);
-    const utcWall    = Date.UTC(y, mo - 1, d, h, mi, 0);
-    const fmt = new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-    });
-    const parts: Record<string, string> = {};
-    fmt.formatToParts(new Date(utcWall)).forEach(({ type, value }) => { parts[type] = value; });
-    const formattedUTC = Date.UTC(
-      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-      parts.hour === '24' ? 0 : Number(parts.hour), Number(parts.minute), Number(parts.second),
-    );
-    return new Date(utcWall - (utcWall - formattedUTC)).toISOString();
-  } catch {
-    return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
-  }
-}
+// buildISO now comes from '@/lib/datetime' (single source of truth) — the old
+// local copy had a sign-flipped offset that shifted saved dates by ~2× the tz
+// offset (e.g. Jun 5 → Jun 6 in UTC+8).
 
 function addMinutes(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number);

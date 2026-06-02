@@ -2,36 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-
-// Convert a wall-clock date+time in an IANA timezone to a true UTC instant.
-// Mirrors AddScheduleSheet.buildISO so reschedules persist the same instants saves do.
-function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
-  try {
-    const [y, mo, d] = dateStr.split('-').map(Number);
-    const [h, mi]    = timeHHMM.split(':').map(Number);
-    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
-    const fmt = new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-    for (let i = 0; i < 2; i++) {
-      const parts: Record<string, string> = {};
-      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
-      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
-      const diffMs = (
-        (Number(parts.year) - y) * 365 * 86400000 +
-        (Number(parts.month) - mo) * 30 * 86400000 +
-        (Number(parts.day) - d) * 86400000 +
-        (localH - h) * 3600000 +
-        (Number(parts.minute) - mi) * 60000
-      );
-      candidate -= diffMs;
-    }
-    return new Date(candidate).toISOString();
-  } catch {
-    return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
-  }
-}
+import { buildISO } from '@/lib/datetime';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Optimization {
