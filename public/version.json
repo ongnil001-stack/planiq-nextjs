@@ -1,8 +1,21 @@
 {
-  "version": "1.1.0",
-  "releaseDate": "2026-05-27",
-  "summary": "Unified System Settings, smarter AI tone, fixed calendar views, and streak accuracy improvements.",
+  "version": "1.1.2",
+  "releaseDate": "2026-06-02",
+  "summary": "Recurring schedules work across all months, per-occurrence completion, accurate dates, and a smarter Focus Hub.",
   "changelog": [
+    {
+      "version": "1.1.2",
+      "date": "2026-06-02",
+      "notes": [
+        "Fixed Add Schedule saving the wrong date — the date you pick is the date that saves (was shifting a day ahead in some timezones)",
+        "Recurring schedules now appear correctly every week and in future months (July, August and beyond), across Daily, Weekly, Monthly, and Yearly views",
+        "Per-occurrence completion: completing one day of a repeating task no longer marks the whole series done",
+        "Focus Hub: overdue items are flagged separately with Reschedule, Mark Completed, Mark Missed, and Clear — the AI no longer suggests time slots for tasks whose time has passed",
+        "Smart Reschedule now shows the full date and time (not just the time) so cross-day moves are clear",
+        "AI Priorities: added a This Month focus summary (busy days, free days, overload risks)",
+        "Theme polish: charts, score rings, and progress bars now follow the selected theme"
+      ]
+    },
     {
       "version": "1.1.0",
       "date": "2026-05-27",
