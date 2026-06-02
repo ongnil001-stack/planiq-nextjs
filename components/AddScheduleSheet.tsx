@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { getHolidays, findHoliday, type Holiday } from '@/lib/holidays';
 import { COUNTRY_TIMEZONES } from '@/lib/countries';
 import { detectLocation, type GeoResult } from '@/lib/geoDetect';
+import { buildISO } from '@/lib/datetime';
 import type { Schedule, ScheduleType, Priority, RecurrenceRule } from '@/types/database';
 import SmartScheduleAI from '@/components/SmartScheduleAI';
 import { captureAppError } from '@/lib/sentry';
@@ -211,43 +212,7 @@ const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 const DAYS_FULL    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function buildISO(dateStr: string, timeHHMM: string, tz: string): string {
-  // Strategy: use Intl to find what UTC time corresponds to "dateStr timeHHMM" in tz.
-  // We format a candidate UTC time back into tz and iterate until wall-clock matches.
-  try {
-    const [y, mo, d] = dateStr.split('-').map(Number);
-    const [h, mi]    = timeHHMM.split(':').map(Number);
-
-    // Start with a naive guess: treat as UTC, which will be off by the tz offset
-    let candidate = Date.UTC(y, mo - 1, d, h, mi, 0);
-
-    const fmt = new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-
-    // Two iterations converges for any tz offset
-    for (let i = 0; i < 2; i++) {
-      const parts: Record<string, string> = {};
-      fmt.formatToParts(new Date(candidate)).forEach(({ type, value }) => { parts[type] = value; });
-      const localH = parts.hour === '24' ? 0 : Number(parts.hour);
-      const diffMs = (
-        (Number(parts.year) - y) * 365 * 86400000 +
-        (Number(parts.month) - mo) * 30 * 86400000 +
-        (Number(parts.day) - d) * 86400000 +
-        (localH - h) * 3600000 +
-        (Number(parts.minute) - mi) * 60000
-      );
-      candidate -= diffMs;
-    }
-    return new Date(candidate).toISOString();
-  } catch {
-    // Fallback: parse as local time (browser tz)
-    return new Date(`${dateStr}T${timeHHMM}:00`).toISOString();
-  }
-}
+// buildISO is imported from '@/lib/datetime' (single source of truth).
 
 function addMinutes(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number);
