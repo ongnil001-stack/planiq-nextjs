@@ -1,5 +1,6 @@
 'use client';
 import AILoadingIndicator from '@/components/AILoadingIndicator';
+import { loadFullPrefs } from '@/lib/dashboardPrefs';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -166,6 +167,16 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
+  // Read AI mode from saved dashboard preferences
+  const [aiMode, setAiMode] = useState<string>('onOpen');
+
+  // ── Read AI mode from saved prefs (respects Manual Only setting) ──────────
+  useEffect(() => {
+    const readMode = () => setAiMode(loadFullPrefs().aiRefreshInterval);
+    readMode();
+    window.addEventListener('planiq_dash_prefs_changed', readMode);
+    return () => window.removeEventListener('planiq_dash_prefs_changed', readMode);
+  }, []);
 
   // ── Scroll lock ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -298,13 +309,13 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     }
   }, []);
 
-  // Trigger AI fetch after schedules load OR when mode changes
+  // Trigger AI fetch — only when aiMode is NOT 'manual'
   useEffect(() => {
-    if (!loading && open && schedules !== null) {
+    if (!loading && open && schedules !== null && aiMode !== 'manual') {
       fetchAiBrief(schedules, mode);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, mode, open]);
+  }, [loading, mode, open, aiMode]);
 
   // Escape key
   useEffect(() => {
@@ -525,6 +536,42 @@ export default function FocusHubSheet({ open, onClose }: Props) {
 
         {/* Content */}
         <div style={SCROLL}>
+          {/* ── Manual mode: show Run button if AI hasn't run yet ── */}
+          {!isLoadingAny && aiMode === 'manual' && !aiBrief && !aiError && (
+            <div style={{
+              margin: '16px 0',
+              padding: '16px',
+              background: 'var(--pur-lt,rgba(124,106,240,.08))',
+              border: '1.5px solid var(--border2)',
+              borderRadius: 14,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>⚡</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', marginBottom: 4 }}>
+                AI Analysis
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--mid)', marginBottom: 14, lineHeight: 1.5 }}>
+                You&apos;re on <strong style={{ color: 'var(--purple)' }}>Manual Only</strong> mode.
+                Tap below to run AI analysis now.
+              </div>
+              <button
+                onClick={() => fetchAiBrief(schedules, mode)}
+                style={{
+                  background: 'var(--purple)', border: 'none',
+                  borderRadius: 10, padding: '10px 20px',
+                  fontSize: 13, fontWeight: 700, color: '#fff',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                Run AI Analysis
+              </button>
+              <div style={{ fontSize: 10, color: 'var(--lite)', marginTop: 8 }}>
+                Change this in Profile → System Settings → Customize Dashboard
+              </div>
+            </div>
+          )}
+
           {isLoadingAny ? (
             <AILoadingIndicator
               sub={loading ? undefined : 'Generating personalised insights'}
