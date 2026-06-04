@@ -1541,32 +1541,29 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+          <div style={{ padding:'10px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const daysIn = new Date(year, mo + 1, 0).getDate();
-                // boolean[] avoids Set<number> which confuses the TSX parser
-                const dayHasActivity: boolean[] = [];
+                const firstD = new Date(year, mo, 1).getDay(); // 0 = Sunday
+                // Track activity days — boolean[] avoids Set<T> generic ambiguity in TSX
+                const dayHasAct: boolean[] = [];
                 schedules.forEach(s => {
-                  const d = new Date(s.start_time);
-                  if (d.getFullYear() === year && d.getMonth() === mo) {
-                    dayHasActivity[d.getDate()] = true;
+                  const sd = new Date(s.start_time);
+                  if (sd.getFullYear() === year && sd.getMonth() === mo) {
+                    dayHasAct[sd.getDate()] = true;
                   }
                 });
-                const busy = dayHasActivity.filter(Boolean).length;
-                const free = daysIn - busy;
-                // 5 bars — one per ~week segment, height = activity density
-                const bars: number[] = [];
-                for (let i = 0; i < 5; i++) {
-                  const s1 = Math.floor(i * daysIn / 5) + 1;
-                  const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
-                  let n = 0;
-                  for (let d = s1; d <= s2; d++) { if (dayHasActivity[d]) n++; }
-                  const seg = s2 - s1 + 1;
-                  bars.push(seg > 0 ? n / seg : 0);
-                }
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
                 const isSel     = mo === month && !isThisMon;
+
+                // 42 cells: 6 rows × 7 cols, null = empty spacer
+                const cells: (number | null)[] = [];
+                for (let i = 0; i < 42; i++) {
+                  const n = i - firstD + 1;
+                  cells.push(n >= 1 && n <= daysIn ? n : null);
+                }
+
                 return (
                   <button
                     key={mo}
@@ -1576,25 +1573,75 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       setViewMode('monthly');
                     }}
                     style={{
-                      display:'flex', flexDirection:'column', gap:0,
-                      padding:'10px 9px 9px',
-                      background: isThisMon ? 'var(--pur-lt,rgba(124,106,240,.10))' : 'var(--glass-bg2,rgba(255,255,255,.04))',
-                      border: isThisMon ? '2px solid var(--purple)' : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
-                      borderRadius:14, cursor:'pointer',
+                      display:'flex', flexDirection:'column',
+                      padding:'8px 6px 6px',
+                      background: isThisMon
+                        ? 'var(--pur-lt,rgba(124,106,240,.10))'
+                        : 'var(--glass-bg2,rgba(255,255,255,.04))',
+                      border: isThisMon
+                        ? '2px solid var(--purple)'
+                        : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
+                      borderRadius:13, cursor:'pointer',
                       fontFamily:'inherit', textAlign:'left',
                       minWidth:0, overflow:'hidden',
                       WebkitTapHighlightColor:'transparent',
                     }}
                   >
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-                      <span style={{ fontSize:13, fontWeight:900, lineHeight:1, color: isThisMon ? 'var(--purple)' : 'var(--dark)', letterSpacing:'-.3px' }}>
+                    {/* ── Month header ── */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
+                      <span style={{ fontSize:11, fontWeight:900, lineHeight:1, letterSpacing:'-.2px', color: isThisMon ? 'var(--purple)' : 'var(--dark)' }}>
                         {MONTHS_SH[mo]}
                       </span>
-                      <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
-                        {isThisMon && (
-                          <span style={{ fontSize:7, fontWeight:800, letterSpacing:'.4px', color:'var(--purple)', background:'var(--pur-lt)', border:'1px solid var(--border2)', borderRadius:4, padding:'1px 4px' }}>NOW</span>
-                        )}
-                        {busy > 0 && (
+                      {isThisMon && (
+                        <span style={{ fontSize:7, fontWeight:800, color:'var(--purple)', opacity:.85 }}>now</span>
+                      )}
+                    </div>
+
+                    {/* ── Date grid: 7 cols, aspect-ratio:1 inline (bypasses styled-jsx) ── */}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
+                      {cells.map((dayNum, ci) => {
+                        if (dayNum === null) {
+                          return <div key={ci} style={{ aspectRatio:'1' }} />;
+                        }
+                        const isToday = isThisMon && dayNum === today.getDate();
+                        const hasAct  = dayHasAct[dayNum] === true;
+                        return (
+                          <div key={ci} style={{
+                            aspectRatio:'1',
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            position:'relative',
+                            borderRadius:'50%',
+                            background: isToday ? 'var(--purple)' : 'transparent',
+                          }}>
+                            <span style={{
+                              fontSize:'7.5px', lineHeight:1,
+                              fontWeight: isToday ? 800 : hasAct ? 700 : 400,
+                              color: isToday ? '#fff' : hasAct ? 'var(--purple)' : 'var(--dark)',
+                            }}>
+                              {dayNum}
+                            </span>
+                            {hasAct && !isToday && (
+                              <span style={{
+                                position:'absolute', bottom:'4%', left:'50%',
+                                transform:'translateX(-50%)',
+                                width:'2px', height:'2px',
+                                borderRadius:'50%',
+                                background:'var(--purple)', opacity:.65,
+                              }} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+              Tap any month to see the full schedule
+            </div>
+          </div>
+        )}
                           <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>{busy}</span>
                         )}
                       </div>
