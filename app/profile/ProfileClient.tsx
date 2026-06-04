@@ -884,7 +884,50 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           {/* ── Software Update ── */}
           {settingsView === 'update' && (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              {/* Version row */}
+
+              {/* ── NINJA UPDATE BANNER: app silently updated while closed ── */}
+              {appUpdate.justUpdated && !appUpdate.hasUpdate && (
+                <div style={{
+                  display:'flex', alignItems:'flex-start', gap:12,
+                  background:'rgba(0,200,150,.07)', border:'1.5px solid rgba(0,200,150,.22)',
+                  borderRadius:16, padding:'14px 16px',
+                }}>
+                  <div style={{
+                    width:34, height:34, borderRadius:10, flexShrink:0,
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    background:'rgba(0,200,150,.14)', border:'1px solid rgba(0,200,150,.25)',
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"
+                        stroke="#00C896" strokeWidth="1.6"/>
+                      <path d="M8 12l3 3 5-5" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:800, color:'#00C896', marginBottom:3 }}>
+                      App Updated Automatically
+                    </div>
+                    <div style={{ fontSize:11, color:'var(--mid)', lineHeight:1.5 }}>
+                      {appUpdate.justUpdatedFrom
+                        ? <>Updated from <strong style={{color:'var(--dark)'}}>v{appUpdate.justUpdatedFrom}</strong> → <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong> in the background.</>
+                        : <>Updated to <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong> in the background.</>
+                      }
+                      {' '}This happens automatically when a new version is deployed.
+                    </div>
+                  </div>
+                  <button onClick={appUpdate.clearJustUpdated} style={{
+                    background:'none', border:'none', cursor:'pointer',
+                    color:'var(--mid)', padding:4, flexShrink:0,
+                    WebkitTapHighlightColor:'transparent',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* ── Version row ── */}
               <div style={{ background:'var(--glass-bg2, rgba(255,255,255,.04))', border:'1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius:16, overflow:'hidden' }}>
                 <div style={{ display:'flex', borderBottom:'1px solid var(--border)' }}>
                   <div style={{ flex:1, padding:'12px 16px', borderRight:'1px solid var(--border)' }}>
@@ -893,7 +936,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   </div>
                   <div style={{ flex:1, padding:'12px 16px' }}>
                     <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Latest</div>
-                    <div style={{ fontSize:18, fontWeight:900, color: appUpdate.hasUpdate ? '#FF6B6B' : 'var(--dark)' }}>
+                    <div style={{ fontSize:18, fontWeight:900, color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--dark)' }}>
                       {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : '—'}
                     </div>
                   </div>
@@ -941,8 +984,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                       <div key={entry.version}>
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:8, background: i===0 ? 'rgba(124,106,240,.15)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid rgba(124,106,240,.25)' : '1px solid var(--border)' }}>v{entry.version}</span>
-                            {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'#00C896', letterSpacing:'.5px' }}>LATEST</span>}
+                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:8, background: i===0 ? 'var(--pur-lt)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid var(--border2)' : '1px solid var(--border)' }}>v{entry.version}</span>
+                            {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'var(--mint,#00C896)', letterSpacing:'.5px' }}>LATEST</span>}
                           </div>
                           <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
                         </div>

@@ -1,27 +1,43 @@
 /**
- * useAppUpdate — detects when a new version of PlanIQ is available.
+ * useAppUpdate — detects new versions and surfaces update state to the UI.
  *
- * How it works (Vercel PWA with skipWaiting: true):
- *  1. Fetches /version.json (always fresh — cache-busted) on mount and every 10 min.
- *  2. Compares the normalised latest version against NEXT_PUBLIC_APP_VERSION (set at build time).
- *  3. Also checks localStorage "planiq_dismissed_version" — if the user dismissed this
- *     exact version, hasUpdate = false (no persistent badge for already-seen updates).
- *  4. "Update Now" clears all SW caches then calls location.reload().
- *  5. "Dismiss" stores the latest version in localStorage so the badge won't re-appear.
+ * ── Why "ninja updates" happen ────────────────────────────────────────────
+ * PlanIQ is a PWA with `skipWaiting: true`. When a new build is deployed:
  *
- * Version normalisation:
- *  Strips a leading "v" and any pre-release suffix (e.g. "v1.0.0-early-access" → "1.0.0")
- *  before comparing, so tag format differences don't create phantom updates.
+ *   1. Vercel serves new assets (new JS bundle with new version baked in).
+ *   2. The new Service Worker installs and immediately activates (skipWaiting).
+ *   3. On the NEXT navigation / app open, the new bundle loads silently.
+ *   4. Because the new bundle already has the NEW version baked in,
+ *      version.json == bundle version → hasUpdate = false → badge never shows.
  *
- * To release a new version:
- *  1. Update public/version.json   (version, releaseDate, summary, changelog).
- *  2. Update NEXT_PUBLIC_APP_VERSION in .env.local / Vercel env vars to match.
- *  3. Deploy — users will see the update badge on next page load.
+ * The user's app updated without them seeing anything — a "ninja update."
+ *
+ * ── How we fix it ────────────────────────────────────────────────────────
+ *
+ *  A. NINJA UPDATE DETECTION (localStorage):
+ *     On every app load we persist the current bundle version as
+ *     `planiq_last_version`. On the next load we compare:
+ *       lastVersion ≠ currentVersion  →  justUpdated = true
+ *     This catches updates that happened while the app was closed.
+ *
+ *  B. FAST BADGE FOR OPEN-APP UPDATES (controllerchange):
+ *     When the new SW takes control (controllerchange), we immediately
+ *     re-poll version.json. At that moment the old bundle is still running
+ *     (old version) but version.json already has the new version → badge
+ *     appears before the user navigates away.
+ *
+ *  C. POLLING (every 3 min, reduced from 10):
+ *     Catches updates while the user is actively using the app.
+ *
+ * ── Release checklist ─────────────────────────────────────────────────────
+ *  1. Bump version in public/version.json.
+ *  2. git push → Vercel auto-deploys, version is auto-baked into bundle.
+ *  No Vercel env var update needed (next.config.js handles this).
  */
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 export interface ChangelogEntry {
   version: string;
@@ -39,63 +55,79 @@ export interface VersionManifest {
 export interface AppUpdateState {
   /** true when version.json has a newer version than the running build AND not dismissed */
   hasUpdate: boolean;
-  /** raw version string from NEXT_PUBLIC_APP_VERSION (build-time) */
+  /** raw version string from NEXT_PUBLIC_APP_VERSION (baked at build time) */
   currentVersion: string;
-  /** normalized (semver only) current version, e.g. "1.0.0" */
+  /** normalised semver, e.g. "1.1.2" */
   currentVersionClean: string;
-  /** version string from version.json (latest deployed) */
+  /** latest version string from version.json */
   latestVersion: string | null;
-  /** normalized latest version */
   latestVersionClean: string | null;
-  /** one-line what's new summary from version.json */
   summary: string | null;
-  /** full changelog from version.json */
   changelog: ChangelogEntry[];
-  /** ISO date string of latest release */
   releaseDate: string | null;
-  /** whether the check is in progress */
   checking: boolean;
-  /** whether the update reload is in progress */
   updating: boolean;
-  /** call to force re-check */
+  /** true when a ninja update was detected on this load */
+  justUpdated: boolean;
+  /** the version the app was on before the ninja update */
+  justUpdatedFrom: string | null;
   recheck: () => void;
-  /** call to apply the update — clears SW caches then reloads */
   refreshToUpdate: () => Promise<void>;
-  /** dismiss the current update badge without updating (stores in localStorage) */
   dismissUpdate: () => void;
+  clearJustUpdated: () => void;
 }
 
-const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
-const DISMISSED_KEY = 'planiq_dismissed_version';
+const POLL_MS         = 3 * 60 * 1000;   // 3 minutes (down from 10)
+const DISMISSED_KEY   = 'planiq_dismissed_version';
+const LAST_VER_KEY    = 'planiq_last_version';
 
-/** Strip leading "v" and pre-release tags, e.g. "v1.0.0-early-access" → "1.0.0" */
-function normalizeVersion(v: string): string {
+function normalize(v: string): string {
   return v.replace(/^v/i, '').split('-')[0].trim();
 }
 
-function getRawVersion(): string {
+function getRaw(): string {
   return process.env.NEXT_PUBLIC_APP_VERSION ?? '1.0.0';
 }
 
-function getDismissedVersion(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(DISMISSED_KEY);
-}
-
 export function useAppUpdate(): AppUpdateState {
-  const rawVersion          = getRawVersion();
-  const currentVersionClean = normalizeVersion(rawVersion);
+  const rawVersion    = getRaw();
+  const currentClean  = normalize(rawVersion);
 
   const [manifest,         setManifest]         = useState<VersionManifest | null>(null);
   const [checking,         setChecking]         = useState(false);
   const [updating,         setUpdating]         = useState(false);
-  const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+  const [dismissed,        setDismissed]        = useState<string | null>(null);
+  const [justUpdated,      setJustUpdated]      = useState(false);
+  const [justUpdatedFrom,  setJustUpdatedFrom]  = useState<string | null>(null);
 
-  // Load dismissed version from localStorage on mount
+  // Track whether we've done the initial ninja-update check
+  const initDoneRef = useRef(false);
+
+  // ── A. NINJA UPDATE DETECTION ──────────────────────────────────────────
   useEffect(() => {
-    setDismissedVersion(getDismissedVersion());
-  }, []);
+    if (initDoneRef.current || typeof window === 'undefined') return;
+    initDoneRef.current = true;
 
+    const last       = localStorage.getItem(LAST_VER_KEY);
+    const wasDismiss = localStorage.getItem(DISMISSED_KEY);
+
+    if (last && last !== currentClean) {
+      // Version changed since last open → ninja update happened
+      setJustUpdated(true);
+      setJustUpdatedFrom(last);
+      // Clear any stale dismissed version (it was for the old version)
+      if (wasDismiss) localStorage.removeItem(DISMISSED_KEY);
+    }
+
+    // Always persist the current version for next-load comparison
+    localStorage.setItem(LAST_VER_KEY, currentClean);
+
+    // Load dismissed version
+    const d = localStorage.getItem(DISMISSED_KEY);
+    if (d) setDismissed(d);
+  }, [currentClean]);
+
+  // ── C. POLLING ─────────────────────────────────────────────────────────
   const fetchManifest = useCallback(async () => {
     setChecking(true);
     try {
@@ -107,7 +139,7 @@ export function useAppUpdate(): AppUpdateState {
       const data: VersionManifest = await res.json();
       setManifest(data);
     } catch {
-      // silently ignore network errors
+      // ignore network errors silently
     } finally {
       setChecking(false);
     }
@@ -115,30 +147,40 @@ export function useAppUpdate(): AppUpdateState {
 
   useEffect(() => {
     fetchManifest();
-    const timer = setInterval(fetchManifest, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    const t = setInterval(fetchManifest, POLL_MS);
+    return () => clearInterval(t);
   }, [fetchManifest]);
 
-  const latestVersionClean = manifest ? normalizeVersion(manifest.version) : null;
+  // ── B. FAST BADGE: listen for SW controller change ─────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    const handler = () => {
+      // New SW just took control — old bundle is still running in memory.
+      // Immediately re-check version.json: it will likely be newer than
+      // the old bundle, making hasUpdate = true and the badge appear.
+      fetchManifest();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', handler);
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', handler);
+  }, [fetchManifest]);
 
-  // hasUpdate: latest differs from current AND user hasn't dismissed this version
+  const latestClean = manifest ? normalize(manifest.version) : null;
+
+  // hasUpdate = new version available AND not dismissed
   const hasUpdate =
-    latestVersionClean != null &&
-    latestVersionClean !== currentVersionClean &&
-    latestVersionClean !== dismissedVersion;
+    latestClean != null &&
+    latestClean !== currentClean &&
+    latestClean !== dismissed;
 
-  /**
-   * Apply update:
-   *  1. Clear dismissed version so badge works correctly after reload.
-   *  2. Delete all SW caches so new assets are fetched fresh.
-   *  3. Unregister the current SW (new build registers a fresh one).
-   *  4. Hard reload.
-   */
+  // ── refreshToUpdate: clear caches, unregister SW, reload ───────────────
   const refreshToUpdate = useCallback(async () => {
     setUpdating(true);
-    // Clear any dismissed state so the badge behaves correctly post-update
     if (typeof window !== 'undefined') {
+      // Remove dismissed flag so badge logic resets correctly after reload
       localStorage.removeItem(DISMISSED_KEY);
+      // DO NOT update LAST_VER_KEY here — we want the post-reload load
+      // to detect the version change and show "Just Updated" banner.
+      // (LAST_VER_KEY still has the old version; new bundle will have new version)
     }
     try {
       if ('caches' in window) {
@@ -149,34 +191,39 @@ export function useAppUpdate(): AppUpdateState {
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map(r => r.unregister()));
       }
-    } catch {
-      // ignore — still reload even if cache clearing fails
-    }
+    } catch { /* ignore */ }
     window.location.reload();
   }, []);
 
-  /** Dismiss the badge for the current latest version without reloading */
+  // ── dismissUpdate: hide badge for this version without reloading ────────
   const dismissUpdate = useCallback(() => {
-    if (!latestVersionClean) return;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(DISMISSED_KEY, latestVersionClean);
-    }
-    setDismissedVersion(latestVersionClean);
-  }, [latestVersionClean]);
+    if (!latestClean) return;
+    if (typeof window !== 'undefined') localStorage.setItem(DISMISSED_KEY, latestClean);
+    setDismissed(latestClean);
+  }, [latestClean]);
+
+  // ── clearJustUpdated: dismiss the "Just Updated" banner ────────────────
+  const clearJustUpdated = useCallback(() => {
+    setJustUpdated(false);
+    setJustUpdatedFrom(null);
+  }, []);
 
   return {
     hasUpdate,
     currentVersion:       rawVersion,
-    currentVersionClean,
+    currentVersionClean:  currentClean,
     latestVersion:        manifest?.version ?? null,
-    latestVersionClean,
+    latestVersionClean:   latestClean,
     summary:              manifest?.summary ?? null,
     changelog:            manifest?.changelog ?? [],
     releaseDate:          manifest?.releaseDate ?? null,
     checking,
     updating,
+    justUpdated,
+    justUpdatedFrom,
     recheck:              fetchManifest,
     refreshToUpdate,
     dismissUpdate,
+    clearJustUpdated,
   };
 }
