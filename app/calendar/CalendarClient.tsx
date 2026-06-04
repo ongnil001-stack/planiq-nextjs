@@ -1540,123 +1540,134 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         )}
 
         {/* ── YEARLY VIEW ── */}
-        {viewMode === 'yearly' && (
-          <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+        {viewMode === 'yearly' && (() => {
+          // Pre-compute per-month stats once
+          const monthStats = Array.from({ length: 12 }, (_, mo) => {
+            const daysIn     = new Date(year, mo + 1, 0).getDate();
+            const activeDays = new Set<number>();
+            schedules.forEach(s => {
+              const d = new Date(s.start_time);
+              if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
+            });
+            const busy = activeDays.size;
+            const free = daysIn - busy;
+            // 5 bars: divide month into 5 equal segments, each bar = density of that segment
+            const bars = Array.from({ length: 5 }, (_, i) => {
+              const s1 = Math.floor(i * daysIn / 5) + 1;
+              const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
+              let n = 0;
+              for (let d = s1; d <= s2; d++) if (activeDays.has(d)) n++;
+              return (s2 - s1 + 1) > 0 ? n / (s2 - s1 + 1) : 0;
+            });
+            return { daysIn, busy, free, bars, activeDays };
+          });
 
-            {/* 3-column grid of month overview cards */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
-              {Array.from({ length: 12 }, (_, mo) => {
-                const cnt       = monthCounts[mo];
-                const isThisMon = mo === today.getMonth() && year === today.getFullYear();
-                const isSel     = mo === month && !isThisMon;
-                const daysIn    = new Date(year, mo + 1, 0).getDate();
+          return (
+            <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
+                {monthStats.map(({ daysIn, busy, free, bars }, mo) => {
+                  const isThisMon = mo === today.getMonth() && year === today.getFullYear();
+                  const isSel     = mo === month && !isThisMon;
 
-                // Which days have activities
-                const activeDays = new Set<number>();
-                schedules.forEach(s => {
-                  const d = new Date(s.start_time);
-                  if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
-                });
+                  return (
+                    <button
+                      key={mo}
+                      onClick={() => {
+                        setViewDate(new Date(year, mo, 1));
+                        setSelectedDay(isThisMon ? today.getDate() : 1);
+                        setViewMode('monthly');
+                      }}
+                      style={{
+                        display:'flex', flexDirection:'column', gap:0,
+                        padding:'10px 9px 9px',
+                        background: isThisMon
+                          ? 'var(--pur-lt,rgba(124,106,240,.10))'
+                          : 'var(--glass-bg2,rgba(255,255,255,.04))',
+                        border: isThisMon
+                          ? '2px solid var(--purple)'
+                          : `1.5px solid ${isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))'}`,
+                        borderRadius:14, cursor:'pointer',
+                        fontFamily:'inherit', textAlign:'left',
+                        minWidth:0, overflow:'hidden',
+                        WebkitTapHighlightColor:'transparent',
+                      }}
+                    >
+                      {/* ── Row 1: Month name + NOW/count ── */}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                        <span style={{
+                          fontSize:13, fontWeight:900, lineHeight:1,
+                          color: isThisMon ? 'var(--purple)' : 'var(--dark)',
+                          letterSpacing:'-.3px',
+                        }}>
+                          {MONTHS_SH[mo]}
+                        </span>
+                        <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
+                          {isThisMon && (
+                            <span style={{
+                              fontSize:7, fontWeight:800, letterSpacing:'.4px',
+                              color:'var(--purple)', background:'var(--pur-lt)',
+                              border:'1px solid var(--border2)',
+                              borderRadius:4, padding:'1px 4px',
+                            }}>NOW</span>
+                          )}
+                          {busy > 0 && (
+                            <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
+                              {busy}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                // 5 equal segments → 5 bars (one per ~week of the month)
-                const bars = Array.from({ length: 5 }, (_, i) => {
-                  const segStart = Math.floor(i * daysIn / 5) + 1;
-                  const segEnd   = Math.floor((i + 1) * daysIn / 5);
-                  let   busy     = 0;
-                  for (let d = segStart; d <= segEnd; d++) {
-                    if (activeDays.has(d)) busy++;
-                  }
-                  const total = segEnd - segStart + 1;
-                  return total > 0 ? busy / total : 0; // density 0–1
-                });
+                      {/* ── Row 2: Activity bars (5 segments ≈ weeks) ── */}
+                      <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:24, marginBottom:6 }}>
+                        {bars.map((density, bi) => (
+                          <div key={bi} style={{
+                            flex:1, alignSelf:'flex-end',
+                            height: density === 0 ? 3 : Math.round(4 + density * 19),
+                            borderRadius:2,
+                            background: density > 0 ? 'var(--purple)' : 'var(--border)',
+                            opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65),
+                          }} />
+                        ))}
+                      </div>
 
-                const cardBg  = isThisMon
-                  ? 'var(--pur-lt,rgba(124,106,240,.10))'
-                  : 'var(--glass-bg2,rgba(255,255,255,.04))';
-                const cardBdr = isThisMon
-                  ? 'var(--purple)'
-                  : isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))';
-                const cardBW  = isThisMon ? '2px' : '1.5px';
-
-                return (
-                  <button
-                    key={mo}
-                    onClick={() => {
-                      setViewDate(new Date(year, mo, 1));
-                      setSelectedDay(isThisMon ? today.getDate() : 1);
-                      setViewMode('monthly');
-                    }}
-                    style={{
-                      display:'flex', flexDirection:'column',
-                      padding:'9px 8px 8px',
-                      background: cardBg,
-                      border: `${cardBW} solid ${cardBdr}`,
-                      borderRadius:14,
-                      cursor:'pointer', fontFamily:'inherit',
-                      textAlign:'left', minWidth:0,
-                      WebkitTapHighlightColor:'transparent',
-                      transition:'transform .12s, opacity .12s',
-                    }}
-                  >
-                    {/* Header: month name + NOW tag + count */}
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                      <span style={{
-                        fontSize:12, fontWeight:900, lineHeight:1,
-                        color: isThisMon ? 'var(--purple)' : 'var(--dark)',
-                        letterSpacing:'-.2px',
-                      }}>
-                        {MONTHS_SH[mo]}
-                      </span>
-                      <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
-                        {isThisMon && (
-                          <span style={{
-                            fontSize:7, fontWeight:800, letterSpacing:'.3px',
-                            color:'var(--purple)',
-                            background:'var(--pur-lt)',
-                            border:'1px solid var(--border2)',
-                            borderRadius:4, padding:'1px 4px',
-                          }}>NOW</span>
-                        )}
-                        {cnt > 0 && (
-                          <span style={{ fontSize:9, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
-                            {cnt}
-                          </span>
+                      {/* ── Row 3: Busy / Free counts ── */}
+                      <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                        {busy > 0 ? (
+                          <>
+                            <span style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'var(--pur-lt)', borderRadius:4, padding:'1px 5px' }}>
+                              {busy}b
+                            </span>
+                            <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>
+                              {free}f
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize:9, color:'var(--lite)', opacity:.5 }}>quiet</span>
                         )}
                       </div>
-                    </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-                    {/* Activity bar chart: 5 bars, height = segment activity density */}
-                    <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:26 }}>
-                      {bars.map((density, bi) => {
-                        const barH  = density === 0 ? 3 : Math.round(4 + density * 20);
-                        const barBg = density > 0 ? 'var(--purple)' : 'var(--border)';
-                        const barOp = density === 0 ? 0.18 : Math.min(1, 0.3 + density * 0.7);
-                        return (
-                          <div key={bi} style={{
-                            flex:1, height:barH, borderRadius:2,
-                            background:barBg, opacity:barOp,
-                            alignSelf:'flex-end',
-                          }} />
-                        );
-                      })}
-                    </div>
-
-                    {/* Footer: task count */}
-                    <div style={{ marginTop:5, minHeight:12 }}>
-                      {cnt > 0
-                        ? <span style={{ fontSize:9, fontWeight:700, color:'var(--mid)' }}>{cnt} task{cnt !== 1 ? 's' : ''}</span>
-                        : <span style={{ fontSize:9, color:'var(--lite)', opacity:.4 }}>—</span>
-                      }
-                    </div>
-                  </button>
-                );
-              })}
+              {/* Legend */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginTop:14 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)', opacity:.8 }} />
+                  <span style={{ fontSize:10, color:'var(--mid)' }}>b = busy days</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <div style={{ width:8, height:8, borderRadius:2, background:'var(--border)', opacity:.5 }} />
+                  <span style={{ fontSize:10, color:'var(--mid)' }}>f = free days</span>
+                </div>
+              </div>
+              <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+                Tap any month to see the full schedule
+              </div>
             </div>
+          );
+        })()}
 
-            <div style={{ textAlign:'center', marginTop:16, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
-              Tap any month to see the full schedule
-            </div>
-          </div>
-        )}
 
 

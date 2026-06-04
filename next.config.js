@@ -84,6 +84,18 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  // Force no-cache on version.json so Vercel CDN never serves a stale version
+  async headers() {
+    return [
+      {
+        source: '/version.json',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
+          { key: 'Pragma',        value: 'no-cache' },
+        ],
+      },
+    ];
+  },
   // ── Bake version.json version into the bundle automatically ───────────────
   // NEXT_PUBLIC_APP_VERSION is read by useAppUpdate to know what version
   // this build represents. By reading it here (not from an env var), it stays
