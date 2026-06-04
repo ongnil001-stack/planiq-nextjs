@@ -504,7 +504,7 @@ export default function AIAnalysisPage() {
         {/* Loading skeleton */}
         {analyzing && (
           <div style={{ paddingTop:8 }}>
-            <p style={{ ...SEC_LABEL, marginBottom:12 }}>Claude is thinking…</p>
+            <AILoadingIndicator sub="Generating personalised insights" />
             {[1,2,3,4,5].map(i => <SkeletonCard key={i} />)}
           </div>
         )}
@@ -631,7 +631,7 @@ export default function AIAnalysisPage() {
                   <path d="M16.24 7.76l-3.18 6.36-6.36 3.18 3.18-6.36 6.36-3.18z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
                   <circle cx="12" cy="12" r="1" fill="currentColor"/>
                 </svg>} title="Recommended Actions"
-                sub={weeklyResult?.recommendations?.length ? `${weeklyResult.recommendations.length} suggestions` : 'Powered by Claude AI'} />
+                sub={weeklyResult?.recommendations?.length ? `${weeklyResult.recommendations.length} suggestions` : 'Powered by PlanIQ AI'} />
 
               {weeklyResult?.recommendations?.length ? (
                 weeklyResult.recommendations.map((rec, i) => (

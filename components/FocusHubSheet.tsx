@@ -1,4 +1,5 @@
 'use client';
+import AILoadingIndicator from '@/components/AILoadingIndicator';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -525,15 +526,10 @@ export default function FocusHubSheet({ open, onClose }: Props) {
         {/* Content */}
         <div style={SCROLL}>
           {isLoadingAny ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--lite)', fontSize: '14px' }}>
-              <div style={{ fontSize: '28px', marginBottom: '12px' }}>⚡</div>
-              <p style={{ margin: 0, fontWeight: 600, color: 'var(--mid)' }}>
-                {loading ? 'Loading your schedule…' : 'Claude is thinking…'}
-              </p>
-              <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--lite)' }}>
-                {loading ? '' : 'Generating personalised insights'}
-              </p>
-            </div>
+            <AILoadingIndicator
+              sub={loading ? undefined : 'Generating personalised insights'}
+              size="lg"
+            />
           ) : (
             <>
               {/* AI Brief */}

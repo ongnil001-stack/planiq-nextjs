@@ -1,4 +1,5 @@
 'use client';
+import AILoadingIndicator from '@/components/AILoadingIndicator';
 
 import { useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -227,10 +228,8 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
 
         {/* Loading state */}
         {loading && (
-          <div style={{ padding: '20px 12px', textAlign: 'center' }}>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>
-              Claude is reviewing your schedule…
-            </p>
+          <div style={{ padding: '4px 0' }}>
+            <AILoadingIndicator size="md" />
           </div>
         )}
 
@@ -516,7 +515,7 @@ export default function SmartReschedulePanel({ schedules, onApplied }: Props) {
         {!loading && !result && !error && (
           <div style={{ padding: '16px 12px', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--mid)', lineHeight: 1.5 }}>
-              Tap <strong style={{ color: 'var(--purple)' }}>Optimize</strong> to let Claude identify specific schedule moves and apply them with one tap.
+              Tap <strong style={{ color: 'var(--purple)' }}>Optimize</strong> to identify specific schedule moves and apply them with one tap.
             </p>
           </div>
         )}

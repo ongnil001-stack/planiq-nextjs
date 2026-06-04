@@ -98,7 +98,7 @@ function startSparkles(canvas: HTMLCanvasElement): () => void {
 
 const SLIDES = [
   { title:'Plan Smarter,\nNot Harder',    desc:'PlanIQ organises your day with intelligent scheduling that adapts to your energy, priorities, and goals.' },
-  { title:'AI That\nWorks For You',        desc:'Claude AI analyses your workload in real-time — spotting overloads, conflicts, and opportunities before they happen.' },
+  { title:'AI That\nWorks For You',        desc:'PlanIQ AI analyses your workload in real-time — spotting overloads, conflicts, and opportunities before they happen.' },
   { title:'Stay Balanced,\nStay On Track', desc:'Visual workload scores, streak tracking, and weekly insights keep you productive without burning out.' },
 ];
 
