@@ -1,4 +1,11 @@
 /** @type {import('next').NextConfig} */
+
+// ── Auto-read version from version.json at build time ─────────────────────────
+// This means NEXT_PUBLIC_APP_VERSION is ALWAYS in sync with version.json
+// on every Vercel deploy — no manual env var updates needed.
+const appVersionData = require('./public/version.json');
+const AUTO_APP_VERSION = appVersionData.version; // e.g. "1.1.2"
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -76,6 +83,13 @@ const nextConfig = {
   // Required for Sentry instrumentation hook
   experimental: {
     instrumentationHook: true,
+  },
+  // ── Bake version.json version into the bundle automatically ───────────────
+  // NEXT_PUBLIC_APP_VERSION is read by useAppUpdate to know what version
+  // this build represents. By reading it here (not from an env var), it stays
+  // in sync with version.json on every deploy without any manual Vercel step.
+  env: {
+    NEXT_PUBLIC_APP_VERSION: AUTO_APP_VERSION,
   },
 };
 
