@@ -1541,7 +1541,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding: '14px 12px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 80px)' }}>
+          <div style={{ padding: '12px 10px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 80px)' }}>
             <div className="year-grid">
               {Array.from({ length: 12 }, (_, mo) => {
                 const cnt       = monthCounts[mo];
@@ -1597,8 +1597,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         if (dayNum === null) return <div key={i} className="ymc-cell ymc-empty" />;
                         const isT    = dayNum === today.getDate() && isThisMon;
                         const hasAct = activeDays.has(dayNum);
+                        const col    = i % 7; // 0=Sun, 6=Sat
+                        const isWknd = col === 0 || col === 6;
+                        const cls = ['ymc-cell', isT ? 'tod' : '', hasAct ? 'has' : '', isWknd && !isT ? 'wknd' : '']
+                          .filter(Boolean).join(' ');
                         return (
-                          <div key={i} className={`ymc-cell${isT ? ' tod' : hasAct ? ' has' : ''}`}>
+                          <div key={i} className={cls}>
                             <span>{dayNum}</span>
                           </div>
                         );
@@ -1758,104 +1762,155 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
 
         /* ════ YEARLY ════ */
-        /* ── YEARLY VIEW — uniform 3-column layout ── */
+
+        /* 3-column grid of month cards */
         .year-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 9px;
+          gap: 8px;
         }
 
-        /* Card shell — all 12 cards are visually identical in structure */
+        /* ── Month card ── */
         .year-month-card {
-          display: flex; flex-direction: column; gap: 0;
-          padding: 10px 7px 8px;
+          display: flex;
+          flex-direction: column;
+          padding: 8px 7px 7px;
           background: var(--glass-bg2, rgba(255,255,255,.04));
           border: 1.5px solid var(--glass-border, rgba(255,255,255,.08));
           border-radius: 14px;
-          cursor: pointer; font-family: inherit;
+          cursor: pointer;
+          font-family: inherit;
           transition: border-color .18s, background .18s, transform .12s;
-          text-align: left; overflow: hidden;
+          text-align: left;
+          overflow: hidden;
           -webkit-tap-highlight-color: transparent;
+          /* Width is driven entirely by the grid column — no manual sizing */
         }
         .year-month-card.current {
           border-color: var(--purple);
           border-width: 2px;
-          background: rgba(124,106,240,.07);
+          background: var(--pur-lt, rgba(124,106,240,.08));
         }
         .year-month-card.sel:not(.current) {
-          border-color: rgba(124,106,240,.5);
+          border-color: var(--border2);
         }
-        .year-month-card:active { transform: scale(.96); opacity: .82; }
+        .year-month-card:active { transform: scale(.96); opacity: .85; }
 
-        /* Card header: month name + activity badge */
+        /* ── Card header: month name + activity count ── */
         .ymc-header {
-          display: flex; align-items: center; justify-content: space-between;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
           margin-bottom: 4px;
+          min-height: 13px;
         }
         .ymc-name {
-          font-size: 12px; font-weight: 800;
-          color: var(--dark); letter-spacing: -.3px; line-height: 1;
+          font-size: 11px;
+          font-weight: 800;
+          color: var(--dark);
+          letter-spacing: -.2px;
+          line-height: 1;
+          white-space: nowrap;
         }
         .ymc-name.cur { color: var(--purple); }
         .ymc-today-tag {
-          font-size: 8px; font-weight: 600;
-          color: var(--purple); opacity: .75;
+          font-size: 7px;
+          font-weight: 700;
+          color: var(--purple);
           letter-spacing: 0;
         }
         .ymc-count {
-          font-size: 8px; font-weight: 800;
+          font-size: 7.5px;
+          font-weight: 800;
           color: var(--purple);
-          background: rgba(124,106,240,.15);
-          border-radius: 5px; padding: 1px 4px; line-height: 1.6;
+          background: var(--pur-lt, rgba(124,106,240,.12));
+          border-radius: 4px;
+          padding: 1px 4px;
+          line-height: 1.5;
           flex-shrink: 0;
         }
 
-        /* Day-of-week labels — 7 equal cols, minimal */
+        /* ── Day-of-week header (S M T W T F S) ── */
         .ymc-dow {
-          display: grid; grid-template-columns: repeat(7, 1fr);
-          gap: 0; margin-bottom: 3px;
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          margin-bottom: 2px;
         }
         .ymc-dow-cell {
-          display: flex; align-items: center; justify-content: center;
-          font-size: 6px; font-weight: 700;
-          color: var(--mid); line-height: 1.4;
-          text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 6px;
+          font-weight: 700;
+          color: var(--lite);
+          line-height: 1;
+          padding: 1px 0;
         }
 
-        /* 42-cell uniform grid — always 6 rows, never varies */
+        /* ── 42-cell date grid (6 rows × 7 cols, always uniform) ── */
         .ymc-grid {
-          display: grid; grid-template-columns: repeat(7, 1fr);
-          gap: 1px;
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          /* aspect-ratio on cells makes rows auto-size to match column width */
+          row-gap: 1px;
+          column-gap: 0px;
         }
+
+        /* Each cell is a perfect square that scales with card width */
         .ymc-cell {
-          height: 14px;
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          border-radius: 2px; position: relative;
+          aspect-ratio: 1 / 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          position: relative;
+          overflow: visible;
         }
         .ymc-cell span {
-          font-size: 7.5px; color: var(--dark);
-          line-height: 1; font-weight: 500;
+          font-size: 8px;
+          color: var(--dark);
+          font-weight: 500;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+          position: relative;
+          z-index: 1;
         }
-        /* Empty cells (before/after month days) — invisible but keep layout */
+        /* Empty spacer cells — invisible, preserve grid structure */
         .ymc-cell.ymc-empty { pointer-events: none; }
+        .ymc-cell.ymc-empty span { display: none; }
 
-        /* Today — filled purple circle */
+        /* Today — solid accent circle */
         .ymc-cell.tod {
           background: var(--purple);
-          border-radius: 50%;
         }
-        .ymc-cell.tod span { color: #fff; font-weight: 800; font-size: 7px; }
+        .ymc-cell.tod span {
+          color: #fff;
+          font-weight: 900;
+          font-size: 7.5px;
+        }
 
-        /* Activity days — subtle dot indicator below the date */
-        .ymc-cell.has span { color: var(--purple); font-weight: 700; }
+        /* Days with scheduled activities — accent text + dot below */
+        .ymc-cell.has span {
+          color: var(--purple);
+          font-weight: 700;
+        }
         .ymc-cell.has::after {
           content: '';
-          position: absolute; bottom: 1px;
-          width: 3px; height: 3px;
+          position: absolute;
+          bottom: 1px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 2.5px;
+          height: 2.5px;
           border-radius: 50%;
-          background: var(--purple); opacity: .65;
+          background: var(--purple);
+          opacity: .6;
         }
+        /* Today + activity: just today style dominates */
+        .ymc-cell.tod.has::after { display: none; }
+
+        /* Weekend days — slightly dimmed so weekdays read cleaner */
+        .ymc-cell.wknd span { opacity: .5; }
 
         /* ════ SHARED ════ */
         .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.10); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
