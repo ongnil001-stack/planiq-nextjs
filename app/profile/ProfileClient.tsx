@@ -883,9 +883,9 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
           {/* ── Software Update ── */}
           {settingsView === 'update' && (
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
 
-              {/* ── NINJA UPDATE BANNER: app silently updated while closed ── */}
+              {/* ── NINJA UPDATE BANNER ── show when app silently updated in background */}
               {appUpdate.justUpdated && !appUpdate.hasUpdate && (
                 <div style={{
                   display:'flex', alignItems:'flex-start', gap:12,
@@ -895,11 +895,10 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   <div style={{
                     width:34, height:34, borderRadius:10, flexShrink:0,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    background:'rgba(0,200,150,.14)', border:'1px solid rgba(0,200,150,.25)',
+                    background:'rgba(0,200,150,.14)', border:'1px solid rgba(0,200,150,.28)',
                   }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"
-                        stroke="#00C896" strokeWidth="1.6"/>
+                      <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z" stroke="#00C896" strokeWidth="1.6"/>
                       <path d="M8 12l3 3 5-5" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
@@ -907,90 +906,132 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                     <div style={{ fontSize:13, fontWeight:800, color:'#00C896', marginBottom:3 }}>
                       App Updated Automatically
                     </div>
-                    <div style={{ fontSize:11, color:'var(--mid)', lineHeight:1.5 }}>
+                    <div style={{ fontSize:11, color:'var(--mid)', lineHeight:1.6 }}>
                       {appUpdate.justUpdatedFrom
-                        ? <>Updated from <strong style={{color:'var(--dark)'}}>v{appUpdate.justUpdatedFrom}</strong> → <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong> in the background.</>
-                        : <>Updated to <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong> in the background.</>
-                      }
-                      {' '}This happens automatically when a new version is deployed.
+                        ? <>Updated from <strong style={{color:'var(--dark)'}}>{appUpdate.justUpdatedFrom}</strong> to <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong>.</>
+                        : <>Now running <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong>.</>
+                      }{' '}This happens automatically when a new version is deployed.
                     </div>
                   </div>
-                  <button onClick={appUpdate.clearJustUpdated} style={{
-                    background:'none', border:'none', cursor:'pointer',
-                    color:'var(--mid)', padding:4, flexShrink:0,
-                    WebkitTapHighlightColor:'transparent',
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                    </svg>
+                  <button onClick={appUpdate.clearJustUpdated} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--mid)', padding:4, flexShrink:0, WebkitTapHighlightColor:'transparent' }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
                   </button>
                 </div>
               )}
 
-              {/* ── Version row ── */}
+              {/* ── Status card ── */}
               <div style={{ background:'var(--glass-bg2, rgba(255,255,255,.04))', border:'1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius:16, overflow:'hidden' }}>
+
+                {/* Version row */}
                 <div style={{ display:'flex', borderBottom:'1px solid var(--border)' }}>
-                  <div style={{ flex:1, padding:'12px 16px', borderRight:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Installed</div>
-                    <div style={{ fontSize:18, fontWeight:900, color:'var(--dark)' }}>v{appUpdate.currentVersionClean}</div>
+                  <div style={{ flex:1, padding:'12px 14px', borderRight:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:4 }}>Installed</div>
+                    <div style={{ fontSize:17, fontWeight:900, color:'var(--dark)', letterSpacing:'-.3px' }}>v{appUpdate.currentVersionClean}</div>
+                    {appUpdate.currentBuildSha !== 'dev' && (
+                      <div style={{ fontSize:9, color:'var(--lite)', marginTop:2, fontFamily:'monospace' }}>#{appUpdate.currentBuildSha}</div>
+                    )}
                   </div>
-                  <div style={{ flex:1, padding:'12px 16px' }}>
-                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Latest</div>
-                    <div style={{ fontSize:18, fontWeight:900, color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--dark)' }}>
-                      {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : '—'}
+                  <div style={{ flex:1, padding:'12px 14px' }}>
+                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:4 }}>Latest</div>
+                    <div style={{ fontSize:17, fontWeight:900, color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--mint,#00C896)', letterSpacing:'-.3px' }}>
+                      {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : 'v' + appUpdate.currentVersionClean}
                     </div>
+                    {appUpdate.latestBuildSha && appUpdate.latestBuildSha !== 'dev' && (
+                      <div style={{ fontSize:9, color:'var(--lite)', marginTop:2, fontFamily:'monospace' }}>#{appUpdate.latestBuildSha}</div>
+                    )}
                   </div>
                 </div>
+
+                {/* Status row */}
+                <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8 }}>
+                  {appUpdate.hasUpdate ? (
+                    <>
+                      <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--coral,#FF6B6B)', flexShrink:0, boxShadow:'0 0 6px var(--coral,#FF6B6B)', animation:'pulseDot 1.4s ease-in-out infinite' }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:'var(--coral,#FF6B6B)' }}>New update available</span>
+                    </>
+                  ) : appUpdate.checking ? (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite', flexShrink:0 }}>
+                        <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize:12, fontWeight:600, color:'var(--mid)' }}>Checking for updates…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--mint,#00C896)', flexShrink:0 }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:'var(--mint,#00C896)' }}>You&apos;re up to date</span>
+                    </>
+                  )}
+                </div>
+
+                {/* What's new / last update summary */}
                 {appUpdate.summary && (
-                  <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3, color: appUpdate.hasUpdate ? 'rgba(255,107,107,.8)' : 'var(--mid)' }}>
+                  <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3, color: appUpdate.hasUpdate ? 'var(--coral,rgba(255,107,107,.8))' : 'var(--mid)' }}>
                       {appUpdate.hasUpdate ? "What's New" : 'Last Update'}
                     </div>
-                    <div style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>{appUpdate.summary}</div>
+                    <div style={{ fontSize:12, color:'var(--dark)', lineHeight:1.55 }}>{appUpdate.summary}</div>
                     {appUpdate.releaseDate && (
-                      <div style={{ fontSize:10, color:'var(--mid)', marginTop:3 }}>Released {new Date(appUpdate.releaseDate + 'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+                      <div style={{ fontSize:10, color:'var(--mid)', marginTop:3 }}>
+                        Released {new Date(appUpdate.releaseDate + 'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+                      </div>
                     )}
                   </div>
                 )}
-                <div style={{ display:'flex', gap:8, padding:'12px 16px', flexWrap:'wrap' }}>
+
+                {/* Action buttons */}
+                <div style={{ display:'flex', gap:8, padding:'12px 14px', flexWrap:'wrap' }}>
                   {appUpdate.hasUpdate ? (
                     <>
                       <button onClick={() => appUpdate.refreshToUpdate()} disabled={appUpdate.updating}
-                        style={{ flex:1, minWidth:0, padding:'11px 0', borderRadius:10, border:'none', background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B', color:'#fff', fontSize:13, fontWeight:700, cursor: appUpdate.updating ? 'default' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                        {appUpdate.updating && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        style={{ flex:1, minWidth:0, padding:'11px 0', borderRadius:10, border:'none',
+                          background: appUpdate.updating ? 'rgba(255,107,107,.5)' : 'var(--coral,#FF6B6B)',
+                          color:'#fff', fontSize:13, fontWeight:700,
+                          cursor: appUpdate.updating ? 'default' : 'pointer',
+                          fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                        {appUpdate.updating
+                          ? <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          : <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 3v8m0 0l-3-3m3 3l3-3M4 15h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        }
                         {appUpdate.updating ? 'Applying…' : 'Update Now'}
                       </button>
                       <button onClick={appUpdate.dismissUpdate}
-                        style={{ padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                        Dismiss
+                        style={{ padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2)', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        Later
                       </button>
                     </>
                   ) : (
                     <button onClick={appUpdate.recheck} disabled={appUpdate.checking}
-                      style={{ flex:1, padding:'11px 0', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)', fontSize:13, fontWeight:600, cursor: appUpdate.checking ? 'default' : 'pointer', fontFamily:'inherit', opacity: appUpdate.checking ? .6 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                      style={{ flex:1, padding:'11px 0', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2)', color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)', fontSize:13, fontWeight:600, cursor: appUpdate.checking ? 'default' : 'pointer', fontFamily:'inherit', opacity: appUpdate.checking ? .6 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                       {appUpdate.checking && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       {appUpdate.checking ? 'Checking…' : 'Check for Updates'}
                     </button>
                   )}
                   <button onClick={() => setChangelogOpen(v => !v)}
-                    style={{ padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+                    style={{ padding:'11px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2)', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:4 }}>
                     History
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: changelogOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                 </div>
-                {changelogOpen && (
-                  <div style={{ borderTop:'1px solid var(--border)', padding:'12px 16px 14px', display:'flex', flexDirection:'column', gap:14 }}>
+
+                {/* Changelog */}
+                {changelogOpen && appUpdate.changelog.length > 0 && (
+                  <div style={{ borderTop:'1px solid var(--border)', padding:'12px 14px 14px', display:'flex', flexDirection:'column', gap:14 }}>
                     {appUpdate.changelog.map((entry, i) => (
                       <div key={entry.version}>
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:8, background: i===0 ? 'var(--pur-lt)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid var(--border2)' : '1px solid var(--border)' }}>v{entry.version}</span>
+                          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:7, background: i===0 ? 'var(--pur-lt)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid var(--border2)' : '1px solid var(--border)' }}>
+                              v{entry.version}
+                            </span>
                             {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'var(--mint,#00C896)', letterSpacing:'.5px' }}>LATEST</span>}
                           </div>
-                          <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+                          <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+                            {new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+                          </span>
                         </div>
                         <ul style={{ margin:0, paddingLeft:16, display:'flex', flexDirection:'column', gap:4 }}>
-                          {entry.notes.map((note,j) => <li key={j} style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>{note}</li>)}
+                          {entry.notes.map((note,j) => <li key={j} style={{ fontSize:11, color:'var(--dark)', lineHeight:1.55 }}>{note}</li>)}
                         </ul>
                       </div>
                     ))}

@@ -1,186 +1,193 @@
 /**
- * useAppUpdate — detects new versions and surfaces update state to the UI.
+ * useAppUpdate — complete update detection for PlanIQ PWA
+ * ─────────────────────────────────────────────────────────────────────────────
  *
- * ── Why "ninja updates" happen ────────────────────────────────────────────
- * PlanIQ is a PWA with `skipWaiting: true`. When a new build is deployed:
+ * TWO detection mechanisms work in parallel:
  *
- *   1. Vercel serves new assets (new JS bundle with new version baked in).
- *   2. The new Service Worker installs and immediately activates (skipWaiting).
- *   3. On the NEXT navigation / app open, the new bundle loads silently.
- *   4. Because the new bundle already has the NEW version baked in,
- *      version.json == bundle version → hasUpdate = false → badge never shows.
+ * ① SEMANTIC VERSION (version.json vs bundle)
+ *    - version.json is the human-readable version record.
+ *    - NEXT_PUBLIC_APP_VERSION is baked into the bundle by next.config.js.
+ *    - Mismatch → hasUpdate = true → "New version available" badge.
+ *    - This fires when the developer bumps version.json.
  *
- * The user's app updated without them seeing anything — a "ninja update."
+ * ② BUILD SHA (/api/build-hash vs bundle)
+ *    - NEXT_PUBLIC_BUILD_SHA is baked from VERCEL_GIT_COMMIT_SHA at build time.
+ *    - /api/build-hash returns the CURRENTLY DEPLOYED SHA (server-side, no cache).
+ *    - Mismatch → hasUpdate = true → badge even without a version bump.
+ *    - This catches every Vercel deploy: bug-fixes, config changes, any push.
  *
- * ── How we fix it ────────────────────────────────────────────────────────
+ * NINJA UPDATE DETECTION (localStorage)
+ *    - planiq_last_sha is stored on every load.
+ *    - If it differs on the next load → a background update happened.
+ *    - justUpdated = true → "App Updated Automatically" banner.
  *
- *  A. NINJA UPDATE DETECTION (localStorage):
- *     On every app load we persist the current bundle version as
- *     `planiq_last_version`. On the next load we compare:
- *       lastVersion ≠ currentVersion  →  justUpdated = true
- *     This catches updates that happened while the app was closed.
+ * CONTROLLERCHANGE FAST-BADGE
+ *    - When the new Service Worker activates → immediately re-poll both endpoints.
+ *    - Old bundle (old SHA) is still running → SHA mismatch → badge appears
+ *      within seconds, before the user navigates away.
  *
- *  B. FAST BADGE FOR OPEN-APP UPDATES (controllerchange):
- *     When the new SW takes control (controllerchange), we immediately
- *     re-poll version.json. At that moment the old bundle is still running
- *     (old version) but version.json already has the new version → badge
- *     appears before the user navigates away.
- *
- *  C. POLLING (every 3 min, reduced from 10):
- *     Catches updates while the user is actively using the app.
- *
- * ── Release checklist ─────────────────────────────────────────────────────
- *  1. Bump version in public/version.json.
- *  2. git push → Vercel auto-deploys, version is auto-baked into bundle.
- *  No Vercel env var update needed (next.config.js handles this).
+ * RELEASE PROCESS (two options):
+ *   Option A — version bump: update public/version.json, git push.
+ *   Option B — any push:     just git push. Build SHA changes automatically.
+ *   Both are detected. Option A also updates the changelog display.
  */
 
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 
-export interface ChangelogEntry {
-  version: string;
-  date: string;
-  notes: string[];
-}
+// ── Types ──────────────────────────────────────────────────────────────────────
 
+export interface ChangelogEntry { version: string; date: string; notes: string[]; }
 export interface VersionManifest {
-  version: string;
-  releaseDate: string;
-  summary: string;
-  changelog: ChangelogEntry[];
+  version: string; releaseDate: string; summary: string; changelog: ChangelogEntry[];
 }
 
 export interface AppUpdateState {
-  /** true when version.json has a newer version than the running build AND not dismissed */
-  hasUpdate: boolean;
-  /** raw version string from NEXT_PUBLIC_APP_VERSION (baked at build time) */
-  currentVersion: string;
-  /** normalised semver, e.g. "1.1.2" */
-  currentVersionClean: string;
-  /** latest version string from version.json */
-  latestVersion: string | null;
-  latestVersionClean: string | null;
-  summary: string | null;
-  changelog: ChangelogEntry[];
-  releaseDate: string | null;
-  checking: boolean;
-  updating: boolean;
-  /** true when a ninja update was detected on this load */
-  justUpdated: boolean;
-  /** the version the app was on before the ninja update */
-  justUpdatedFrom: string | null;
-  recheck: () => void;
-  refreshToUpdate: () => Promise<void>;
-  dismissUpdate: () => void;
-  clearJustUpdated: () => void;
+  hasUpdate:           boolean;   // new version or new build available
+  currentVersion:      string;    // raw NEXT_PUBLIC_APP_VERSION
+  currentVersionClean: string;    // normalized, e.g. "1.1.2"
+  currentBuildSha:     string;    // short SHA baked into this bundle
+  latestVersion:       string | null;
+  latestVersionClean:  string | null;
+  latestBuildSha:      string | null; // short SHA of the live deployment
+  summary:             string | null;
+  changelog:           ChangelogEntry[];
+  releaseDate:         string | null;
+  checking:            boolean;
+  updating:            boolean;
+  justUpdated:         boolean;   // background update detected
+  justUpdatedFrom:     string | null; // previous SHA/version
+  recheck:             () => void;
+  refreshToUpdate:     () => Promise<void>;
+  dismissUpdate:       () => void;
+  clearJustUpdated:    () => void;
 }
 
-const POLL_MS         = 3 * 60 * 1000;   // 3 minutes (down from 10)
-const DISMISSED_KEY   = 'planiq_dismissed_version';
-const LAST_VER_KEY    = 'planiq_last_version';
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-function normalize(v: string): string {
+const POLL_MS       = 3 * 60 * 1000;  // 3 minutes
+const DISMISSED_KEY = 'planiq_dismissed_sha';  // key changed: now per-SHA
+const LAST_SHA_KEY  = 'planiq_last_sha';
+const LAST_VER_KEY  = 'planiq_last_version';
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function normalizeVersion(v: string): string {
   return v.replace(/^v/i, '').split('-')[0].trim();
 }
 
-function getRaw(): string {
+function getRawVersion(): string {
   return process.env.NEXT_PUBLIC_APP_VERSION ?? '1.0.0';
 }
 
+function getBuildSha(): string {
+  return process.env.NEXT_PUBLIC_BUILD_SHA ?? 'dev';
+}
+
+// ── Hook ───────────────────────────────────────────────────────────────────────
+
 export function useAppUpdate(): AppUpdateState {
-  const rawVersion    = getRaw();
-  const currentClean  = normalize(rawVersion);
+  const rawVersion   = getRawVersion();
+  const currentClean = normalizeVersion(rawVersion);
+  const currentSha   = getBuildSha();
 
   const [manifest,         setManifest]         = useState<VersionManifest | null>(null);
+  const [liveSha,          setLiveSha]          = useState<string | null>(null);
   const [checking,         setChecking]         = useState(false);
   const [updating,         setUpdating]         = useState(false);
   const [dismissed,        setDismissed]        = useState<string | null>(null);
   const [justUpdated,      setJustUpdated]      = useState(false);
   const [justUpdatedFrom,  setJustUpdatedFrom]  = useState<string | null>(null);
 
-  // Track whether we've done the initial ninja-update check
   const initDoneRef = useRef(false);
 
-  // ── A. NINJA UPDATE DETECTION ──────────────────────────────────────────
+  // ── NINJA UPDATE + DISMISSED INIT ─────────────────────────────────────────
   useEffect(() => {
     if (initDoneRef.current || typeof window === 'undefined') return;
     initDoneRef.current = true;
 
-    const last       = localStorage.getItem(LAST_VER_KEY);
-    const wasDismiss = localStorage.getItem(DISMISSED_KEY);
+    const lastSha  = localStorage.getItem(LAST_SHA_KEY);
+    const lastVer  = localStorage.getItem(LAST_VER_KEY);
+    const wasDismissed = localStorage.getItem(DISMISSED_KEY);
 
-    if (last && last !== currentClean) {
-      // Version changed since last open → ninja update happened
+    // Detect background update: SHA or version changed since last open
+    const shaChanged = lastSha && lastSha !== currentSha && currentSha !== 'dev';
+    const verChanged = lastVer && lastVer !== currentClean;
+
+    if (shaChanged || verChanged) {
       setJustUpdated(true);
-      setJustUpdatedFrom(last);
-      // Clear any stale dismissed version (it was for the old version)
-      if (wasDismiss) localStorage.removeItem(DISMISSED_KEY);
+      setJustUpdatedFrom(lastVer && verChanged ? `v${lastVer}` : lastSha ?? null);
+      // Clear stale dismiss key
+      localStorage.removeItem(DISMISSED_KEY);
     }
 
-    // Always persist the current version for next-load comparison
-    localStorage.setItem(LAST_VER_KEY, currentClean);
+    // Persist current identifiers
+    localStorage.setItem(LAST_SHA_KEY,  currentSha);
+    localStorage.setItem(LAST_VER_KEY,  currentClean);
 
-    // Load dismissed version
-    const d = localStorage.getItem(DISMISSED_KEY);
-    if (d) setDismissed(d);
-  }, [currentClean]);
+    // Load dismissed key
+    if (wasDismissed) setDismissed(wasDismissed);
+  }, [currentSha, currentClean]);
 
-  // ── C. POLLING ─────────────────────────────────────────────────────────
-  const fetchManifest = useCallback(async () => {
+  // ── FETCH: version.json + /api/build-hash ─────────────────────────────────
+  const fetchAll = useCallback(async () => {
     setChecking(true);
     try {
-      const res = await fetch(`/version.json?_=${Date.now()}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-      });
-      if (!res.ok) return;
-      const data: VersionManifest = await res.json();
-      setManifest(data);
-    } catch {
-      // ignore network errors silently
-    } finally {
-      setChecking(false);
-    }
+      const [vRes, bRes] = await Promise.allSettled([
+        fetch(`/version.json?_=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        }),
+        fetch(`/api/build-hash?_=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        }),
+      ]);
+
+      if (vRes.status === 'fulfilled' && vRes.value.ok) {
+        const data: VersionManifest = await vRes.value.json();
+        setManifest(data);
+      }
+      if (bRes.status === 'fulfilled' && bRes.value.ok) {
+        const data: { sha: string; version: string } = await bRes.value.json();
+        setLiveSha(data.sha);
+      }
+    } catch { /* ignore */ }
+    finally { setChecking(false); }
   }, []);
 
+  // Polling
   useEffect(() => {
-    fetchManifest();
-    const t = setInterval(fetchManifest, POLL_MS);
+    fetchAll();
+    const t = setInterval(fetchAll, POLL_MS);
     return () => clearInterval(t);
-  }, [fetchManifest]);
+  }, [fetchAll]);
 
-  // ── B. FAST BADGE: listen for SW controller change ─────────────────────
+  // ── CONTROLLERCHANGE fast-badge ───────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-    const handler = () => {
-      // New SW just took control — old bundle is still running in memory.
-      // Immediately re-check version.json: it will likely be newer than
-      // the old bundle, making hasUpdate = true and the badge appear.
-      fetchManifest();
-    };
+    const handler = () => fetchAll();
     navigator.serviceWorker.addEventListener('controllerchange', handler);
     return () => navigator.serviceWorker.removeEventListener('controllerchange', handler);
-  }, [fetchManifest]);
+  }, [fetchAll]);
 
-  const latestClean = manifest ? normalize(manifest.version) : null;
+  // ── Derive hasUpdate ──────────────────────────────────────────────────────
+  const latestClean = manifest ? normalizeVersion(manifest.version) : null;
 
-  // hasUpdate = new version available AND not dismissed
-  const hasUpdate =
-    latestClean != null &&
-    latestClean !== currentClean &&
-    latestClean !== dismissed;
+  // Update available if EITHER version OR SHA changed, and not dismissed
+  const versionMismatch = latestClean != null && latestClean !== currentClean;
+  const shaMismatch     = liveSha != null && liveSha !== currentSha && currentSha !== 'dev' && liveSha !== 'dev';
+  const updateKey       = shaMismatch ? (liveSha ?? '') : (latestClean ?? '');
+  const hasUpdate       = (versionMismatch || shaMismatch) && updateKey !== dismissed;
 
-  // ── refreshToUpdate: clear caches, unregister SW, reload ───────────────
+  // ── refreshToUpdate ───────────────────────────────────────────────────────
   const refreshToUpdate = useCallback(async () => {
     setUpdating(true);
     if (typeof window !== 'undefined') {
-      // Remove dismissed flag so badge logic resets correctly after reload
       localStorage.removeItem(DISMISSED_KEY);
-      // DO NOT update LAST_VER_KEY here — we want the post-reload load
-      // to detect the version change and show "Just Updated" banner.
-      // (LAST_VER_KEY still has the old version; new bundle will have new version)
+      // Intentionally keep LAST_SHA_KEY/LAST_VER_KEY as-is (old values)
+      // so that after reload the new bundle detects the change → justUpdated banner
     }
     try {
       if ('caches' in window) {
@@ -195,14 +202,14 @@ export function useAppUpdate(): AppUpdateState {
     window.location.reload();
   }, []);
 
-  // ── dismissUpdate: hide badge for this version without reloading ────────
+  // ── dismissUpdate ─────────────────────────────────────────────────────────
   const dismissUpdate = useCallback(() => {
-    if (!latestClean) return;
-    if (typeof window !== 'undefined') localStorage.setItem(DISMISSED_KEY, latestClean);
-    setDismissed(latestClean);
-  }, [latestClean]);
+    if (!updateKey) return;
+    if (typeof window !== 'undefined') localStorage.setItem(DISMISSED_KEY, updateKey);
+    setDismissed(updateKey);
+  }, [updateKey]);
 
-  // ── clearJustUpdated: dismiss the "Just Updated" banner ────────────────
+  // ── clearJustUpdated ──────────────────────────────────────────────────────
   const clearJustUpdated = useCallback(() => {
     setJustUpdated(false);
     setJustUpdatedFrom(null);
@@ -212,8 +219,10 @@ export function useAppUpdate(): AppUpdateState {
     hasUpdate,
     currentVersion:       rawVersion,
     currentVersionClean:  currentClean,
+    currentBuildSha:      currentSha,
     latestVersion:        manifest?.version ?? null,
     latestVersionClean:   latestClean,
+    latestBuildSha:       liveSha,
     summary:              manifest?.summary ?? null,
     changelog:            manifest?.changelog ?? [],
     releaseDate:          manifest?.releaseDate ?? null,
@@ -221,7 +230,7 @@ export function useAppUpdate(): AppUpdateState {
     updating,
     justUpdated,
     justUpdatedFrom,
-    recheck:              fetchManifest,
+    recheck:              fetchAll,
     refreshToUpdate,
     dismissUpdate,
     clearJustUpdated,

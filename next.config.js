@@ -90,6 +90,14 @@ const nextConfig = {
   // in sync with version.json on every deploy without any manual Vercel step.
   env: {
     NEXT_PUBLIC_APP_VERSION: AUTO_APP_VERSION,
+    // Unique identifier for this specific build — changes on every Vercel deploy
+    // even when the semantic version (version.json) hasn't been bumped.
+    // Falls back to a timestamp-based string in local dev.
+    NEXT_PUBLIC_BUILD_SHA: (
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ??
+      process.env.CF_PAGES_COMMIT_SHA?.slice(0, 8) ??
+      `local-${new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '')}`
+    ),
   },
 };
 

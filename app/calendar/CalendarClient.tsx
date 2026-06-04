@@ -1541,69 +1541,130 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding: '12px 10px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 80px)' }}>
-            <div className="year-grid">
+          <div style={{ padding:'10px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+            <div style={{
+              display:'grid',
+              gridTemplateColumns:'repeat(3, 1fr)',
+              gap:'8px',
+            }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const cnt       = monthCounts[mo];
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
-                const isSel     = mo === month;
+                const isSel     = mo === month && !isThisMon;
                 const daysIn    = new Date(year, mo + 1, 0).getDate();
-                const firstD    = new Date(year, mo, 1).getDay();
+                const firstD    = new Date(year, mo, 1).getDay(); // 0=Sun
 
-                // Build a Set of days that have scheduled items for quick lookup
+                // Days with activities this month
                 const activeDays = new Set<number>();
                 schedules.forEach(s => {
                   const d = new Date(s.start_time);
                   if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
                 });
 
-                // Always 42 cells (6 full rows × 7 cols) — guarantees equal card height
+                // 42 cells: 6 rows × 7 cols — null = empty spacer
                 const cells = Array.from({ length: 42 }, (_, i) => {
-                  const dayNum = i - firstD + 1;
-                  if (dayNum < 1 || dayNum > daysIn) return null;
-                  return dayNum;
+                  const n = i - firstD + 1;
+                  return (n >= 1 && n <= daysIn) ? n : null;
                 });
 
+                const cardBg     = isThisMon ? 'var(--pur-lt,rgba(124,106,240,.09))' : 'var(--glass-bg2,rgba(255,255,255,.04))';
+                const cardBorder = isThisMon ? 'var(--purple)' : isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))';
+                const cardBW     = isThisMon ? '2px' : '1.5px';
+
                 return (
-                  <button key={mo}
-                    className={`year-month-card${isThisMon ? ' current' : isSel ? ' sel' : ''}`}
+                  <button
+                    key={mo}
                     onClick={() => {
                       setViewDate(new Date(year, mo, 1));
                       setSelectedDay(isThisMon ? today.getDate() : 1);
                       setViewMode('monthly');
-                    }}>
-
-                    {/* Month name + activity count */}
-                    <div className="ymc-header">
-                      <span className={`ymc-name${isThisMon ? ' cur' : ''}`}>
+                    }}
+                    style={{
+                      display:'flex', flexDirection:'column',
+                      padding:'8px 6px 7px',
+                      background: cardBg,
+                      border: `${cardBW} solid ${cardBorder}`,
+                      borderRadius:13,
+                      cursor:'pointer', fontFamily:'inherit',
+                      textAlign:'left', overflow:'hidden',
+                      WebkitTapHighlightColor:'transparent',
+                      transition:'transform .12s',
+                      minWidth:0,
+                    }}
+                  >
+                    {/* ── Month header ── */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                      <span style={{
+                        fontSize:11, fontWeight:800, lineHeight:1,
+                        color: isThisMon ? 'var(--purple)' : 'var(--dark)',
+                        letterSpacing:'-.1px',
+                      }}>
                         {MONTHS_SH[mo]}
-                        {isThisMon && (
-                          <span className="ymc-today-tag"> ·&nbsp;now</span>
-                        )}
                       </span>
-                      {cnt > 0 && <span className="ymc-count">{cnt}</span>}
+                      {cnt > 0 && (
+                        <span style={{
+                          fontSize:8, fontWeight:800, lineHeight:1.4,
+                          color:'var(--purple)',
+                          background:'var(--pur-lt,rgba(124,106,240,.12))',
+                          borderRadius:4, padding:'1px 4px',
+                          flexShrink:0,
+                        }}>
+                          {cnt}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Day-of-week labels */}
-                    <div className="ymc-dow">
+                    {/* ── Day-of-week labels: S M T W T F S ── */}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:2 }}>
                       {['S','M','T','W','T','F','S'].map((d, i) => (
-                        <div key={i} className="ymc-dow-cell">{d}</div>
+                        <div key={i} style={{
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:'6px', fontWeight:700,
+                          color:'var(--lite)', lineHeight:1, padding:'1px 0',
+                        }}>
+                          {d}
+                        </div>
                       ))}
                     </div>
 
-                    {/* 42-cell uniform grid */}
-                    <div className="ymc-grid">
+                    {/* ── Date grid: 7 columns, square cells via padding-bottom trick ── */}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', rowGap:0, columnGap:0 }}>
                       {cells.map((dayNum, i) => {
-                        if (dayNum === null) return <div key={i} className="ymc-cell ymc-empty" />;
-                        const isT    = dayNum === today.getDate() && isThisMon;
-                        const hasAct = activeDays.has(dayNum);
-                        const col    = i % 7; // 0=Sun, 6=Sat
-                        const isWknd = col === 0 || col === 6;
-                        const cls = ['ymc-cell', isT ? 'tod' : '', hasAct ? 'has' : '', isWknd && !isT ? 'wknd' : '']
-                          .filter(Boolean).join(' ');
+                        const isT    = dayNum !== null && dayNum === today.getDate() && isThisMon;
+                        const hasAct = dayNum !== null && activeDays.has(dayNum);
+
+                        // Cell background + text color
+                        const bg   = isT ? 'var(--purple)' : 'transparent';
+                        const col  = isT ? '#fff' : hasAct ? 'var(--purple)' : dayNum === null ? 'transparent' : 'var(--dark)';
+                        const fw   = isT ? 800 : hasAct ? 700 : 400;
+
                         return (
-                          <div key={i} className={cls}>
-                            <span>{dayNum}</span>
+                          // Outer: sets square shape via padding-bottom trick
+                          <div key={i} style={{ position:'relative', width:'100%', paddingBottom:'100%', height:0 }}>
+                            {/* Inner: absolutely fills the square, centers content */}
+                            <div style={{
+                              position:'absolute', inset:'1px',
+                              display:'flex', alignItems:'center', justifyContent:'center',
+                              borderRadius:'50%',
+                              background: bg,
+                            }}>
+                              {dayNum !== null && (
+                                <>
+                                  <span style={{ fontSize:'7.5px', fontWeight:fw, color:col, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
+                                    {dayNum}
+                                  </span>
+                                  {/* Activity dot — only on non-today activity days */}
+                                  {hasAct && !isT && (
+                                    <span style={{
+                                      position:'absolute', bottom:'4%', left:'50%',
+                                      transform:'translateX(-50%)',
+                                      width:'2px', height:'2px',
+                                      borderRadius:'50%', background:'var(--purple)', opacity:.7,
+                                    }} />
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -1614,312 +1675,11 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               })}
             </div>
 
-            {/* Footer hint */}
-            <div style={{ textAlign:'center', marginTop:16, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
-              Tap any month to see the full schedule
+            {/* Hint */}
+            <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+              Tap any month to view the full schedule
             </div>
           </div>
         )}
 
-      </div>{/* end scroll-body */}
 
-      <AddScheduleSheet
-        open={sheetOpen}
-        selectedDate={selectedDate}
-        countryCode={countryCode}
-        initialTime={sheetTime}
-        onClose={() => { setSheetOpen(false); setSheetTime(undefined); }}
-        onSaved={refreshSchedules}
-      />
-      <AddScheduleSheet
-        open={editOpen}
-        selectedDate={editSched ? new Date(editSched.start_time) : selectedDate}
-        countryCode={countryCode}
-        editSchedule={editSched}
-        onClose={() => { setEditOpen(false); setEditSched(undefined); }}
-        onSaved={(id) => { setEditOpen(false); setEditSched(undefined); refreshSchedules(id); }}
-      />
-
-      {/* ── Recurring delete scope dialog ────────────────────────────── */}
-      {deleteTarget && (
-        <div
-          onClick={() => setDeleteTarget(null)}
-          style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background:'var(--surf,#131424)', borderRadius:'22px 22px 0 0', border:'1px solid rgba(255,255,255,.09)', borderBottom:'none', boxShadow:'0 -24px 60px rgba(0,0,0,.4)', padding:'0 0 max(20px,env(safe-area-inset-bottom,20px))' }}
-          >
-            <div style={{ width:36, height:4, borderRadius:2, background:'rgba(255,255,255,.14)', margin:'10px auto 18px' }} />
-            <div style={{ padding:'0 20px 18px', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
-              <div style={{ fontSize:15, fontWeight:800, color:'var(--dark)', marginBottom:4 }}>Delete recurring activity</div>
-              <div style={{ fontSize:12, color:'var(--mid)' }}>
-                &ldquo;{deleteTarget._is_virtual ? deleteTarget.title : deleteTarget.title}&rdquo;
-              </div>
-            </div>
-            <div style={{ padding:'12px 20px', display:'flex', flexDirection:'column', gap:8 }}>
-              {deleteTarget._is_virtual && (
-                <button
-                  type="button"
-                  onClick={() => confirmDelete('this')}
-                  style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,255,255,.10)', background:'rgba(255,255,255,.05)', color:'var(--dark)', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
-                >
-                  <div style={{ fontWeight:700 }}>This occurrence only</div>
-                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>Remove only {deleteTarget._occurrence_date}</div>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => confirmDelete('future')}
-                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,107,138,.22)', background:'rgba(255,107,138,.07)', color:'#FF6B8A', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
-              >
-                <div style={{ fontWeight:700 }}>This and future occurrences</div>
-                <div style={{ fontSize:11, color:'rgba(255,107,138,.6)', marginTop:2 }}>Stop repeating from this date onwards</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => confirmDelete('all')}
-                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,59,48,.25)', background:'rgba(255,59,48,.08)', color:'#FF3B30', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
-              >
-                <div style={{ fontWeight:700 }}>All occurrences</div>
-                <div style={{ fontSize:11, color:'rgba(255,59,48,.6)', marginTop:2 }}>Delete the entire recurring series</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-                style={{ padding:'12px', borderRadius:14, border:'1px solid rgba(255,255,255,.08)', background:'transparent', color:'var(--mid)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', marginTop:2 }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <BottomNav />
-
-      <style jsx>{`
-        /* ── Page shell ── */
-        .page { height:100dvh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); overflow:hidden; }
-
-        /* ── Header ── */
-        .pg-header { padding:max(env(safe-area-inset-top,0px),14px) 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); transition:background .25s ease,border-color .25s ease; }
-        .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
-        .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
-        .today-btn { padding:6px 14px; background:var(--glass-bg2,rgba(255,255,255,.07)); border:1px solid var(--glass-border,rgba(255,255,255,.10)); border-radius:20px; color:var(--purple); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .14s; flex-shrink:0; }
-        .today-btn:active { background:var(--pur-lt); }
-
-        /* ── View switcher ── */
-        .view-switcher { flex-shrink:0; display:flex; gap:6px; padding:10px 16px; background:var(--glass-bg,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
-        .view-pill { flex:1; padding:8px 4px; border-radius:10px; border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); background:var(--glass-bg2,rgba(255,255,255,.04)); color:var(--mid); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .14s; letter-spacing:.2px; }
-        .view-pill.active { background:var(--purple); border-color:var(--purple); color:#fff; box-shadow:0 2px 12px rgba(124,106,240,.35); }
-        .view-pill:not(.active):active { background:var(--pur-lt); color:var(--purple); }
-
-        /* ── Month / period navigator ── */
-        .month-nav { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
-        .month-label { font-size:15px; font-weight:700; color:var(--dark); }
-        .nav-arrow { background:none; border:none; color:var(--mid); font-size:22px; cursor:pointer; padding:4px 10px; line-height:1; border-radius:8px; }
-        .nav-arrow:active { background:var(--surf2); }
-
-        /* ── Scrollable body ── */
-        .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; position:relative; }
-
-        /* ════ MONTHLY ════ */
-        /* ── Calendar grid keyframes ── */
-        @keyframes calSlideL { from{transform:translateX(105%);opacity:.25} to{transform:translateX(0);opacity:1} }
-        @keyframes calSlideR { from{transform:translateX(-105%);opacity:.25} to{transform:translateX(0);opacity:1} }
-        .cal-day { width:100%; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; min-height:0; }
-        .cal-day:active { background:var(--pur-lt); }
-        .cal-day.active { background:var(--purple) !important; }
-        .cal-day.today:not(.active) { box-shadow:0 0 0 2px var(--purple); background:rgba(124,106,240,.10) !important; }
-        .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:900; }
-        .cal-day.holiday:not(.active) { background:rgba(255,107,107,.07); }
-        .day-num { font-size:13px; font-weight:600; color:var(--dark); line-height:1; }
-        .cal-day.active .day-num { color:#fff; }
-        .cal-day.holiday:not(.active) .day-num { color:var(--coral,#FF6B8A); font-weight:700; }
-        .day-indicators { display:flex; gap:2px; align-items:center; min-height:5px; }
-        .h-dot { width:5px; height:5px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
-        .cal-day.active .h-dot { background:rgba(255,255,255,.8); }
-        .dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
-        .cal-day.active .dot { background:rgba(255,255,255,.7) !important; }
-
-        /* ════ DAY PANEL ════ */
-        .day-panel { padding:14px 16px 16px; }
-
-        /* ════ WEEKLY ════ */
-        .week-strip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 12px 0; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
-        .week-day-col { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px 10px; border-radius:12px; background:transparent; border:1.5px solid transparent; cursor:pointer; font-family:inherit; transition:all .14s; }
-        .week-day-col.today .wdc-num { color:var(--purple); font-weight:900; }
-        .week-day-col.today:not(.sel) { background:rgba(124,106,240,.08); box-shadow:0 0 0 1.5px var(--purple) inset; }
-        .week-day-col.sel { background:var(--pur-lt,rgba(124,106,240,.15)); border-color:var(--purple); }
-        .week-day-col.sel .wdc-num { color:var(--purple); font-weight:800; }
-        .wdc-name { font-size:9px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; }
-        .wdc-num  { font-size:15px; font-weight:600; color:var(--dark); line-height:1; }
-        .wdc-cnt  { font-size:9px; font-weight:700; color:#fff; background:var(--purple); border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; }
-
-        .week-holiday-row { display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.18); border-radius:10px; margin-bottom:6px; }
-        .whr-dot { width:6px; height:6px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
-        .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
-
-        /* ════ YEARLY ════ */
-
-        /* 3-column grid of month cards */
-        .year-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
-
-        /* ── Month card ── */
-        .year-month-card {
-          display: flex;
-          flex-direction: column;
-          padding: 8px 7px 7px;
-          background: var(--glass-bg2, rgba(255,255,255,.04));
-          border: 1.5px solid var(--glass-border, rgba(255,255,255,.08));
-          border-radius: 14px;
-          cursor: pointer;
-          font-family: inherit;
-          transition: border-color .18s, background .18s, transform .12s;
-          text-align: left;
-          overflow: hidden;
-          -webkit-tap-highlight-color: transparent;
-          /* Width is driven entirely by the grid column — no manual sizing */
-        }
-        .year-month-card.current {
-          border-color: var(--purple);
-          border-width: 2px;
-          background: var(--pur-lt, rgba(124,106,240,.08));
-        }
-        .year-month-card.sel:not(.current) {
-          border-color: var(--border2);
-        }
-        .year-month-card:active { transform: scale(.96); opacity: .85; }
-
-        /* ── Card header: month name + activity count ── */
-        .ymc-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 4px;
-          min-height: 13px;
-        }
-        .ymc-name {
-          font-size: 11px;
-          font-weight: 800;
-          color: var(--dark);
-          letter-spacing: -.2px;
-          line-height: 1;
-          white-space: nowrap;
-        }
-        .ymc-name.cur { color: var(--purple); }
-        .ymc-today-tag {
-          font-size: 7px;
-          font-weight: 700;
-          color: var(--purple);
-          letter-spacing: 0;
-        }
-        .ymc-count {
-          font-size: 7.5px;
-          font-weight: 800;
-          color: var(--purple);
-          background: var(--pur-lt, rgba(124,106,240,.12));
-          border-radius: 4px;
-          padding: 1px 4px;
-          line-height: 1.5;
-          flex-shrink: 0;
-        }
-
-        /* ── Day-of-week header (S M T W T F S) ── */
-        .ymc-dow {
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          margin-bottom: 2px;
-        }
-        .ymc-dow-cell {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 6px;
-          font-weight: 700;
-          color: var(--lite);
-          line-height: 1;
-          padding: 1px 0;
-        }
-
-        /* ── 42-cell date grid (6 rows × 7 cols, always uniform) ── */
-        .ymc-grid {
-          display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          /* aspect-ratio on cells makes rows auto-size to match column width */
-          row-gap: 1px;
-          column-gap: 0px;
-        }
-
-        /* Each cell is a perfect square that scales with card width */
-        .ymc-cell {
-          aspect-ratio: 1 / 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          position: relative;
-          overflow: visible;
-        }
-        .ymc-cell span {
-          font-size: 8px;
-          color: var(--dark);
-          font-weight: 500;
-          line-height: 1;
-          font-variant-numeric: tabular-nums;
-          position: relative;
-          z-index: 1;
-        }
-        /* Empty spacer cells — invisible, preserve grid structure */
-        .ymc-cell.ymc-empty { pointer-events: none; }
-        .ymc-cell.ymc-empty span { display: none; }
-
-        /* Today — solid accent circle */
-        .ymc-cell.tod {
-          background: var(--purple);
-        }
-        .ymc-cell.tod span {
-          color: #fff;
-          font-weight: 900;
-          font-size: 7.5px;
-        }
-
-        /* Days with scheduled activities — accent text + dot below */
-        .ymc-cell.has span {
-          color: var(--purple);
-          font-weight: 700;
-        }
-        .ymc-cell.has::after {
-          content: '';
-          position: absolute;
-          bottom: 1px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 2.5px;
-          height: 2.5px;
-          border-radius: 50%;
-          background: var(--purple);
-          opacity: .6;
-        }
-        /* Today + activity: just today style dominates */
-        .ymc-cell.tod.has::after { display: none; }
-
-        /* Weekend days — slightly dimmed so weekdays read cleaner */
-        .ymc-cell.wknd span { opacity: .5; }
-
-        /* ════ SHARED ════ */
-        .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.10); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
-        .hol-icon { display:flex; align-items:center; flex-shrink:0; }
-        .hol-info { flex:1; }
-        .hol-name { font-size:13px; font-weight:700; color:var(--coral,#FF6B8A); }
-        .hol-en   { font-size:10px; color:var(--mid); margin-top:1px; }
-        .hol-tag  { font-size:10px; font-weight:700; color:var(--coral,#FF6B8A); background:rgba(255,107,107,.15); padding:3px 8px; border-radius:20px; white-space:nowrap; }
-      `}</style>
-    </div>
-  );
-}
