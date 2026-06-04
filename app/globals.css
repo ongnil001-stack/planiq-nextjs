@@ -339,6 +339,367 @@ html[data-theme="lady"] {
 }
 
 /* ══════════════════════════════════════════════════════════
+   FOCUS BLUE — deep navy + monday.com electric blue
+   Identity: enterprise productivity, sharp, focused, LinkedIn-adjacent.
+══════════════════════════════════════════════════════════ */
+html[data-theme="blue"] {
+  --bg:#071324; --bg2:#0D1E38; --surf:#0D1E38; --surf2:#122640; --surf3:#183050;
+  --g-start:#0086D4; --g-end:#00BCF2;
+  --gradient:linear-gradient(135deg,#0086D4 0%,#00BCF2 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(0,134,212,.18) 0%,rgba(0,188,242,.12) 100%);
+  --purple:#0086D4; --pur-d:#0060A0; --pur-lt:rgba(0,134,212,.16); --pur-m:#0090D8;
+  --coral:#FF5C7A; --coral-lt:rgba(255,92,122,.15);
+  --mint:#00D4AA;  --mint-lt:rgba(0,212,170,.15);
+  --amber:#FFAB00; --amber-lt:rgba(255,171,0,.15);
+  --sky:#00BCF2;   --sky-lt:rgba(0,188,242,.15);
+  --green:#00CC78; --green-lt:rgba(0,204,120,.15);
+  --dark:#C8E4FF; --mid:#5888B0; --lite:#1E4060;
+  --border:rgba(0,134,212,.14); --border2:rgba(0,134,212,.28);
+  --card-sh:0 8px 32px rgba(0,0,0,.50); --card-sh2:0 4px 16px rgba(0,0,0,.35);
+  --nav-bg:rgba(7,19,36,0.72);
+  --accent:var(--purple);
+  --glass-bg:rgba(13,30,56,0.55); --glass-bg2:rgba(18,38,64,0.45);
+  --glass-border:rgba(0,134,212,0.16); --glass-border2:rgba(0,134,212,0.28);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.42),0 1px 0 rgba(0,188,242,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.30),0 1px 0 rgba(0,188,242,.07) inset;
+  --nav-glass:rgba(7,19,36,0.70);
+  --nav-shadow:0 -4px 24px rgba(0,0,0,0.55);
+  --nav-inactive:rgba(200,228,255,0.35);
+  --nav-active:var(--purple);
+  --chart-1:#0086D4; --chart-2:#00BCF2; --chart-3:#00D4AA; --chart-4:#FFAB00; --chart-5:#FF5C7A;
+  --chart-ok:#00D4AA; --chart-mid:#0086D4; --chart-warn:#FFAB00; --chart-full:#FF5C7A;
+  --chart-empty:rgba(0,134,212,0.10); --chart-grid:rgba(0,134,212,0.09);
+  --chart-axis:rgba(200,228,255,0.22); --chart-tooltip:rgba(7,19,36,0.94);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CLARITY PURPLE — near-black + vivid violet + soft lavender
+   Identity: deep work, Linear / Raycast energy, ultra-focused.
+══════════════════════════════════════════════════════════ */
+html[data-theme="clarity"] {
+  --bg:#120E24; --bg2:#1A1430; --surf:#1A1430; --surf3:#28204A;
+  --surf2:#221C3C;
+  --g-start:#7C3AED; --g-end:#A78BFA;
+  --gradient:linear-gradient(135deg,#7C3AED 0%,#A78BFA 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(124,58,237,.20) 0%,rgba(167,139,250,.14) 100%);
+  --purple:#8B5CF6; --pur-d:#6D28D9; --pur-lt:rgba(139,92,246,.18); --pur-m:#7C3AED;
+  --coral:#F472B6; --coral-lt:rgba(244,114,182,.15);
+  --mint:#34D399;  --mint-lt:rgba(52,211,153,.15);
+  --amber:#FBBF24; --amber-lt:rgba(251,191,36,.15);
+  --sky:#60A5FA;   --sky-lt:rgba(96,165,250,.15);
+  --green:#4ADE80; --green-lt:rgba(74,222,128,.15);
+  --dark:#DDD8FF; --mid:#6058A0; --lite:#2A1E58;
+  --border:rgba(139,92,246,.16); --border2:rgba(139,92,246,.30);
+  --card-sh:0 8px 32px rgba(0,0,0,.55); --card-sh2:0 4px 16px rgba(0,0,0,.40);
+  --nav-bg:rgba(18,14,36,0.74);
+  --accent:var(--purple);
+  --glass-bg:rgba(26,20,48,0.58); --glass-bg2:rgba(34,28,60,0.48);
+  --glass-border:rgba(139,92,246,0.18); --glass-border2:rgba(139,92,246,0.32);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.50),0 1px 0 rgba(167,139,250,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.38),0 1px 0 rgba(167,139,250,.07) inset;
+  --nav-glass:rgba(18,14,36,0.72);
+  --nav-shadow:0 -4px 28px rgba(0,0,0,0.65);
+  --nav-inactive:rgba(221,216,255,0.32);
+  --nav-active:var(--purple);
+  --chart-1:#8B5CF6; --chart-2:#A78BFA; --chart-3:#34D399; --chart-4:#FBBF24; --chart-5:#F472B6;
+  --chart-ok:#34D399; --chart-mid:#8B5CF6; --chart-warn:#FBBF24; --chart-full:#F472B6;
+  --chart-empty:rgba(139,92,246,0.10); --chart-grid:rgba(139,92,246,0.09);
+  --chart-axis:rgba(221,216,255,0.22); --chart-tooltip:rgba(18,14,36,0.94);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SMART TEAL — arctic white + deep teal + cyan pop
+   Identity: health tech, Asana-ish, clean SaaS with teal identity.
+══════════════════════════════════════════════════════════ */
+html[data-theme="teal"] {
+  --bg:#C2DCDA; --bg2:#B4D0CE; --surf:#EBF6F5; --surf2:#E0F0EE; --surf3:#D4E8E6;
+  --g-start:#0097A7; --g-end:#00BCD4;
+  --gradient:linear-gradient(135deg,#0097A7 0%,#00BCD4 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(0,151,167,.12) 0%,rgba(0,188,212,.08) 100%);
+  --purple:#0097A7; --pur-d:#006978; --pur-lt:rgba(0,151,167,.12); --pur-m:#00AABB;
+  --coral:#E53935; --coral-lt:rgba(229,57,53,.10);
+  --mint:#00BCD4;  --mint-lt:rgba(0,188,212,.12);
+  --amber:#F57C00; --amber-lt:rgba(245,124,0,.10);
+  --sky:#29B6F6;   --sky-lt:rgba(41,182,246,.12);
+  --green:#2E7D32; --green-lt:rgba(46,125,50,.10);
+  --dark:#003840; --mid:#2A6870; --lite:#4A8890;
+  --border:rgba(0,151,167,.22); --border2:rgba(0,151,167,.38);
+  --card-sh:0 4px 16px rgba(0,151,167,.18),0 1px 3px rgba(0,100,120,.12); --card-sh2:0 2px 8px rgba(0,151,167,.14);
+  --nav-bg:rgba(194,220,218,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(235,246,245,0.93); --glass-bg2:rgba(224,240,238,0.86);
+  --glass-border:rgba(0,151,167,0.26); --glass-border2:rgba(0,151,167,0.40);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(0,151,167,.18),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(0,151,167,.12),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(194,220,218,0.92);
+  --nav-shadow:0 -2px 16px rgba(0,151,167,0.20);
+  --nav-inactive:rgba(0,56,64,0.45);
+  --nav-active:var(--purple);
+  --chart-1:#0097A7; --chart-2:#00BCD4; --chart-3:#2E7D32; --chart-4:#F57C00; --chart-5:#E53935;
+  --chart-ok:#2E7D32; --chart-mid:#0097A7; --chart-warn:#F57C00; --chart-full:#E53935;
+  --chart-empty:rgba(0,151,167,0.08); --chart-grid:rgba(0,151,167,0.10);
+  --chart-axis:rgba(0,56,64,0.28); --chart-tooltip:rgba(235,246,245,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOMENTUM MINT — sage green + deep emerald + fresh mint
+   Identity: wellness, growth, Notion-meets-Duolingo energy.
+══════════════════════════════════════════════════════════ */
+html[data-theme="mint"] {
+  --bg:#BDD8CC; --bg2:#B0CCC0; --surf:#E8F5EE; --surf2:#DFF0E8; --surf3:#D2E8DE;
+  --g-start:#059669; --g-end:#34D399;
+  --gradient:linear-gradient(135deg,#059669 0%,#34D399 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(5,150,105,.12) 0%,rgba(52,211,153,.08) 100%);
+  --purple:#059669; --pur-d:#047857; --pur-lt:rgba(5,150,105,.12); --pur-m:#10A07A;
+  --coral:#EF4444; --coral-lt:rgba(239,68,68,.10);
+  --mint:#34D399;  --mint-lt:rgba(52,211,153,.14);
+  --amber:#F59E0B; --amber-lt:rgba(245,158,11,.10);
+  --sky:#0EA5E9;   --sky-lt:rgba(14,165,233,.12);
+  --green:#065F46; --green-lt:rgba(6,95,70,.10);
+  --dark:#052E16; --mid:#166534; --lite:#4A8860;
+  --border:rgba(5,150,105,.22); --border2:rgba(5,150,105,.40);
+  --card-sh:0 4px 16px rgba(5,150,105,.18),0 1px 3px rgba(4,100,80,.12); --card-sh2:0 2px 8px rgba(5,150,105,.12);
+  --nav-bg:rgba(189,216,204,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(232,245,238,0.93); --glass-bg2:rgba(223,240,232,0.86);
+  --glass-border:rgba(5,150,105,0.26); --glass-border2:rgba(5,150,105,.40);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(5,150,105,.18),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(5,150,105,.12),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(189,216,204,0.92);
+  --nav-shadow:0 -2px 14px rgba(5,150,105,0.18);
+  --nav-inactive:rgba(5,46,22,0.45);
+  --nav-active:var(--purple);
+  --chart-1:#059669; --chart-2:#34D399; --chart-3:#0EA5E9; --chart-4:#F59E0B; --chart-5:#EF4444;
+  --chart-ok:#059669; --chart-mid:#34D399; --chart-warn:#F59E0B; --chart-full:#EF4444;
+  --chart-empty:rgba(5,150,105,0.08); --chart-grid:rgba(5,150,105,0.10);
+  --chart-axis:rgba(5,46,22,0.28); --chart-tooltip:rgba(235,246,240,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ENERGY CORAL — warm cream + vivid coral + amber fire
+   Identity: bold, startup energy, Figma-ish warmth.
+══════════════════════════════════════════════════════════ */
+html[data-theme="coral"] {
+  --bg:#DDBDAA; --bg2:#D0B098; --surf:#FFF4F0; --surf2:#FFEAE4; --surf3:#FFE0D8;
+  --g-start:#DC4825; --g-end:#F97316;
+  --gradient:linear-gradient(135deg,#DC4825 0%,#F97316 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(220,72,37,.12) 0%,rgba(249,115,22,.08) 100%);
+  --purple:#DC4825; --pur-d:#B83A1C; --pur-lt:#FFE8E0; --pur-m:#E85C30;
+  --coral:#DC4825; --coral-lt:#FFE8E0;
+  --mint:#0D9488;  --mint-lt:rgba(13,148,136,.10);
+  --amber:#F97316; --amber-lt:rgba(249,115,22,.12);
+  --sky:#0EA5E9;   --sky-lt:rgba(14,165,233,.10);
+  --green:#16A34A; --green-lt:rgba(22,163,74,.10);
+  --dark:#4A1200; --mid:#7A3010; --lite:#AA5030;
+  --border:rgba(220,72,37,.22); --border2:rgba(220,72,37,.38);
+  --card-sh:0 4px 16px rgba(220,72,37,.18),0 1px 3px rgba(180,50,20,.12); --card-sh2:0 2px 8px rgba(220,72,37,.14);
+  --nav-bg:rgba(221,189,170,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,244,240,0.94); --glass-bg2:rgba(255,234,228,0.86);
+  --glass-border:rgba(220,72,37,0.28); --glass-border2:rgba(220,72,37,0.44);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(220,72,37,.18),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(220,72,37,.12),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(221,189,170,0.92);
+  --nav-shadow:0 -2px 16px rgba(220,72,37,0.18);
+  --nav-inactive:rgba(74,18,0,0.46);
+  --nav-active:var(--purple);
+  --chart-1:#DC4825; --chart-2:#F97316; --chart-3:#0D9488; --chart-4:#EAB308; --chart-5:#A855F7;
+  --chart-ok:#0D9488; --chart-mid:#F97316; --chart-warn:#F97316; --chart-full:#DC4825;
+  --chart-empty:rgba(220,72,37,0.08); --chart-grid:rgba(220,72,37,0.10);
+  --chart-axis:rgba(74,18,0,0.28); --chart-tooltip:rgba(255,248,244,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   FLOW PINK — blush ivory + deep rose + bubblegum pop
+   Identity: bold modern, Framer/Loom-ish, professional but fun.
+══════════════════════════════════════════════════════════ */
+html[data-theme="pink"] {
+  --bg:#E8B8D4; --bg2:#DCA8C8; --surf:#FEF0F8; --surf2:#FCE4F4; --surf3:#F8D8EE;
+  --g-start:#BE185D; --g-end:#EC4899;
+  --gradient:linear-gradient(135deg,#BE185D 0%,#EC4899 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(190,24,93,.12) 0%,rgba(236,72,153,.08) 100%);
+  --purple:#BE185D; --pur-d:#9D1156; --pur-lt:#FDE8F4; --pur-m:#DB2777;
+  --coral:#F43F5E; --coral-lt:rgba(244,63,94,.10);
+  --mint:#0D9488;  --mint-lt:rgba(13,148,136,.10);
+  --amber:#D97706; --amber-lt:rgba(217,119,6,.10);
+  --sky:#7C3AED;   --sky-lt:rgba(124,58,237,.10);
+  --green:#166534; --green-lt:rgba(22,101,52,.10);
+  --dark:#500030; --mid:#902060; --lite:#C06090;
+  --border:rgba(190,24,93,.22); --border2:rgba(190,24,93,.38);
+  --card-sh:0 4px 16px rgba(190,24,93,.20),0 1px 3px rgba(150,20,80,.12); --card-sh2:0 2px 8px rgba(190,24,93,.14);
+  --nav-bg:rgba(232,184,212,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(254,240,248,0.94); --glass-bg2:rgba(252,228,244,0.86);
+  --glass-border:rgba(190,24,93,0.28); --glass-border2:rgba(190,24,93,0.44);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(190,24,93,.20),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(190,24,93,.14),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(232,184,212,0.92);
+  --nav-shadow:0 -2px 16px rgba(190,24,93,0.16);
+  --nav-inactive:rgba(80,0,48,0.44);
+  --nav-active:var(--purple);
+  --chart-1:#BE185D; --chart-2:#EC4899; --chart-3:#0D9488; --chart-4:#D97706; --chart-5:#7C3AED;
+  --chart-ok:#0D9488; --chart-mid:#BE185D; --chart-warn:#D97706; --chart-full:#F43F5E;
+  --chart-empty:rgba(190,24,93,0.08); --chart-grid:rgba(190,24,93,0.10);
+  --chart-axis:rgba(80,0,48,0.26); --chart-tooltip:rgba(254,248,252,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DEEP FOCUS — obsidian black + electric blue + ion glow
+   Identity: extreme focus mode, code-in-the-dark, VSCode Dark+ vibes.
+══════════════════════════════════════════════════════════ */
+html[data-theme="deepfocus"] {
+  --bg:#06090F; --bg2:#0B1018; --surf:#0B1018; --surf2:#101620; --surf3:#162028;
+  --g-start:#3B82F6; --g-end:#60A5FA;
+  --gradient:linear-gradient(135deg,#3B82F6 0%,#60A5FA 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(59,130,246,.20) 0%,rgba(96,165,250,.14) 100%);
+  --purple:#3B82F6; --pur-d:#1D4ED8; --pur-lt:rgba(59,130,246,.18); --pur-m:#4A90F0;
+  --coral:#F87171; --coral-lt:rgba(248,113,113,.15);
+  --mint:#34D399;  --mint-lt:rgba(52,211,153,.15);
+  --amber:#FCD34D; --amber-lt:rgba(252,211,77,.15);
+  --sky:#60A5FA;   --sky-lt:rgba(96,165,250,.15);
+  --green:#4ADE80; --green-lt:rgba(74,222,128,.15);
+  --dark:#C8DDFF; --mid:#4A6A9A; --lite:#1C2A44;
+  --border:rgba(59,130,246,.14); --border2:rgba(59,130,246,.26);
+  --card-sh:0 8px 32px rgba(0,0,0,.65); --card-sh2:0 4px 16px rgba(0,0,0,.50);
+  --nav-bg:rgba(6,9,15,0.75);
+  --accent:var(--purple);
+  --glass-bg:rgba(11,16,24,0.60); --glass-bg2:rgba(16,22,32,0.50);
+  --glass-border:rgba(59,130,246,0.16); --glass-border2:rgba(59,130,246,0.28);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.60),0 1px 0 rgba(96,165,250,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.45),0 1px 0 rgba(96,165,250,.07) inset;
+  --nav-glass:rgba(6,9,15,0.74);
+  --nav-shadow:0 -4px 28px rgba(0,0,0,0.70);
+  --nav-inactive:rgba(200,221,255,0.32);
+  --nav-active:var(--purple);
+  --chart-1:#3B82F6; --chart-2:#60A5FA; --chart-3:#34D399; --chart-4:#FCD34D; --chart-5:#F87171;
+  --chart-ok:#34D399; --chart-mid:#3B82F6; --chart-warn:#FCD34D; --chart-full:#F87171;
+  --chart-empty:rgba(59,130,246,0.10); --chart-grid:rgba(59,130,246,0.08);
+  --chart-axis:rgba(200,221,255,0.20); --chart-tooltip:rgba(6,9,15,0.96);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CALM PLANNER — warm sage + deep forest teal + soft stone
+   Identity: mindfulness planner, Headspace-adjacent, quiet confidence.
+══════════════════════════════════════════════════════════ */
+html[data-theme="calm"] {
+  --bg:#C4D4C0; --bg2:#B8C8B4; --surf:#EDF4EB; --surf2:#E4EEE2; --surf3:#D8E8D6;
+  --g-start:#0D7377; --g-end:#14B8A6;
+  --gradient:linear-gradient(135deg,#0D7377 0%,#14B8A6 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(13,115,119,.12) 0%,rgba(20,184,166,.08) 100%);
+  --purple:#0D7377; --pur-d:#0A5A5E; --pur-lt:rgba(13,115,119,.12); --pur-m:#0F9090;
+  --coral:#DC4040; --coral-lt:rgba(220,64,64,.10);
+  --mint:#14B8A6;  --mint-lt:rgba(20,184,166,.14);
+  --amber:#CA8A04; --amber-lt:rgba(202,138,4,.10);
+  --sky:#0369A1;   --sky-lt:rgba(3,105,161,.10);
+  --green:#166534; --green-lt:rgba(22,101,52,.10);
+  --dark:#0A2820; --mid:#2A5848; --lite:#4A7868;
+  --border:rgba(13,115,119,.22); --border2:rgba(13,115,119,.38);
+  --card-sh:0 4px 16px rgba(13,115,119,.16),0 1px 3px rgba(10,90,94,.12); --card-sh2:0 2px 8px rgba(13,115,119,.12);
+  --nav-bg:rgba(196,212,192,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(237,244,235,0.93); --glass-bg2:rgba(228,238,226,0.86);
+  --glass-border:rgba(13,115,119,0.26); --glass-border2:rgba(13,115,119,.40);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(13,115,119,.16),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(13,115,119,.10),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(196,212,192,0.92);
+  --nav-shadow:0 -2px 14px rgba(13,115,119,0.16);
+  --nav-inactive:rgba(10,40,32,0.44);
+  --nav-active:var(--purple);
+  --chart-1:#0D7377; --chart-2:#14B8A6; --chart-3:#166534; --chart-4:#CA8A04; --chart-5:#DC4040;
+  --chart-ok:#166534; --chart-mid:#0D7377; --chart-warn:#CA8A04; --chart-full:#DC4040;
+  --chart-empty:rgba(13,115,119,0.08); --chart-grid:rgba(13,115,119,0.10);
+  --chart-axis:rgba(10,40,32,0.26); --chart-tooltip:rgba(240,248,238,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BRIGHT SCHEDULE — warm sand + deep amber + golden sun
+   Identity: morning routine planner, Todoist / TickTick warmth.
+══════════════════════════════════════════════════════════ */
+html[data-theme="bright"] {
+  --bg:#D4B878; --bg2:#C8AC6C; --surf:#FFFAEE; --surf2:#FFF4D8; --surf3:#FFECBC;
+  --g-start:#B45309; --g-end:#F59E0B;
+  --gradient:linear-gradient(135deg,#B45309 0%,#F59E0B 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(180,83,9,.14) 0%,rgba(245,158,11,.08) 100%);
+  --purple:#B45309; --pur-d:#92400E; --pur-lt:#FEF3C7; --pur-m:#D97706;
+  --coral:#DC2626; --coral-lt:rgba(220,38,38,.10);
+  --mint:#0D9488;  --mint-lt:rgba(13,148,136,.10);
+  --amber:#F59E0B; --amber-lt:rgba(245,158,11,.14);
+  --sky:#0369A1;   --sky-lt:rgba(3,105,161,.10);
+  --green:#166534; --green-lt:rgba(22,101,52,.10);
+  --dark:#3A1A00; --mid:#7A4408; --lite:#AA7030;
+  --border:rgba(180,83,9,.22); --border2:rgba(180,83,9,.38);
+  --card-sh:0 4px 16px rgba(180,83,9,.16),0 1px 3px rgba(146,64,14,.10); --card-sh2:0 2px 8px rgba(180,83,9,.12);
+  --nav-bg:rgba(212,184,120,0.92);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,250,238,0.94); --glass-bg2:rgba(255,244,216,0.88);
+  --glass-border:rgba(180,83,9,0.28); --glass-border2:rgba(180,83,9,0.44);
+  --glass-blur:blur(18px);
+  --glass-sh:0 4px 16px rgba(180,83,9,.16),0 1px 0 rgba(255,255,255,.90) inset;
+  --glass-sh2:0 2px 8px rgba(180,83,9,.12),0 1px 0 rgba(255,255,255,.70) inset;
+  --nav-glass:rgba(212,184,120,0.92);
+  --nav-shadow:0 -2px 14px rgba(180,83,9,0.16);
+  --nav-inactive:rgba(58,26,0,0.45);
+  --nav-active:var(--purple);
+  --chart-1:#B45309; --chart-2:#F59E0B; --chart-3:#0D9488; --chart-4:#7C3AED; --chart-5:#DC2626;
+  --chart-ok:#0D9488; --chart-mid:#B45309; --chart-warn:#F59E0B; --chart-full:#DC2626;
+  --chart-empty:rgba(180,83,9,0.08); --chart-grid:rgba(180,83,9,0.10);
+  --chart-axis:rgba(58,26,0,0.26); --chart-tooltip:rgba(255,252,244,0.97);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRO BALANCE — abyss black + emerald growth + crisp mint
+   Identity: premium finance/ops, Bloomberg Terminal meets Stripe.
+══════════════════════════════════════════════════════════ */
+html[data-theme="probalance"] {
+  --bg:#0A1410; --bg2:#102018; --surf:#102018; --surf2:#182C20; --surf3:#203828;
+  --g-start:#10B981; --g-end:#34D399;
+  --gradient:linear-gradient(135deg,#10B981 0%,#34D399 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(16,185,129,.20) 0%,rgba(52,211,153,.14) 100%);
+  --purple:#10B981; --pur-d:#059669; --pur-lt:rgba(16,185,129,.18); --pur-m:#12C490;
+  --coral:#F87171; --coral-lt:rgba(248,113,113,.15);
+  --mint:#34D399;  --mint-lt:rgba(52,211,153,.15);
+  --amber:#FCD34D; --amber-lt:rgba(252,211,77,.15);
+  --sky:#38BDF8;   --sky-lt:rgba(56,189,248,.15);
+  --green:#4ADE80; --green-lt:rgba(74,222,128,.15);
+  --dark:#C0ECD8; --mid:#4A8868; --lite:#1A3828;
+  --border:rgba(16,185,129,.16); --border2:rgba(16,185,129,.30);
+  --card-sh:0 8px 32px rgba(0,0,0,.55); --card-sh2:0 4px 16px rgba(0,0,0,.40);
+  --nav-bg:rgba(10,20,16,0.74);
+  --accent:var(--purple);
+  --glass-bg:rgba(16,32,24,0.58); --glass-bg2:rgba(24,44,32,0.48);
+  --glass-border:rgba(16,185,129,0.18); --glass-border2:rgba(16,185,129,0.32);
+  --glass-blur:blur(20px);
+  --glass-sh:0 8px 32px rgba(0,0,0,.50),0 1px 0 rgba(52,211,153,.10) inset;
+  --glass-sh2:0 4px 16px rgba(0,0,0,.38),0 1px 0 rgba(52,211,153,.07) inset;
+  --nav-glass:rgba(10,20,16,0.72);
+  --nav-shadow:0 -4px 24px rgba(0,0,0,0.60);
+  --nav-inactive:rgba(192,236,216,0.32);
+  --nav-active:var(--purple);
+  --chart-1:#10B981; --chart-2:#34D399; --chart-3:#38BDF8; --chart-4:#FCD34D; --chart-5:#F87171;
+  --chart-ok:#10B981; --chart-mid:#34D399; --chart-warn:#FCD34D; --chart-full:#F87171;
+  --chart-empty:rgba(16,185,129,0.10); --chart-grid:rgba(16,185,129,0.09);
+  --chart-axis:rgba(192,236,216,0.22); --chart-tooltip:rgba(10,20,16,0.95);
+  color-scheme: dark;
+}
+
+/* ══════════════════════════════════════════════════════════
    BASE RESET
 ══════════════════════════════════════════════════════════ */
 *, *::before, *::after {
@@ -465,16 +826,28 @@ html[data-theme="pixel"] {
 .btn-ghost:active { background: rgba(255,255,255,.12); }
 
 /* Light-theme ghost override */
-html[data-theme="soft"]     .btn-ghost,
-html[data-theme="colorful"] .btn-ghost,
-html[data-theme="minimal"]  .btn-ghost,
-html[data-theme="lady"]     .btn-ghost {
+html[data-theme="soft"]       .btn-ghost,
+html[data-theme="colorful"]   .btn-ghost,
+html[data-theme="minimal"]    .btn-ghost,
+html[data-theme="lady"]       .btn-ghost,
+html[data-theme="teal"]       .btn-ghost,
+html[data-theme="mint"]       .btn-ghost,
+html[data-theme="coral"]      .btn-ghost,
+html[data-theme="pink"]       .btn-ghost,
+html[data-theme="calm"]       .btn-ghost,
+html[data-theme="bright"]     .btn-ghost {
   background: rgba(0,0,0,0.05);
 }
-html[data-theme="soft"]     .btn-ghost:active,
-html[data-theme="colorful"] .btn-ghost:active,
-html[data-theme="minimal"]  .btn-ghost:active,
-html[data-theme="lady"]     .btn-ghost:active {
+html[data-theme="soft"]       .btn-ghost:active,
+html[data-theme="colorful"]   .btn-ghost:active,
+html[data-theme="minimal"]    .btn-ghost:active,
+html[data-theme="lady"]       .btn-ghost:active,
+html[data-theme="teal"]       .btn-ghost:active,
+html[data-theme="mint"]       .btn-ghost:active,
+html[data-theme="coral"]      .btn-ghost:active,
+html[data-theme="pink"]       .btn-ghost:active,
+html[data-theme="calm"]       .btn-ghost:active,
+html[data-theme="bright"]     .btn-ghost:active {
   background: rgba(0,0,0,0.10);
 }
 

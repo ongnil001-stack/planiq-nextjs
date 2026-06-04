@@ -3,7 +3,7 @@
  * Each theme overrides CSS custom properties on <body data-theme="X">
  */
 
-export const THEME_IDS = ['focused', 'soft', 'dark', 'colorful', 'minimal', 'pixel', 'lady'] as const;
+export const THEME_IDS = ['focused', 'soft', 'dark', 'colorful', 'minimal', 'pixel', 'lady', 'blue', 'clarity', 'teal', 'mint', 'coral', 'pink', 'deepfocus', 'calm', 'bright', 'probalance'] as const;
 export type ThemeId = typeof THEME_IDS[number];
 
 export const THEME_META: Record<ThemeId, {
@@ -16,6 +16,17 @@ export const THEME_META: Record<ThemeId, {
   minimal:  { name: 'Minimal Executive',    desc: 'Cream & real gold',   tag: 'GOLD',    bg: '#FAFAF7', pri: '#1C1C28', acc: '#B8962E' },
   pixel:    { name: 'Playful Pixel',        desc: 'Terminal green',      tag: 'PIXEL',   bg: '#0E1A14', pri: '#00E878', acc: '#C8F020' },
   lady:     { name: 'Lady Professional',    desc: 'Berry & ivory',       tag: 'ROSE',    bg: '#FDF7F9', pri: '#A0306A', acc: '#C86898' },
+  // ── Monday.com-inspired new themes ──────────────────────────────────────────
+  blue:      { name: 'Focus Blue',       desc: 'Deep navy & sky',     tag: 'NAVY',    bg: '#071324', pri: '#0086D4', acc: '#00BCF2' },
+  clarity:   { name: 'Clarity Purple',   desc: 'Midnight & violet',   tag: 'VIOLET',  bg: '#120E24', pri: '#7C3AED', acc: '#A78BFA' },
+  teal:      { name: 'Smart Teal',       desc: 'Arctic & teal',       tag: 'TEAL',    bg: '#E6F4F3', pri: '#0097A7', acc: '#00BCD4' },
+  mint:      { name: 'Momentum Mint',    desc: 'Sage & emerald',      tag: 'GREEN',   bg: '#E4F5EE', pri: '#059669', acc: '#34D399' },
+  coral:     { name: 'Energy Coral',     desc: 'Warm & vibrant',      tag: 'CORAL',   bg: '#FFF3F0', pri: '#DC4825', acc: '#F97316' },
+  pink:      { name: 'Flow Pink',        desc: 'Berry & blush',       tag: 'PINK',    bg: '#FEF0F7', pri: '#BE185D', acc: '#EC4899' },
+  deepfocus: { name: 'Deep Focus',       desc: 'Obsidian & electric', tag: 'DEEP',    bg: '#06090F', pri: '#3B82F6', acc: '#60A5FA' },
+  calm:      { name: 'Calm Planner',     desc: 'Sage & deep teal',    tag: 'SAGE',    bg: '#EBF4F2', pri: '#0D7377', acc: '#14B8A6' },
+  bright:    { name: 'Bright Schedule',  desc: 'Sand & amber',        tag: 'AMBER',   bg: '#FFF8EC', pri: '#B45309', acc: '#F59E0B' },
+  probalance:{ name: 'Pro Balance',      desc: 'Abyss & emerald',     tag: 'PRO',     bg: '#0A1410', pri: '#10B981', acc: '#34D399' },
 };
 
 export const LS_KEY = 'planiq_theme';
