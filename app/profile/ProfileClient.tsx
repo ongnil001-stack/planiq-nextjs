@@ -65,7 +65,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const [changelogOpen, setChangelogOpen] = useState(false);
   // Which changelog versions have their notes fully expanded
-  const [expandedVersions, setExpandedVersions] = useState<Record<string,boolean>>({});
+  // Type assertion avoids TSX generic <T> ambiguity: useState<Record<K,V>> → useState(init as Type)
+  const [expandedVersions, setExpandedVersions] = useState({} as {[v:string]:boolean});
   const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
