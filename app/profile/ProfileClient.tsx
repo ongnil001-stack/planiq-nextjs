@@ -934,12 +934,35 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   <div style={{ flex:1, padding:'12px 14px' }}>
                     <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:4 }}>Latest</div>
                     <div style={{ fontSize:17, fontWeight:900, color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--mint,#00C896)', letterSpacing:'-.3px' }}>
-                      {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : 'v' + appUpdate.currentVersionClean}
+                      {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : appUpdate.checking ? '…' : 'v' + appUpdate.currentVersionClean}
                     </div>
                     {appUpdate.latestBuildSha && appUpdate.latestBuildSha !== 'dev' && (
                       <div style={{ fontSize:9, color:'var(--lite)', marginTop:2, fontFamily:'monospace' }}>#{appUpdate.latestBuildSha}</div>
                     )}
                   </div>
+                </div>
+
+                {/* ── Debug strip (always visible to help diagnose cache/deploy issues) ── */}
+                <div style={{
+                  padding:'8px 14px', borderBottom:'1px solid var(--border)',
+                  background:'rgba(0,0,0,.15)',
+                }}>
+                  <div style={{ fontSize:9, fontFamily:'monospace', color:'var(--mid)', lineHeight:1.9 }}>
+                    <div>installed: <span style={{color:'var(--dark)'}}>{appUpdate.currentVersion}</span></div>
+                    <div>latest&nbsp;&nbsp;&nbsp;: <span style={{color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--dark)'}}>{appUpdate.latestVersion ?? (appUpdate.checking ? 'checking…' : 'not fetched')}</span></div>
+                    <div>build sha: <span style={{color:'var(--dark)'}}>{appUpdate.currentBuildSha}</span></div>
+                    <div>live sha&nbsp; : <span style={{color:'var(--dark)'}}>{appUpdate.latestBuildSha ?? (appUpdate.checking ? '…' : 'not fetched')}</span></div>
+                    <div>update&nbsp;&nbsp;&nbsp;: <span style={{color: appUpdate.hasUpdate ? '#FF6B6B' : '#00C896', fontWeight:700}}>{appUpdate.hasUpdate ? 'YES ✓' : 'no'}</span></div>
+                    <div>checked&nbsp;&nbsp;: <span style={{color:'var(--dark)'}}>{new Date().toLocaleTimeString()}</span></div>
+                  </div>
+                  <button onClick={appUpdate.recheck} style={{
+                    marginTop:5, fontSize:9, fontFamily:'monospace',
+                    padding:'2px 8px', borderRadius:4, cursor:'pointer',
+                    background:'var(--surf2)', border:'1px solid var(--border)',
+                    color:'var(--mid)', fontWeight:600,
+                  }}>
+                    force recheck
+                  </button>
                 </div>
 
                 {/* Status row */}
