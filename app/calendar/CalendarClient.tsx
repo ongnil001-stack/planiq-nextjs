@@ -1555,19 +1555,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{
-            padding: '12px 8px',
-            paddingBottom: 'max(env(safe-area-inset-bottom,0px),80px)',
-          }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3,1fr)',
-              gap: '7px',
-            }}>
+          <div style={{ padding:'12px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'7px' }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const daysIn = new Date(year, mo + 1, 0).getDate();
                 const firstD = new Date(year, mo, 1).getDay();
-                // boolean[] avoids Set<T> TSX generic ambiguity
+                // Activity days — boolean[] avoids Set<T> TSX generic ambiguity
                 const dayHasAct: boolean[] = [];
                 schedules.forEach(s => {
                   const sd = new Date(s.start_time);
@@ -1575,8 +1568,16 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     dayHasAct[sd.getDate()] = true;
                   }
                 });
+                // Holiday days — check holidays map (keys: YYYY-MM-DD)
+                const dayIsHol: boolean[] = [];
+                for (let d = 1; d <= daysIn; d++) {
+                  const mo2 = String(mo + 1).padStart(2, '0');
+                  const d2  = String(d).padStart(2, '0');
+                  if (holidays.has(year + '-' + mo2 + '-' + d2)) dayIsHol[d] = true;
+                }
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
                 const isSel     = mo === month && !isThisMon;
+
                 // 42 cells: 6 rows × 7 cols
                 const cells: (number | null)[] = [];
                 for (let i = 0; i < 42; i++) {
@@ -1602,9 +1603,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         : 'var(--glass-bg2,rgba(255,255,255,.04))',
                       border: isThisMon
                         ? '2px solid var(--purple)'
-                        : ('1.5px solid ' + (isSel
-                            ? 'var(--border2)'
-                            : 'var(--glass-border,rgba(255,255,255,.08))')),
+                        : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
                       borderRadius: 13,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
@@ -1613,13 +1612,8 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    {/* Month label */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 5,
-                    }}>
+                    {/* Month label — no NOW text, current month shown via border only */}
+                    <div style={{ marginBottom: 5 }}>
                       <span style={{
                         fontSize: 11, fontWeight: 900, lineHeight: 1,
                         letterSpacing: '-.2px',
@@ -1627,15 +1621,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       }}>
                         {MONTHS_SH[mo]}
                       </span>
-                      {isThisMon && (
-                        <span style={{
-                          fontSize: 7, fontWeight: 800, letterSpacing: '.3px',
-                          color: 'var(--purple)', opacity: .8,
-                        }}>NOW</span>
-                      )}
                     </div>
 
-                    {/* Date grid — explicit pixel cells, no CSS percentage tricks */}
+                    {/* Date grid */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: `repeat(7,${cellPx}px)`,
@@ -1644,6 +1632,24 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       {cells.map((dayNum, ci) => {
                         const isToday = dayNum !== null && isThisMon && dayNum === today.getDate();
                         const hasAct  = dayNum !== null && dayHasAct[dayNum] === true;
+                        const isHol   = dayNum !== null && dayIsHol[dayNum] === true;
+                        const hasBoth = hasAct && isHol;
+
+                        // Cell background: today > activity > holiday > empty
+                        let bg = 'transparent';
+                        if (isToday)   bg = 'var(--purple)';
+                        else if (hasAct && !isHol) bg = 'var(--pur-lt,rgba(124,106,240,.15))';
+                        else if (isHol && !hasAct) bg = 'rgba(255,92,122,.15)';
+                        else if (hasBoth)           bg = 'var(--pur-lt,rgba(124,106,240,.15))';
+
+                        // Text color: today > activity > holiday > normal
+                        let col = 'var(--dark)';
+                        if (isToday)       col = '#fff';
+                        else if (hasAct)   col = 'var(--purple)';
+                        else if (isHol)    col = 'var(--coral,#FF5C7A)';
+
+                        const fw = isToday || hasAct || isHol ? 700 : 400;
+
                         return (
                           <div key={ci} style={{
                             width: cellPx,
@@ -1651,27 +1657,38 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            position: 'relative',
                             borderRadius: '50%',
-                            background: isToday
-                              ? 'var(--purple)'
-                              : hasAct
-                                ? 'var(--pur-lt,rgba(124,106,240,.12))'
-                                : 'transparent',
+                            background: bg,
                             flexShrink: 0,
                           }}>
                             {dayNum !== null && (
-                              <span style={{
-                                fontSize: fSize,
-                                lineHeight: 1,
-                                fontWeight: isToday ? 800 : hasAct ? 600 : 400,
-                                color: isToday ? '#fff'
-                                  : hasAct ? 'var(--purple)' : 'var(--dark)',
-                                fontVariantNumeric: 'tabular-nums',
-                                pointerEvents: 'none',
-                                userSelect: 'none',
-                              }}>
-                                {dayNum}
-                              </span>
+                              <>
+                                <span style={{
+                                  fontSize: fSize,
+                                  lineHeight: 1,
+                                  fontWeight: fw,
+                                  color: col,
+                                  fontVariantNumeric: 'tabular-nums',
+                                  pointerEvents: 'none',
+                                  userSelect: 'none',
+                                }}>
+                                  {dayNum}
+                                </span>
+                                {/* Holiday dot indicator — shown for holiday+activity overlap */}
+                                {hasBoth && !isToday && (
+                                  <span style={{
+                                    position: 'absolute',
+                                    bottom: '2px',
+                                    right: '2px',
+                                    width: '3px',
+                                    height: '3px',
+                                    borderRadius: '50%',
+                                    background: 'var(--coral,#FF5C7A)',
+                                    flexShrink: 0,
+                                  }} />
+                                )}
+                              </>
                             )}
                           </div>
                         );
@@ -1682,14 +1699,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               })}
             </div>
 
-            <div style={{
-              textAlign: 'center', marginTop: 14,
-              fontSize: 11, color: 'var(--mid)', fontWeight: 500,
-            }}>
+            <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
               Tap any month to see the full schedule
             </div>
           </div>
         )}
+
 
 
 
