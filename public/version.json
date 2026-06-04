@@ -1,56 +1,68 @@
 {
-  "version": "1.1.3",
+  "version": "1.1.4",
   "releaseDate": "2026-06-04",
-  "summary": "Cleaner In Progress tracker, redesigned yearly overview, reliable update detection on every deploy.",
+  "summary": "Yearly Calendar now shows clean date grids, updates are user-controlled, and the Profile badge alerts you to new releases.",
   "changelog": [
+    {
+      "version": "1.1.4",
+      "date": "2026-06-04",
+      "notes": [
+        "Yearly Calendar: fixed date cell sizing — cells are now computed from your exact screen width so dates never stack, overlap, or cluster",
+        "Yearly Calendar: activity days highlighted with a soft accent background; today highlighted with a filled accent circle",
+        "Yearly Calendar: scroll stops cleanly at the last month row — no empty space below",
+        "Software Update: updates are now user-controlled — the app will never silently refresh while you are adding schedules or editing tasks",
+        "Software Update: a new Service Worker waits for your permission before activating (no more surprise reloads)",
+        "Profile tab: a pulsing badge dot now appears on the Profile icon when a new update is ready, so you always know before going into settings",
+        "Update flow: tapping Update Now sends an explicit activation signal to the waiting update, then reloads cleanly"
+      ]
+    },
     {
       "version": "1.1.3",
       "date": "2026-06-04",
       "notes": [
-        "In Progress sheet redesigned — theme-aware gradient ring that matches your selected color theme, stat pills showing elapsed/total/remaining time, cleaner action buttons",
-        "Yearly Calendar replaced with clean annual overview — activity bar charts per month, no cramped date numbers, instantly readable at a glance",
-        "Software Update now detects every new deployment automatically using build SHA, not just version bumps",
-        "Update badge appears for both version changes and any new code push to Vercel",
-        "Profile > System Settings: added Privacy & Terms as a proper menu item",
-        "Software Update status row now shows a live indicator — green dot (up to date) or pulsing red dot (new update)",
-        "System Settings footer simplified to show current build version"
+        "In Progress sheet redesigned — theme-aware gradient ring that matches your selected color theme",
+        "In Progress: stat pills now show elapsed time, total duration, and remaining time side by side",
+        "In Progress: action buttons cleaner — Mark as Completed (primary), Reschedule and Keep Going (secondary row)",
+        "Profile > System Settings: Privacy and Terms added as a proper slide-in page instead of a footer link",
+        "Software Update: now detects every Vercel deployment using build SHA, not just version number bumps",
+        "Software Update: version.json served with no-cache headers so Vercel CDN never returns a stale version",
+        "Software Update: ninja update detection — if the app updated while closed, a banner shows what changed on next open"
       ]
     },
     {
       "version": "1.1.2",
       "date": "2026-06-02",
       "notes": [
-        "Fixed Add Schedule saving the wrong date — the date you pick is the date that saves (was shifting a day ahead in some timezones)",
-        "Recurring schedules now appear correctly every week and in future months (July, August and beyond), across Daily, Weekly, Monthly, and Yearly views",
-        "Per-occurrence completion: completing one day of a repeating task no longer marks the whole series done",
-        "Focus Hub: overdue items are flagged separately with Reschedule, Mark Completed, Mark Missed, and Clear — the AI no longer suggests time slots for tasks whose time has passed",
-        "Smart Reschedule now shows the full date and time (not just the time) so cross-day moves are clear",
-        "AI Priorities: added a This Month focus summary (busy days, free days, overload risks)",
-        "Theme polish: charts, score rings, and progress bars now follow the selected theme"
+        "Fixed Add Schedule saving the wrong date — the date you pick is now exactly the date that saves (timezone offset was being applied in the wrong direction)",
+        "Recurring schedules now appear correctly every week and in all future months across Daily, Weekly, Monthly, and Yearly views",
+        "Per-occurrence completion — completing one day of a repeating task no longer marks the entire series as done",
+        "Focus Hub: overdue items now flagged separately with Reschedule, Mark Completed, Mark Missed, and Clear options",
+        "Smart Reschedule now shows the full date and time for cross-day moves",
+        "AI Priorities: added a This Month summary covering busy days, free days, and overload risks",
+        "Theme polish: charts, score rings, and progress bars now follow the selected color theme throughout the app"
       ]
     },
     {
       "version": "1.1.0",
       "date": "2026-05-27",
       "notes": [
-        "Unified System Settings: Account, Notifications, Customize Dashboard, and Software Update in one grouped card",
-        "AI assistant tone rewritten — supportive planning partner, never judgmental",
-        "Calendar yearly view: readable mini-grids with day-of-week headers and circular today highlight",
-        "Streak algorithm fix: no longer resets to zero at start of day",
-        "Dashboard metrics clarified: Today count and Load score now clearly labeled",
-        "Software Update section: real version detection, cache-clearing update flow"
+        "Unified System Settings under Profile — Account, Notifications, Customize Dashboard, and Software Update all in one slide-in settings center",
+        "iPhone-style navigation: tap any setting to slide into its own page, back button returns to the list",
+        "AI assistant tone rewritten — supportive planning partner, no longer judgmental about missed tasks",
+        "Calendar Yearly view: month cards with day-of-week headers and highlighted today date",
+        "Streak algorithm fixed — streaks no longer reset to zero at the start of a new day",
+        "Dashboard metrics clarified — Today count and Load score now clearly labeled so the numbers make sense"
       ]
     },
     {
       "version": "1.0.0",
       "date": "2026-05-20",
       "notes": [
-        "Fixed theme-aware colors in Progress Details and Active Session sheets",
-        "Replaced hardcoded dark-only colors with adaptive CSS variables",
-        "Added Missed/Skip option to task completion prompt",
-        "Time-safe rescheduling — past time slots are now disabled",
-        "Removed hardcoded demo data — all stats now use real user data",
-        "Simplified swipe-to-delete: single tap, immediate action with undo"
+        "All colors now use CSS variables — every screen adapts correctly when you switch themes",
+        "Added Missed and Skip options to the task completion prompt",
+        "Time-safe rescheduling — past time slots are disabled when moving a task",
+        "Removed all hardcoded demo data — every stat and score now reflects your real activity",
+        "Swipe-to-delete simplified: single tap, immediate action with an undo option"
       ]
     }
   ]

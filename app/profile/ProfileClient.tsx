@@ -64,6 +64,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  // Which changelog versions have their notes fully expanded
+  const [expandedVersions, setExpandedVersions] = useState<Record<string,boolean>>({});
   const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -942,27 +944,6 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   </div>
                 </div>
 
-                {/* ── Debug strip (always visible to help diagnose cache/deploy issues) ── */}
-                <div style={{
-                  padding:'8px 14px', borderBottom:'1px solid var(--border)',
-                  background:'rgba(0,0,0,.15)',
-                }}>
-                  <div style={{ fontSize:9, fontFamily:'monospace', color:'var(--mid)', lineHeight:1.9 }}>
-                    <div>installed: <span style={{color:'var(--dark)'}}>{appUpdate.currentVersion}</span></div>
-                    <div>latest&nbsp;&nbsp;&nbsp;: <span style={{color: appUpdate.hasUpdate ? 'var(--coral,#FF6B6B)' : 'var(--dark)'}}>{appUpdate.latestVersion ?? (appUpdate.checking ? 'checking…' : 'not fetched')}</span></div>
-                    <div>build sha: <span style={{color:'var(--dark)'}}>{appUpdate.currentBuildSha}</span></div>
-                    <div>live sha&nbsp; : <span style={{color:'var(--dark)'}}>{appUpdate.latestBuildSha ?? (appUpdate.checking ? '…' : 'not fetched')}</span></div>
-                    <div>update&nbsp;&nbsp;&nbsp;: <span style={{color: appUpdate.hasUpdate ? '#FF6B6B' : '#00C896', fontWeight:700}}>{appUpdate.hasUpdate ? 'YES ✓' : 'no'}</span></div>
-                    <div>checked&nbsp;&nbsp;: <span style={{color:'var(--dark)'}}>{new Date().toLocaleTimeString()}</span></div>
-                  </div>
-                  <button onClick={appUpdate.recheck} style={{
-                    marginTop:5, fontSize:9, fontFamily:'monospace',
-                    padding:'2px 8px', borderRadius:4, cursor:'pointer',
-                    background:'var(--surf2)', border:'1px solid var(--border)',
-                    color:'var(--mid)', fontWeight:600,
-                  }}>
-                    force recheck
-                  </button>
                 </div>
 
                 {/* Status row */}
@@ -1039,25 +1020,37 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
                 {/* Changelog */}
                 {changelogOpen && appUpdate.changelog.length > 0 && (
-                  <div style={{ borderTop:'1px solid var(--border)', padding:'12px 14px 14px', display:'flex', flexDirection:'column', gap:14 }}>
-                    {appUpdate.changelog.map((entry, i) => (
-                      <div key={entry.version}>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:7, background: i===0 ? 'var(--pur-lt)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid var(--border2)' : '1px solid var(--border)' }}>
-                              v{entry.version}
-                            </span>
-                            {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'var(--mint,#00C896)', letterSpacing:'.5px' }}>LATEST</span>}
+                  <div style={{ borderTop:'1px solid var(--border)', padding:'12px 14px 14px', display:'flex', flexDirection:'column', gap:16 }}>
+                    {appUpdate.changelog.map((entry, i) => {
+                      const isExp   = expandedVersions[entry.version] === true;
+                      const PREVIEW = 3;
+                      const hasMore = entry.notes.length > PREVIEW;
+                      const shown   = isExp ? entry.notes : entry.notes.slice(0, PREVIEW);
+                      return (
+                        <div key={entry.version}>
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                              <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:7, background: i===0 ? 'var(--pur-lt)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid var(--border2)' : '1px solid var(--border)' }}>v{entry.version}</span>
+                              {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'var(--mint,#00C896)', letterSpacing:'.5px' }}>LATEST</span>}
+                            </div>
+                            <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
                           </div>
-                          <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-                            {new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
-                          </span>
+                          <ul style={{ margin:0, paddingLeft:16, display:'flex', flexDirection:'column', gap:5 }}>
+                            {shown.map((note,j) => (
+                              <li key={j} style={{ fontSize:11, color:'var(--dark)', lineHeight:1.6 }}>{note}</li>
+                            ))}
+                          </ul>
+                          {hasMore && (
+                            <button
+                              onClick={() => setExpandedVersions(prev => ({ ...prev, [entry.version]: !prev[entry.version] }))}
+                              style={{ marginTop:7, fontSize:11, fontWeight:700, color:'var(--purple)', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0 }}
+                            >
+                              {isExp ? '↑ Show less' : `+ ${entry.notes.length - PREVIEW} more changes`}
+                            </button>
+                          )}
                         </div>
-                        <ul style={{ margin:0, paddingLeft:16, display:'flex', flexDirection:'column', gap:4 }}>
-                          {entry.notes.map((note,j) => <li key={j} style={{ fontSize:11, color:'var(--dark)', lineHeight:1.55 }}>{note}</li>)}
-                        </ul>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
