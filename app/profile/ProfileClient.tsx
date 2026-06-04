@@ -64,7 +64,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  const [settingsTab,   setSettingsTab]   = useState<'account' | 'update' | null>(null);
+  const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -535,452 +535,367 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           );
         })()}
 
-        {/* ══════════════════════════════════════════
-             SYSTEM SETTINGS
-        ══════════════════════════════════════════ */}
-        <div className={s.sh} style={{ marginTop: 8 }}>
-          <div className={s.shT} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ display:'inline', verticalAlign:'middle' }}>
-              <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+        {/* ── System Settings entry row ── */}
+        <button
+          type="button"
+          onClick={() => setSettingsView('list')}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '13px 16px', marginBottom: 10,
+            background: 'var(--glass-bg2, rgba(255,255,255,.04))',
+            border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
+            borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(124,106,240,.12)', border: '1px solid rgba(124,106,240,.2)',
+          }}>
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="2.5" stroke="var(--purple)" strokeWidth="1.5"/>
               <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"
-                stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            System Settings
-            {appUpdate.hasUpdate && (
-              <span style={{
-                display: 'inline-flex', width: 7, height: 7, borderRadius: '50%',
-                background: '#FF6B6B',
-                boxShadow: '0 0 0 2px rgba(255,107,107,.25)',
-                animation: 'pulse 2s ease-in-out infinite',
-                flexShrink: 0,
-              }} />
-            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              System Settings
+              {appUpdate.hasUpdate && (
+                <span style={{ fontSize: 9, fontWeight: 800, background: '#FF6B6B', color: '#fff', borderRadius: 8, padding: '1px 6px' }}>UPDATE</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Account, notifications, updates & more</div>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
+      </div>{/* inner */}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+           SYSTEM SETTINGS SLIDE PANELS  (iOS-style navigation)
+           Panel 1: Settings list  (slides over profile)
+           Panel 2: Sub-pages      (slides over settings list)
+      ═══════════════════════════════════════════════════════ */}
+
+      {/* ── Panel 1: Settings List ───────────────────────────── */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'var(--bg, #080E1A)',
+        transform: settingsView === 'none' ? 'translateX(100%)' : 'translateX(0)',
+        transition: 'transform 0.3s cubic-bezier(0.32,1,0.52,1)',
+        pointerEvents: settingsView !== 'none' ? 'auto' : 'none',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{
+          flexShrink: 0,
+          paddingTop: 'max(env(safe-area-inset-top,0px),52px)',
+          padding: 'max(env(safe-area-inset-top,0px),52px) 20px 0',
+          background: 'var(--glass-bg, rgba(14,13,24,.96))',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderBottom: '1px solid var(--glass-border, rgba(255,255,255,.07))',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14 }}>
+            <button
+              type="button"
+              onClick={() => setSettingsView('none')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--purple)', fontSize: 14, fontWeight: 600,
+                fontFamily: 'inherit', padding: '4px 0',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Profile
+            </button>
+            <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 800, color: 'var(--dark)', marginRight: 54 }}>
+              System Settings
+            </div>
           </div>
         </div>
 
-        {/* Settings card — 4 grouped rows */}
-        <div style={{
-          background: 'var(--glass-bg2, rgba(255,255,255,.04))',
-          border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
-          borderRadius: 18, overflow: 'hidden', marginBottom: 16,
-        }}>
+        {/* Settings list */}
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 16px 0' }}>
 
-          {/* ── ROW 1: Account ── */}
-          <button
-            onClick={() => setSettingsTab(v => v === 'account' ? null : 'account')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '13px 16px', background: 'transparent', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              borderBottom: '1px solid var(--border)',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(124,106,240,.12)', border: '1px solid rgba(124,106,240,.2)',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="7" r="3.5" stroke="var(--purple)" strokeWidth="1.5"/>
-                <path d="M3 17c0-3.31 3.13-6 7-6s7 2.69 7 6" stroke="var(--purple)" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Account</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Profile details, email, membership</div>
-            </div>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0, transition: 'transform .2s', transform: settingsTab === 'account' ? 'rotate(90deg)' : 'none' }}>
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+          {/* Group 1: Account & Preferences */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, marginLeft: 4 }}>Account & Preferences</div>
+          <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
 
-          {/* Account expanded content */}
-          {settingsTab === 'account' && (
-            <div style={{ padding: '4px 16px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surf2, rgba(255,255,255,.02))' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {/* Email row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>Email</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 600 }}>{displayEmail}</span>
-                    <button className={s.eyeBtnSm} onClick={toggleEmail} style={{ flexShrink: 0 }}>
-                      {emailVisible ? <EyeOpen /> : <EyeOff />}
-                    </button>
-                  </div>
-                </div>
-                {/* Designation row */}
-                {profile?.designation && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>Designation</span>
-                    <span style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 600 }}>{profile.designation}</span>
-                  </div>
-                )}
-                {/* Location row */}
-                {countryInfo && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>Location</span>
-                    <span style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 600 }}>{countryInfo.flag} {countryInfo.name}</span>
-                  </div>
-                )}
-                {/* Member since row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>Member since</span>
-                  <span style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 600 }}>
-                    {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—'}
-                  </span>
-                </div>
-                {/* Version row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
-                  <span style={{ fontSize: 12, color: 'var(--mid)', fontWeight: 600 }}>App Version</span>
-                  <span style={{ fontSize: 12, color: 'var(--dark)', fontWeight: 600 }}>{process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}</span>
-                </div>
+            {/* Account */}
+            <button type="button" onClick={() => setSettingsView('account')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(124,106,240,.12)', border: '1px solid rgba(124,106,240,.2)' }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="7" r="3.5" stroke="var(--purple)" strokeWidth="1.5"/>
+                  <path d="M3 17c0-3.31 3.13-6 7-6s7 2.69 7 6" stroke="var(--purple)" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
               </div>
-            </div>
-          )}
-
-          {/* ── ROW 2: Activity Notifications ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '13px 16px',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: notifEnabled ? 'rgba(124,106,240,.12)' : 'var(--surf2, rgba(255,255,255,.04))',
-              border: `1px solid ${notifEnabled ? 'rgba(124,106,240,.2)' : 'var(--border)'}`,
-              transition: 'background .2s, border-color .2s',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <path d="M10 2a6 6 0 0 0-6 6c0 3.5-2 5-2 5h16s-2-1.5-2-5a6 6 0 0 0-6-6z"
-                  stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M11.73 17a2 2 0 0 1-3.46 0"
-                  stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Activity Notifications</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>
-                {notifPerm === 'denied'
-                  ? 'Blocked in browser — enable in browser settings'
-                  : notifEnabled ? 'Notified when activities start' : 'Get notified when activities start'}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Account</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Profile details, email, membership</div>
               </div>
-            </div>
-            <button
-              onClick={handleNotifToggle}
-              aria-label={notifEnabled ? 'Disable notifications' : 'Enable notifications'}
-              style={{
-                flexShrink: 0, width: 44, height: 25, borderRadius: 13,
-                background: notifEnabled ? 'var(--purple)' : 'var(--border2)',
-                border: 'none', cursor: 'pointer', position: 'relative',
-                transition: 'background .2s', WebkitTapHighlightColor: 'transparent',
-              }}>
-              <span style={{
-                position: 'absolute', top: 2.5,
-                left: notifEnabled ? 21 : 2.5,
-                width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,.25)',
-                transition: 'left .18s cubic-bezier(.4,0,.2,1)', display: 'block',
-              }} />
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            {/* Activity Notifications */}
+            <button type="button" onClick={() => setSettingsView('notifications')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: notifEnabled ? 'rgba(124,106,240,.12)' : 'var(--surf2, rgba(255,255,255,.04))', border: `1px solid ${notifEnabled ? 'rgba(124,106,240,.2)' : 'var(--border)'}` }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 2a6 6 0 0 0-6 6c0 3.5-2 5-2 5h16s-2-1.5-2-5a6 6 0 0 0-6-6z" stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M11.73 17a2 2 0 0 1-3.46 0" stroke={notifEnabled ? 'var(--purple)' : 'var(--mid)'} strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Activity Notifications</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>{notifEnabled ? 'Enabled' : notifPerm === 'denied' ? 'Blocked — enable in browser' : 'Disabled'}</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            {/* Customize Dashboard */}
+            <button type="button" onClick={() => setShowCustomize(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,198,255,.10)', border: '1px solid rgba(0,198,255,.20)' }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="2" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
+                  <rect x="11" y="2" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
+                  <rect x="2" y="11" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
+                  <path d="M14.5 11v6M11.5 14h6" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Customize Dashboard</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Cards, shortcuts, layout presets</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
-          {/* ── ROW 3: Customize Dashboard ── */}
-          <button
-            onClick={() => setShowCustomize(true)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '13px 16px', background: 'transparent', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              borderBottom: '1px solid var(--border)',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(0,198,255,.10)', border: '1px solid rgba(0,198,255,.20)',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <rect x="2" y="2" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
-                <rect x="11" y="2" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
-                <rect x="2" y="11" width="7" height="7" rx="2" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5"/>
-                <path d="M14.5 11v6M11.5 14h6" stroke="var(--cyan,#00C6FF)" strokeWidth="1.5" strokeLinecap="round"/>
+          {/* Group 2: App */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, marginLeft: 4 }}>App</div>
+          <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+
+            {/* Software Update */}
+            <button type="button" onClick={() => setSettingsView('update')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: appUpdate.hasUpdate ? 'rgba(255,107,107,.12)' : 'rgba(0,200,150,.10)', border: `1px solid ${appUpdate.hasUpdate ? 'rgba(255,107,107,.22)' : 'rgba(0,200,150,.20)'}` }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  {appUpdate.hasUpdate
+                    ? <path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="#FF6B6B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    : <path d="M5 10l4 4 6-7" stroke="#00C896" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>}
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Software Update</span>
+                  {appUpdate.hasUpdate && <span style={{ fontSize: 9, fontWeight: 800, background: '#FF6B6B', color: '#fff', borderRadius: 8, padding: '1px 6px' }}>NEW</span>}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>
+                  {appUpdate.hasUpdate ? `v${appUpdate.latestVersion} available` : `v${appUpdate.currentVersionClean} — up to date`}
+                </div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            {/* Help & Feedback */}
+            <button type="button" onClick={() => setFeedbackOpen(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(116,185,255,.12)', border: '1px solid rgba(116,185,255,.22)' }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 10l14-8-4 8 4 8-14-8z" stroke="#74B9FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Help &amp; Feedback</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Report bugs, suggest features</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+
+          {/* Group 3: Danger zone */}
+          <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid rgba(239,68,68,.15)', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+            <button type="button" onClick={() => setDeleteAccountOpen(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <polyline points="3 6 5 6 21 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M10 11v6M14 11v6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444' }}>Delete Account</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Permanently remove account and all data</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: '#EF4444', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+
+          {/* Footer links */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '4px 0 24px' }}>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</a>
+            <span style={{ fontSize: 11, color: 'var(--mid)', opacity: 0.4 }}>·</span>
+            <a href="mailto:privacy@emlabs.ph" style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>Contact Us</a>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Panel 2: Sub-pages (Account / Update / Notifications) ─── */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 70,
+        background: 'var(--bg, #080E1A)',
+        transform: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications') ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.3s cubic-bezier(0.32,1,0.52,1)',
+        pointerEvents: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications') ? 'auto' : 'none',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Sub-page header */}
+        <div style={{
+          flexShrink: 0,
+          paddingTop: 'max(env(safe-area-inset-top,0px),52px)',
+          padding: 'max(env(safe-area-inset-top,0px),52px) 20px 0',
+          background: 'var(--glass-bg, rgba(14,13,24,.96))',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          borderBottom: '1px solid var(--glass-border, rgba(255,255,255,.07))',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 14 }}>
+            <button type="button" onClick={() => setSettingsView('list')}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--purple)', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', padding: '4px 0', WebkitTapHighlightColor: 'transparent' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+              System Settings
+            </button>
+            <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 800, color: 'var(--dark)', marginRight: 110 }}>
+              {settingsView === 'account' ? 'Account' : settingsView === 'update' ? 'Software Update' : 'Notifications'}
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Customize Dashboard</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Cards, shortcuts, layout presets</div>
-            </div>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+          </div>
+        </div>
 
-          {/* ── ROW 4: Software Update ── */}
-          <button
-            onClick={() => setSettingsTab(v => v === 'update' ? null : 'update')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '13px 16px', background: 'transparent', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: appUpdate.hasUpdate ? 'rgba(255,107,107,.12)' : 'rgba(0,200,150,.10)',
-              border: `1px solid ${appUpdate.hasUpdate ? 'rgba(255,107,107,.22)' : 'rgba(0,200,150,.20)'}`,
-              transition: 'background .3s, border-color .3s',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                {appUpdate.hasUpdate ? (
-                  <path d="M10 3v7m0 0l-3-3m3 3l3-3M4 14h12" stroke="#FF6B6B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                ) : (
-                  <path d="M5 10l4 4 6-7" stroke="#00C896" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                )}
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Software Update</span>
-                {appUpdate.hasUpdate && (
-                  <span style={{
-                    fontSize: 9, fontWeight: 800, letterSpacing: '.4px',
-                    background: '#FF6B6B', color: '#fff',
-                    borderRadius: 8, padding: '1px 6px', lineHeight: 1.6,
-                  }}>NEW</span>
-                )}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>
-                {appUpdate.hasUpdate
-                  ? `v${appUpdate.latestVersion ?? '…'} available — tap to update`
-                  : appUpdate.checking
-                    ? 'Checking for updates…'
-                    : `v${appUpdate.currentVersionClean} — up to date`}
-              </div>
-            </div>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0, transition: 'transform .2s', transform: settingsTab === 'update' ? 'rotate(90deg)' : 'none' }}>
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+        {/* Sub-page content */}
+        <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 16px 0' }}>
 
-          {/* Software Update expanded content */}
-          {settingsTab === 'update' && (
-            <div style={{ borderTop: '1px solid var(--border)', background: 'var(--surf2, rgba(255,255,255,.02))' }}>
-
-              {/* Version numbers */}
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ flex: 1, padding: '10px 16px', borderRight: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>Installed</div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--dark)', fontVariantNumeric: 'tabular-nums' }}>v{appUpdate.currentVersionClean}</div>
+          {/* ── Account ── */}
+          {settingsView === 'account' && (
+            <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+              {[
+                { label: 'Email', value: <div style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ fontSize:13, color:'var(--dark)', fontWeight:600 }}>{displayEmail}</span><button className={s.eyeBtnSm} onClick={toggleEmail}>{emailVisible ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/></svg> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94C16.23 19.24 14.17 20 12 20C5 20 1 12 1 12C2.24 9.82 3.96 7.95 6 6.54M9.9 4.24C10.59 4.08 11.29 4 12 4C19 4 23 12 23 12C22.45 12.94 21.8 13.82 21.07 14.61M3 3L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>}</button></div> },
+                ...(profile?.designation ? [{ label: 'Designation', value: <span style={{ fontSize:13, color:'var(--dark)', fontWeight:600 }}>{profile.designation}</span> }] : []),
+                ...(countryInfo ? [{ label: 'Location', value: <span style={{ fontSize:13, color:'var(--dark)', fontWeight:600 }}>{countryInfo.flag} {countryInfo.name}</span> }] : []),
+                { label: 'Member since', value: <span style={{ fontSize:13, color:'var(--dark)', fontWeight:600 }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month:'long', year:'numeric' }) : '—'}</span> },
+                { label: 'App Version', value: <span style={{ fontSize:13, color:'var(--dark)', fontWeight:600 }}>{process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}</span> },
+              ].map((row, i, arr) => (
+                <div key={row.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 16px', borderBottom: i < arr.length-1 ? '1px solid var(--border)' : 'none' }}>
+                  <span style={{ fontSize:13, color:'var(--mid)', fontWeight:600 }}>{row.label}</span>
+                  {row.value}
                 </div>
-                <div style={{ flex: 1, padding: '10px 16px' }}>
-                  <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 3 }}>Latest</div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: appUpdate.hasUpdate ? '#FF6B6B' : 'var(--dark)', fontVariantNumeric: 'tabular-nums' }}>
-                    {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : '—'}
-                  </div>
-                </div>
-              </div>
-
-              {/* What's new — always shown once manifest is loaded */}
-              {appUpdate.summary && (
-                <div style={{
-                  padding: '10px 16px', borderBottom: '1px solid var(--border)',
-                  background: appUpdate.hasUpdate ? 'rgba(255,107,107,.04)' : 'var(--surf2, rgba(255,255,255,.02))',
-                }}>
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: '.5px', marginBottom: 3,
-                    color: appUpdate.hasUpdate ? 'rgba(255,107,107,.8)' : 'var(--mid)',
-                  }}>
-                    {appUpdate.hasUpdate ? "What\'s New" : 'Last Update'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--dark)', lineHeight: 1.5 }}>{appUpdate.summary}</div>
-                  {appUpdate.releaseDate && (
-                    <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 3 }}>
-                      Released {new Date(appUpdate.releaseDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 8, padding: '12px 16px' }}>
-                {appUpdate.hasUpdate ? (
-                  <button
-                    onClick={() => appUpdate.refreshToUpdate()}
-                    disabled={appUpdate.updating}
-                    style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
-                      background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B',
-                      color: '#fff',
-                      fontSize: 13, fontWeight: 700,
-                      cursor: appUpdate.updating ? 'default' : 'pointer',
-                      fontFamily: 'inherit',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      boxShadow: appUpdate.updating ? 'none' : '0 3px 12px rgba(255,107,107,.35)',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background .2s, box-shadow .2s',
-                    }}>
-                    {appUpdate.updating && (
-                      <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
-                        style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
-                        <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {appUpdate.updating ? 'Applying Update…' : 'Update Now'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={appUpdate.recheck}
-                    disabled={appUpdate.checking}
-                    style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10,
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surf2, rgba(255,255,255,.04))',
-                      color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)',
-                      fontSize: 13, fontWeight: 600, cursor: appUpdate.checking ? 'default' : 'pointer',
-                      fontFamily: 'inherit', opacity: appUpdate.checking ? .6 : 1,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      WebkitTapHighlightColor: 'transparent',
-                    }}>
-                    {appUpdate.checking && (
-                      <svg width="13" height="13" viewBox="0 0 20 20" fill="none"
-                        style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
-                        <path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {appUpdate.checking ? 'Checking…' : 'Check for Updates'}
-                  </button>
-                )}
-                <button
-                  onClick={() => setChangelogOpen(v => !v)}
-                  style={{
-                    padding: '10px 14px', borderRadius: 10,
-                    border: '1.5px solid var(--border)',
-                    background: 'var(--surf2, rgba(255,255,255,.04))',
-                    color: 'var(--mid)', fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    WebkitTapHighlightColor: 'transparent',
-                  }}>
-                  History
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none"
-                    style={{ transform: changelogOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
-                    <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Changelog */}
-              {changelogOpen && (
-                <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {appUpdate.changelog.map((entry, i) => (
-                    <div key={entry.version}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8,
-                            background: i === 0 ? 'rgba(124,106,240,.15)' : 'var(--surf2)',
-                            color: i === 0 ? 'var(--purple)' : 'var(--mid)',
-                            border: i === 0 ? '1px solid rgba(124,106,240,.25)' : '1px solid var(--border)',
-                          }}>v{entry.version}</span>
-                          {i === 0 && <span style={{ fontSize: 9, fontWeight: 800, color: '#00C896', letterSpacing: '.5px' }}>LATEST</span>}
-                        </div>
-                        <span style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600 }}>
-                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {entry.notes.map((note, j) => (
-                          <li key={j} style={{ fontSize: 12, color: 'var(--dark)', lineHeight: 1.5 }}>{note}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           )}
 
+          {/* ── Notifications ── */}
+          {settingsView === 'notifications' && (
+            <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px' }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)', marginBottom:3 }}>Activity Notifications</div>
+                  <div style={{ fontSize:12, color:'var(--mid)', lineHeight:1.5 }}>
+                    {notifPerm === 'denied'
+                      ? 'Notifications are blocked. Enable them in your browser or device settings.'
+                      : notifEnabled
+                        ? 'You will be notified before each scheduled activity.'
+                        : 'Enable to get reminded before activities start.'}
+                  </div>
+                </div>
+                <button onClick={handleNotifToggle} aria-label={notifEnabled ? 'Disable' : 'Enable'}
+                  style={{ flexShrink:0, width:44, height:25, borderRadius:13, background: notifEnabled ? 'var(--purple)' : 'var(--border2)', border:'none', cursor:'pointer', position:'relative', transition:'background .2s', WebkitTapHighlightColor:'transparent' }}>
+                  <span style={{ position:'absolute', top:2.5, left: notifEnabled ? 21 : 2.5, width:20, height:20, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 4px rgba(0,0,0,.25)', transition:'left .18s cubic-bezier(.4,0,.2,1)', display:'block' }} />
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* ── ROW 3: Help & Feedback ── */}
-          <button
-            onClick={() => setFeedbackOpen(true)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '13px 16px', background: 'transparent', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(116,185,255,.12)', border: '1px solid rgba(116,185,255,.22)',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <path d="M3 10l14-8-4 8 4 8-14-8z" stroke="#74B9FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+          {/* ── Software Update ── */}
+          {settingsView === 'update' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {/* Version row */}
+              <div style={{ background:'var(--glass-bg2, rgba(255,255,255,.04))', border:'1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius:16, overflow:'hidden' }}>
+                <div style={{ display:'flex', borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ flex:1, padding:'12px 16px', borderRight:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Installed</div>
+                    <div style={{ fontSize:18, fontWeight:900, color:'var(--dark)' }}>v{appUpdate.currentVersionClean}</div>
+                  </div>
+                  <div style={{ flex:1, padding:'12px 16px' }}>
+                    <div style={{ fontSize:10, color:'var(--mid)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3 }}>Latest</div>
+                    <div style={{ fontSize:18, fontWeight:900, color: appUpdate.hasUpdate ? '#FF6B6B' : 'var(--dark)' }}>
+                      {appUpdate.latestVersion ? `v${appUpdate.latestVersion}` : '—'}
+                    </div>
+                  </div>
+                </div>
+                {appUpdate.summary && (
+                  <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3, color: appUpdate.hasUpdate ? 'rgba(255,107,107,.8)' : 'var(--mid)' }}>
+                      {appUpdate.hasUpdate ? "What's New" : 'Last Update'}
+                    </div>
+                    <div style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>{appUpdate.summary}</div>
+                    {appUpdate.releaseDate && (
+                      <div style={{ fontSize:10, color:'var(--mid)', marginTop:3 }}>Released {new Date(appUpdate.releaseDate + 'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+                    )}
+                  </div>
+                )}
+                <div style={{ display:'flex', gap:8, padding:'12px 16px' }}>
+                  {appUpdate.hasUpdate ? (
+                    <button onClick={() => appUpdate.refreshToUpdate()} disabled={appUpdate.updating}
+                      style={{ flex:1, padding:'11px 0', borderRadius:10, border:'none', background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B', color:'#fff', fontSize:13, fontWeight:700, cursor: appUpdate.updating ? 'default' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                      {appUpdate.updating && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      {appUpdate.updating ? 'Applying…' : 'Update Now'}
+                    </button>
+                  ) : (
+                    <button onClick={appUpdate.recheck} disabled={appUpdate.checking}
+                      style={{ flex:1, padding:'11px 0', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)', fontSize:13, fontWeight:600, cursor: appUpdate.checking ? 'default' : 'pointer', fontFamily:'inherit', opacity: appUpdate.checking ? .6 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                      {appUpdate.checking && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      {appUpdate.checking ? 'Checking…' : 'Check for Updates'}
+                    </button>
+                  )}
+                  <button onClick={() => setChangelogOpen(v => !v)}
+                    style={{ padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
+                    History
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: changelogOpen ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </div>
+                {changelogOpen && (
+                  <div style={{ borderTop:'1px solid var(--border)', padding:'12px 16px 14px', display:'flex', flexDirection:'column', gap:14 }}>
+                    {appUpdate.changelog.map((entry, i) => (
+                      <div key={entry.version}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <span style={{ fontSize:11, fontWeight:800, padding:'2px 8px', borderRadius:8, background: i===0 ? 'rgba(124,106,240,.15)' : 'var(--surf2)', color: i===0 ? 'var(--purple)' : 'var(--mid)', border: i===0 ? '1px solid rgba(124,106,240,.25)' : '1px solid var(--border)' }}>v{entry.version}</span>
+                            {i===0 && <span style={{ fontSize:9, fontWeight:800, color:'#00C896', letterSpacing:'.5px' }}>LATEST</span>}
+                          </div>
+                          <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>{new Date(entry.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+                        </div>
+                        <ul style={{ margin:0, paddingLeft:16, display:'flex', flexDirection:'column', gap:4 }}>
+                          {entry.notes.map((note,j) => <li key={j} style={{ fontSize:12, color:'var(--dark)', lineHeight:1.5 }}>{note}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Help &amp; Feedback</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Report bugs, suggest features, share thoughts</div>
-            </div>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-
-          {/* ── ROW 4: Delete Account ── */}
-          <div style={{ height: 1, background: 'rgba(239,68,68,0.12)', margin: '0 16px' }} />
-          <button
-            onClick={() => setDeleteAccountOpen(true)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '13px 16px', background: 'transparent', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <polyline points="3 6 5 6 21 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M10 11v6M14 11v6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444' }}>Delete Account</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Permanently remove your account and all data</div>
-            </div>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: '#EF4444', flexShrink: 0 }}>
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-
-        </div>{/* end settings card */}
-        {/* Privacy Policy link */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '8px 0 4px' }}>
-          <a
-            href="/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>
-            Privacy Policy
-          </a>
-          <span style={{ fontSize: 11, color: 'var(--mid)', opacity: 0.4 }}>·</span>
-          <a
-            href={`mailto:privacy@emlabs.ph`}
-            style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>
-            Contact Us
-          </a>
+          )}
         </div>
-        <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
-      </div>{/* inner */}
       </div>
 
       {/* ── Edit Profile Bottom Sheet ── */}
