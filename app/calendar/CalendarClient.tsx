@@ -811,7 +811,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   // Pre-compute yearly stats (only used in yearly view, cheap to compute always)
   const yearlyStats = Array.from({ length: 12 }, (_, mo) => {
     const daysIn     = new Date(year, mo + 1, 0).getDate();
-    const activeDays = new Set<number>();
+    const activeDays: Set<number> = new Set();
     schedules.forEach(s => {
       const d = new Date(s.start_time);
       if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
