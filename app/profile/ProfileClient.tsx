@@ -887,40 +887,6 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           {settingsView === 'update' && (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
 
-              {/* ── NINJA UPDATE BANNER ── show when app silently updated in background */}
-              {appUpdate.justUpdated && !appUpdate.hasUpdate && (
-                <div style={{
-                  display:'flex', alignItems:'flex-start', gap:12,
-                  background:'rgba(0,200,150,.07)', border:'1.5px solid rgba(0,200,150,.22)',
-                  borderRadius:16, padding:'14px 16px',
-                }}>
-                  <div style={{
-                    width:34, height:34, borderRadius:10, flexShrink:0,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    background:'rgba(0,200,150,.14)', border:'1px solid rgba(0,200,150,.28)',
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z" stroke="#00C896" strokeWidth="1.6"/>
-                      <path d="M8 12l3 3 5-5" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:800, color:'#00C896', marginBottom:3 }}>
-                      App Updated Automatically
-                    </div>
-                    <div style={{ fontSize:11, color:'var(--mid)', lineHeight:1.6 }}>
-                      {appUpdate.justUpdatedFrom
-                        ? <>Updated from <strong style={{color:'var(--dark)'}}>{appUpdate.justUpdatedFrom}</strong> to <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong>.</>
-                        : <>Now running <strong style={{color:'var(--dark)'}}>v{appUpdate.currentVersionClean}</strong>.</>
-                      }{' '}This happens automatically when a new version is deployed.
-                    </div>
-                  </div>
-                  <button onClick={appUpdate.clearJustUpdated} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--mid)', padding:4, flexShrink:0, WebkitTapHighlightColor:'transparent' }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                  </button>
-                </div>
-              )}
-
               {/* ── Status card ── */}
               <div style={{ background:'var(--glass-bg2, rgba(255,255,255,.04))', border:'1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius:16, overflow:'hidden' }}>
 

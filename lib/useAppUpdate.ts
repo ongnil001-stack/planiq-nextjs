@@ -103,9 +103,13 @@ export function useAppUpdate(): AppUpdateState {
     const verChanged = lastVer && lastVer !== currentClean;
 
     if (shaChanged || verChanged) {
+      // Ninja update happened while app was closed — record it silently.
+      // We intentionally do NOT show a banner or badge for this:
+      // the user couldn't control it (iOS killed the context), so announcing it
+      // would feel alarming. The app is already up to date at this point.
       setJustUpdated(true);
-      setJustUpdatedFrom(lastVer && verChanged ? `v${lastVer}` : lastSha ?? null);
-      localStorage.removeItem(DISMISSED_KEY);
+      setJustUpdatedFrom(lastVer && verChanged ? 'v' + lastVer : lastSha ?? null);
+      // Don't clear dismissed key — let user's dismissed preference persist
     }
 
     localStorage.setItem(LAST_SHA_KEY, currentSha);
