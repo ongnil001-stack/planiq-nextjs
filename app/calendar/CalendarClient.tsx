@@ -509,6 +509,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DisplaySchedule | null>(null);
   const [sheetTime,  setSheetTime]  = useState<string | undefined>(undefined);
+  // Yearly calendar: explicit cell pixel size computed from screen width
+  // This avoids CSS-grid percentage-padding ambiguity that causes cell overlap
+  const [cellPx, setCellPx] = useState(12);
   const [monthlyTab, setMonthlyTab] = useState<'overview'|'busy'|'activities'|'free'>('overview');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
   const [editOpen,   setEditOpen]   = useState(false);
@@ -800,6 +803,17 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
       .filter(s => { const d = new Date(s.start_time); return d.getFullYear() === year && d.getMonth() === mo; })
       .length;
   });
+
+  // Compute exact cell pixel size from screen width (once on mount)
+  // Avoids CSS grid percentage-padding ambiguity that makes cells overlap
+  useEffect(() => {
+    const w = window.innerWidth;
+    // outer padding 8+8=16, grid gaps 7+7=14 (2 gaps), card padding 7+7=14
+    const cardInner = Math.floor((w - 30) / 3) - 14;
+    const cell      = Math.floor((cardInner - 12) / 7); // 12 = 6 gaps × 2px
+    setCellPx(Math.max(11, Math.min(cell, 16)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Helper: navigate to a specific day in Daily view
   function goToDay(d: number, m: number = month, y: number = year) {
@@ -1553,7 +1567,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               {Array.from({ length: 12 }, (_, mo) => {
                 const daysIn = new Date(year, mo + 1, 0).getDate();
                 const firstD = new Date(year, mo, 1).getDay();
-                // boolean[] avoids Set<T> generic which confuses TSX parser
+                // boolean[] avoids Set<T> TSX generic ambiguity
                 const dayHasAct: boolean[] = [];
                 schedules.forEach(s => {
                   const sd = new Date(s.start_time);
@@ -1563,13 +1577,13 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 });
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
                 const isSel     = mo === month && !isThisMon;
-
-                // 42 cells: 6 rows × 7 cols, null = empty spacer
+                // 42 cells: 6 rows × 7 cols
                 const cells: (number | null)[] = [];
                 for (let i = 0; i < 42; i++) {
                   const n = i - firstD + 1;
                   cells.push(n >= 1 && n <= daysIn ? n : null);
                 }
+                const fSize = Math.max(7, Math.min(cellPx - 4, 9));
 
                 return (
                   <button
@@ -1607,9 +1621,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       marginBottom: 5,
                     }}>
                       <span style={{
-                        fontSize: 11,
-                        fontWeight: 900,
-                        lineHeight: 1,
+                        fontSize: 11, fontWeight: 900, lineHeight: 1,
                         letterSpacing: '-.2px',
                         color: isThisMon ? 'var(--purple)' : 'var(--dark)',
                       }}>
@@ -1617,64 +1629,50 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       </span>
                       {isThisMon && (
                         <span style={{
-                          fontSize: 7,
-                          fontWeight: 800,
-                          letterSpacing: '.3px',
-                          color: 'var(--purple)',
-                          opacity: .8,
-                        }}>
-                          NOW
-                        </span>
+                          fontSize: 7, fontWeight: 800, letterSpacing: '.3px',
+                          color: 'var(--purple)', opacity: .8,
+                        }}>NOW</span>
                       )}
                     </div>
 
-                    {/* Date grid — paddingBottom:100% guarantees square cells at any width */}
+                    {/* Date grid — explicit pixel cells, no CSS percentage tricks */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(7,1fr)',
+                      gridTemplateColumns: `repeat(7,${cellPx}px)`,
                       gap: '2px',
                     }}>
                       {cells.map((dayNum, ci) => {
                         const isToday = dayNum !== null && isThisMon && dayNum === today.getDate();
                         const hasAct  = dayNum !== null && dayHasAct[dayNum] === true;
                         return (
-                          // Outer: creates square via padding-bottom trick
                           <div key={ci} style={{
-                            position: 'relative',
-                            width: '100%',
-                            paddingBottom: '100%',
-                            height: 0,
+                            width: cellPx,
+                            height: cellPx,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            background: isToday
+                              ? 'var(--purple)'
+                              : hasAct
+                                ? 'var(--pur-lt,rgba(124,106,240,.12))'
+                                : 'transparent',
+                            flexShrink: 0,
                           }}>
-                            {/* Inner: fills the square, centres the number */}
-                            <div style={{
-                              position: 'absolute',
-                              inset: '1px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '50%',
-                              background: isToday
-                                ? 'var(--purple)'
-                                : hasAct
-                                  ? 'var(--pur-lt,rgba(124,106,240,.12))'
-                                  : 'transparent',
-                            }}>
-                              {dayNum !== null && (
-                                <span style={{
-                                  fontSize: '7.5px',
-                                  lineHeight: 1,
-                                  fontWeight: isToday ? 800 : hasAct ? 600 : 400,
-                                  color: isToday
-                                    ? '#fff'
-                                    : hasAct
-                                      ? 'var(--purple)'
-                                      : 'var(--dark)',
-                                  fontVariantNumeric: 'tabular-nums',
-                                }}>
-                                  {dayNum}
-                                </span>
-                              )}
-                            </div>
+                            {dayNum !== null && (
+                              <span style={{
+                                fontSize: fSize,
+                                lineHeight: 1,
+                                fontWeight: isToday ? 800 : hasAct ? 600 : 400,
+                                color: isToday ? '#fff'
+                                  : hasAct ? 'var(--purple)' : 'var(--dark)',
+                                fontVariantNumeric: 'tabular-nums',
+                                pointerEvents: 'none',
+                                userSelect: 'none',
+                              }}>
+                                {dayNum}
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -1684,18 +1682,15 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
               })}
             </div>
 
-            {/* Footer */}
             <div style={{
-              textAlign: 'center',
-              marginTop: 14,
-              fontSize: 11,
-              color: 'var(--mid)',
-              fontWeight: 500,
+              textAlign: 'center', marginTop: 14,
+              fontSize: 11, color: 'var(--mid)', fontWeight: 500,
             }}>
               Tap any month to see the full schedule
             </div>
           </div>
         )}
+
 
 
       </div>{/* end scroll-body */}
