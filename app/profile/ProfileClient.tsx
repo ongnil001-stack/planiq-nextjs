@@ -944,7 +944,6 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   </div>
                 </div>
 
-                </div>
 
                 {/* Status row */}
                 <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8 }}>
