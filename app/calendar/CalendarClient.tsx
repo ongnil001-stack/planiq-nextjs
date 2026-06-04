@@ -1397,26 +1397,31 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     >
                       <div style={{
                         width:62, flexShrink:0,
-                        paddingTop:13, paddingRight:10, paddingLeft:14,
+                        paddingTop:0, paddingRight:10, paddingLeft:14,
                         textAlign:'right', pointerEvents:'none',
+                        display:'flex', alignItems:'flex-start',
                       }}>
                         <span style={{
                           fontSize:10, fontWeight:700, lineHeight:1,
                           color: isCurHr ? 'var(--purple)' : 'var(--mid)',
                           letterSpacing:'.3px', whiteSpace:'nowrap', display:'block',
+                          marginTop:-7, width:'100%',
                         }}>{fmtHour(h)}</span>
                       </div>
 
                       <div style={{
                         flex:1,
-                        borderLeft:'1px solid var(--glass-border,rgba(255,255,255,.08))',
+                        borderLeft:'1.5px solid var(--border2,rgba(124,106,240,.18))',
                         position:'relative',
                         padding: events.length ? '10px 14px 10px 12px' : '0 14px 0 12px',
                         display:'flex', flexDirection:'column', gap:6,
                       }}>
                         <div style={{
                           position:'absolute', top:0, left:0, right:0, height:1,
-                          background: isCurHr ? 'rgba(124,106,240,.45)' : 'rgba(255,255,255,.06)',
+                          background: isCurHr
+                            ? 'var(--purple)'
+                            : 'var(--border2,rgba(124,106,240,.22))',
+                          opacity: isCurHr ? 0.6 : 1,
                           pointerEvents:'none',
                         }}/>
 
