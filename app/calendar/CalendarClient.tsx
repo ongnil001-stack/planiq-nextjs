@@ -808,26 +808,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setViewMode('daily');
   }
 
-  // Pre-compute yearly stats (only used in yearly view, cheap to compute always)
-  const yearlyStats = Array.from({ length: 12 }, (_, mo) => {
-    const daysIn     = new Date(year, mo + 1, 0).getDate();
-    const activeDays: Set<number> = new Set();
-    schedules.forEach(s => {
-      const d = new Date(s.start_time);
-      if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
-    });
-    const busy = activeDays.size;
-    const free = daysIn - busy;
-    const bars = Array.from({ length: 5 }, (_, i) => {
-      const s1 = Math.floor(i * daysIn / 5) + 1;
-      const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
-      let   n  = 0;
-      for (let d = s1; d <= s2; d++) if (activeDays.has(d)) n++;
-      return (s2 - s1 + 1) > 0 ? n / (s2 - s1 + 1) : 0;
-    });
-    return { daysIn, busy, free, bars };
-  });
-
   return (
     <div className="page">
 
@@ -1563,7 +1543,28 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {viewMode === 'yearly' && (
           <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
-              {yearlyStats.map(({ daysIn, busy, free, bars }, mo) => {
+              {Array.from({ length: 12 }, (_, mo) => {
+                const daysIn = new Date(year, mo + 1, 0).getDate();
+                // boolean[] avoids Set<number> which confuses the TSX parser
+                const dayHasActivity: boolean[] = [];
+                schedules.forEach(s => {
+                  const d = new Date(s.start_time);
+                  if (d.getFullYear() === year && d.getMonth() === mo) {
+                    dayHasActivity[d.getDate()] = true;
+                  }
+                });
+                const busy = dayHasActivity.filter(Boolean).length;
+                const free = daysIn - busy;
+                // 5 bars — one per ~week segment, height = activity density
+                const bars: number[] = [];
+                for (let i = 0; i < 5; i++) {
+                  const s1 = Math.floor(i * daysIn / 5) + 1;
+                  const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
+                  let n = 0;
+                  for (let d = s1; d <= s2; d++) { if (dayHasActivity[d]) n++; }
+                  const seg = s2 - s1 + 1;
+                  bars.push(seg > 0 ? n / seg : 0);
+                }
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
                 const isSel     = mo === month && !isThisMon;
                 return (
@@ -1577,72 +1578,37 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     style={{
                       display:'flex', flexDirection:'column', gap:0,
                       padding:'10px 9px 9px',
-                      background: isThisMon
-                        ? 'var(--pur-lt,rgba(124,106,240,.10))'
-                        : 'var(--glass-bg2,rgba(255,255,255,.04))',
-                      border: isThisMon
-                        ? '2px solid var(--purple)'
-                        : `1.5px solid ${isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))'}`,
+                      background: isThisMon ? 'var(--pur-lt,rgba(124,106,240,.10))' : 'var(--glass-bg2,rgba(255,255,255,.04))',
+                      border: isThisMon ? '2px solid var(--purple)' : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
                       borderRadius:14, cursor:'pointer',
                       fontFamily:'inherit', textAlign:'left',
                       minWidth:0, overflow:'hidden',
                       WebkitTapHighlightColor:'transparent',
                     }}
                   >
-                    {/* Month name + NOW badge + count */}
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-                      <span style={{
-                        fontSize:13, fontWeight:900, lineHeight:1,
-                        color: isThisMon ? 'var(--purple)' : 'var(--dark)',
-                        letterSpacing:'-.3px',
-                      }}>
+                      <span style={{ fontSize:13, fontWeight:900, lineHeight:1, color: isThisMon ? 'var(--purple)' : 'var(--dark)', letterSpacing:'-.3px' }}>
                         {MONTHS_SH[mo]}
                       </span>
                       <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
                         {isThisMon && (
-                          <span style={{
-                            fontSize:7, fontWeight:800, letterSpacing:'.4px',
-                            color:'var(--purple)', background:'var(--pur-lt)',
-                            border:'1px solid var(--border2)',
-                            borderRadius:4, padding:'1px 4px',
-                          }}>NOW</span>
+                          <span style={{ fontSize:7, fontWeight:800, letterSpacing:'.4px', color:'var(--purple)', background:'var(--pur-lt)', border:'1px solid var(--border2)', borderRadius:4, padding:'1px 4px' }}>NOW</span>
                         )}
                         {busy > 0 && (
-                          <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
-                            {busy}
-                          </span>
+                          <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>{busy}</span>
                         )}
                       </div>
                     </div>
-
-                    {/* Activity bars — 5 segments ≈ weeks */}
                     <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:24, marginBottom:6 }}>
                       {bars.map((density, bi) => (
-                        <div key={bi} style={{
-                          flex:1, alignSelf:'flex-end',
-                          height: density === 0 ? 3 : Math.round(4 + density * 19),
-                          borderRadius:2,
-                          background: density > 0 ? 'var(--purple)' : 'var(--border)',
-                          opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65),
-                        }} />
+                        <div key={bi} style={{ flex:1, alignSelf:'flex-end', height: density === 0 ? 3 : Math.round(4 + density * 19), borderRadius:2, background: density > 0 ? 'var(--purple)' : 'var(--border)', opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65) }} />
                       ))}
                     </div>
-
-                    {/* Busy / Free counts */}
                     <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                       {busy > 0 ? (
                         <>
-                          <span style={{
-                            fontSize:9, fontWeight:700,
-                            color:'var(--purple)',
-                            background:'var(--pur-lt)',
-                            borderRadius:4, padding:'1px 5px',
-                          }}>
-                            {busy}b
-                          </span>
-                          <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>
-                            {free}f
-                          </span>
+                          <span style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'var(--pur-lt)', borderRadius:4, padding:'1px 5px' }}>{busy}b</span>
+                          <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>{free}f</span>
                         </>
                       ) : (
                         <span style={{ fontSize:9, color:'var(--lite)', opacity:.5 }}>quiet</span>
@@ -1652,8 +1618,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 );
               })}
             </div>
-
-            {/* Legend + hint */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginTop:14 }}>
               <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                 <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)', opacity:.8 }} />
@@ -1670,493 +1634,254 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
           </div>
         )}
 
-';
+      </div>{/* end scroll-body */}
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Schedule } from '@/types/database';
-import { PRIORITY_COLORS } from '@/lib/utils';
-import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/holidays';
-import { COUNTRIES } from '@/lib/countries';
-import BottomNav from '@/components/layout/BottomNav';
-import AddScheduleSheet from '@/components/AddScheduleSheet';
-import SwipeDeleteRow from '@/components/SwipeDeleteRow';
-import { createClient } from '@/lib/supabase/client';
-import NotificationPrompt from '@/components/notifications/NotificationPrompt';
-import { checkAndNotify } from '@/lib/notifications';
-import { buildDisplaySchedules, type DisplaySchedule, type CompletionMap } from '@/lib/recurrence';
-import { fetchCompletions } from '@/lib/scheduleExpand';
+      <AddScheduleSheet
+        open={sheetOpen}
+        selectedDate={selectedDate}
+        countryCode={countryCode}
+        initialTime={sheetTime}
+        onClose={() => { setSheetOpen(false); setSheetTime(undefined); }}
+        onSaved={refreshSchedules}
+      />
+      <AddScheduleSheet
+        open={editOpen}
+        selectedDate={editSched ? new Date(editSched.start_time) : selectedDate}
+        countryCode={countryCode}
+        editSchedule={editSched}
+        onClose={() => { setEditOpen(false); setEditSched(undefined); }}
+        onSaved={(id) => { setEditOpen(false); setEditSched(undefined); refreshSchedules(id); }}
+      />
 
-const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const MONTHS     = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const MONTHS_SH  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-type ViewMode = 'daily' | 'weekly' | 'monthly' | 'yearly';
-
-// ── SVG TypeIcon — shared across all views ─────────────────────────────────────
-function TypeIcon({ type }: { type: string }) {
-  const col = type === 'task' ? 'var(--mint,#2DD4BF)' : type === 'reminder' ? 'var(--amber,#FDCB6E)' : type === 'block' ? 'var(--coral,#FF6B8A)' : 'var(--cyan,#00C6FF)';
-  if (type === 'task') return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
-      <rect x="1" y="1" width="14" height="14" rx="3" stroke={col} strokeWidth="1.4"/>
-      <polyline points="4,8 7,11 12,5" stroke={col} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-  if (type === 'reminder') return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
-      <path d="M8 2a4 4 0 014 4v3l1 1v1H3v-1l1-1V6a4 4 0 014-4z" stroke={col} strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M6.5 13a1.5 1.5 0 003 0" stroke={col} strokeWidth="1.4"/>
-    </svg>
-  );
-  if (type === 'block') return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
-      <circle cx="8" cy="8" r="6" stroke={col} strokeWidth="1.4"/>
-      <path d="M4 4l8 8" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-  return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
-      <rect x="1" y="3" width="14" height="12" rx="2.5" stroke={col} strokeWidth="1.4"/>
-      <path d="M1 7h14" stroke={col} strokeWidth="1.4"/>
-      <path d="M5 1v3M11 1v3" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-// ── SVG flag icons ─────────────────────────────────────────────────────────────
-function CountryFlag({ code }: { code: string }) {
-  if (code === 'PH') return (
-    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
-      <rect width="20" height="6.5" fill="#0038A8"/>
-      <rect y="6.5" width="20" height="6.5" fill="#CE1126"/>
-      <polygon points="0,0 9,6.5 0,13" fill="#FFFFFF"/>
-      <circle cx="4.2" cy="6.5" r="1.4" fill="#FCD116"/>
-      {[0,45,90,135,180,225,270,315].map((deg,i) => {
-        const a = deg * Math.PI / 180;
-        return <line key={i}
-          x1={4.2 + Math.cos(a)*1.7} y1={6.5 + Math.sin(a)*1.7}
-          x2={4.2 + Math.cos(a)*2.6} y2={6.5 + Math.sin(a)*2.6}
-          stroke="#FCD116" strokeWidth="0.55"/>;
-      })}
-      <polygon points="1.6,1.5 1.85,2.2 2.55,2.2 2,2.6 2.2,3.3 1.6,2.9 1,3.3 1.2,2.6 0.65,2.2 1.35,2.2" fill="#FCD116"/>
-      <polygon points="1.6,9.7 1.85,10.4 2.55,10.4 2,10.8 2.2,11.5 1.6,11.1 1,11.5 1.2,10.8 0.65,10.4 1.35,10.4" fill="#FCD116"/>
-      <polygon points="6.2,5.8 6.45,6.5 7.15,6.5 6.6,6.9 6.8,7.6 6.2,7.2 5.6,7.6 5.8,6.9 5.25,6.5 5.95,6.5" fill="#FCD116"/>
-    </svg>
-  );
-  if (code === 'US') return (
-    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
-      <rect width="20" height="13" fill="#B22234"/>
-      {[1,3,5,7,9,11].map(y => <rect key={y} y={y} width="20" height="1" fill="#FFF"/>)}
-      <rect width="9" height="7" fill="#3C3B6E"/>
-      {[1,3,5].flatMap(row => [1,3,5,7].map(col =>
-        <circle key={`${row}${col}`} cx={col} cy={row} r="0.6" fill="#FFF"/>
-      ))}
-    </svg>
-  );
-  if (code === 'GB') return (
-    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
-      <rect width="20" height="13" rx="2" fill="#012169"/>
-      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#FFF" strokeWidth="3"/>
-      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#C8102E" strokeWidth="1.8"/>
-      <path d="M10,0 V13 M0,6.5 H20" stroke="#FFF" strokeWidth="3.5"/>
-      <path d="M10,0 V13 M0,6.5 H20" stroke="#C8102E" strokeWidth="2.2"/>
-    </svg>
-  );
-  if (code === 'AU') return (
-    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
-      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
-      <rect width="20" height="13" rx="2" fill="#00008B"/>
-      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#FFF" strokeWidth="1.5"/>
-      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#C8102E" strokeWidth="0.9"/>
-      <path d="M3,0 V4 M0,2 H6" stroke="#FFF" strokeWidth="1.8"/>
-      <path d="M3,0 V4 M0,2 H6" stroke="#C8102E" strokeWidth="1.1"/>
-      <circle cx="14" cy="4" r="0.8" fill="#FFF"/>
-      <circle cx="17" cy="7" r="0.8" fill="#FFF"/>
-      <circle cx="12" cy="8" r="0.8" fill="#FFF"/>
-      <circle cx="15" cy="11" r="0.8" fill="#FFF"/>
-    </svg>
-  );
-  return (
-    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:13, borderRadius:2, background:'var(--pur-lt)', color:'var(--purple)', fontSize:7, fontWeight:800, letterSpacing:'.5px', flexShrink:0 }}>{code}</span>
-  );
-}
-
-// ── Shared sub-components ──────────────────────────────────────────────────────
-function HolidayBanner({ holiday }: { holiday: Holiday }) {
-  return (
-    <div className="holiday-banner">
-      <span className="hol-icon">
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="4" width="16" height="14" rx="3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
-          <path d="M2 8h16" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
-          <path d="M6 2v3M14 2v3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/>
-          <circle cx="7" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-          <circle cx="10" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-          <circle cx="13" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
-        </svg>
-      </span>
-      <div className="hol-info">
-        <div className="hol-name">{holiday.localName}</div>
-        {holiday.localName !== holiday.name && <div className="hol-en">{holiday.name}</div>}
-      </div>
-      <span className="hol-tag">Holiday</span>
-    </div>
-  );
-}
-
-function EventCard({ s, compact = false, onEdit }: { s: Schedule; compact?: boolean; onEdit?: (s: Schedule) => void }) {
-  const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
-  const loc    = (s as Schedule & { location?: string }).location;
-  const startD = new Date(s.start_time);
-  const endD   = s.end_time ? new Date(s.end_time) : null;
-  const Tag    = onEdit ? 'button' : 'div';
-  return (
-    <Tag
-      {...(onEdit ? { onClick: () => onEdit(s) } : {})}
-      style={{
-        display:'flex', flexDirection:'column', gap: compact ? 3 : 4,
-        padding: compact ? '8px 10px 8px 12px' : '10px 12px 10px 14px',
-        borderRadius: compact ? 10 : 12,
-        background:'var(--surf)',
-        border:'1px solid var(--glass-border,var(--border))',
-        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
-        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
-        opacity: s.is_completed ? 0.5 : 1,
-        width: onEdit ? '100%' : undefined,
-        textAlign: onEdit ? 'left' : undefined,
-        cursor: onEdit ? 'pointer' : 'default',
-        fontFamily:'inherit',
-        transition: onEdit ? 'background .1s' : undefined,
-      } as React.CSSProperties}>
-      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        <TypeIcon type={s.type} />
-        <span style={{
-          fontSize: compact ? 13 : 14, fontWeight:700, color:'var(--dark)',
-          flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-          textDecoration: s.is_completed ? 'line-through' : 'none',
-        }}>{s.title}</span>
-        {s.is_completed
-          ? <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
-          : onEdit && <span style={{ fontSize:9, color:'var(--mid)', flexShrink:0, opacity:.5 }}>›</span>
-        }
-      </div>
-      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
-          {endD && !s.all_day ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
-        </span>
-        {loc && <>
-          <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
-          <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:120 }}>{loc}</span>
-        </>}
-        <span style={{
-          fontSize:9, fontWeight:800, color:pColor,
-          background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`,
-          padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
-        }}>{s.priority}</span>
-      </div>
-    </Tag>
-  );
-}
-
-// ── Activity detail card — for Activities panel and Monthly Log ────────────────
-function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Date; onClick: () => void }) {
-  const pColor  = PRIORITY_COLORS[s.priority] || 'var(--purple)';
-  const startD  = new Date(s.start_time);
-  const endD    = s.end_time ? new Date(s.end_time) : null;
-  const desc    = (s as Schedule & { description?: string; notes?: string }).description
-               || (s as Schedule & { description?: string; notes?: string }).notes
-               || '';
-  const typeLabelMap: Record<string, string> = { task:'Task', reminder:'Reminder', block:'Block', event:'Event' };
-  const typeLabel = typeLabelMap[s.type] ?? s.type;
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width:'100%', textAlign:'left', background:'var(--surf)',
-        border:'1px solid var(--glass-border,var(--border))',
-        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
-        borderRadius:12, padding:'10px 12px 10px 14px',
-        cursor:'pointer', fontFamily:'inherit',
-        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
-        opacity: s.is_completed ? 0.55 : 1,
-        display:'flex', flexDirection:'column', gap:5,
-        transition:'background .1s',
-      }}>
-      {/* Title + status */}
-      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-        <TypeIcon type={s.type} />
-        <span style={{
-          fontSize:13, fontWeight:700, color:'var(--dark)', flex:1,
-          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-          textDecoration: s.is_completed ? 'line-through' : 'none',
-        }}>{s.title}</span>
-        {s.is_completed
-          ? <span style={{ fontSize:10, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>Done ✓</span>
-          : <span style={{ fontSize:9, fontWeight:800, color:pColor, background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`, padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0 }}>{s.priority}</span>
-        }
-      </div>
-      {/* Date + time */}
-      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-          {dayDate.toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
-        </span>
-        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
-        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
-          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
-          {endD && !s.all_day ? ` – ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
-        </span>
-        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
-        <span style={{ fontSize:10, color:'var(--mid)' }}>{typeLabel}</span>
-      </div>
-      {/* Description / notes */}
-      {desc ? (
-        <div style={{ fontSize:11, color:'var(--mid)', opacity:0.8, lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
-          {desc}
-        </div>
-      ) : null}
-    </button>
-  );
-}
-
-
-// ── DOW header — aligned with CalendarTrack cells ─────────────────────────────
-function CalDowHeader() {
-  const ref   = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const measure = () => setW(el.getBoundingClientRect().width);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el); return () => ro.disconnect();
-  }, []);
-  const GAP = 3, PAD = 10;
-  const cellSize = w > 0 ? Math.floor((w - PAD*2 - GAP*6) / 7) : 0;
-  return (
-    <div ref={ref} style={{ display:'flex', gap:GAP, padding:`6px ${PAD}px 2px`, background:'var(--glass-bg2,var(--surf))' }}>
-      {DAYS_SHORT.map(d => (
-        <div key={d} style={{
-          width: cellSize, flexShrink:0,
-          textAlign:'center', fontSize:10, fontWeight:700,
-          color:'var(--dark)', opacity:.45, textTransform:'uppercase', letterSpacing:'.5px',
-        }}>{d}</div>
-      ))}
-    </div>
-  );
-}
-
-// ── Fluid swipe calendar track ────────────────────────────────────────────────
-interface CalTrackProps {
-  year: number; month: number;
-  selectedDay: number;
-  dayMapFn:    (y: number, mo: number) => Record<number, import('@/types/database').Schedule[]>;
-  holidaysFn:  (y: number, mo: number) => Map<string, import('@/lib/holidays').Holiday>;
-  isToday:     (d: number, y: number, mo: number) => boolean;
-  onDayClick:  (d: number) => void;
-  onMonthChange: (delta: -1 | 1) => void;
-}
-function CalendarTrack({
-  year, month, selectedDay,
-  dayMapFn, holidaysFn, isToday,
-  onDayClick, onMonthChange,
-}: CalTrackProps) {
-  const wrapRef  = useRef<HTMLDivElement>(null);
-  const startX   = useRef<number | null>(null);
-  const startY   = useRef<number | null>(null);
-  const busy     = useRef(false);
-  const [containerW, setContainerW] = useState(0);
-  const [offsetX,    setOffsetX]    = useState(0);
-  const [dir,        setDir]        = useState<'l'|'r'|null>(null);
-  const [axis,       setAxis]       = useState<'h'|'v'|null>(null);
-
-  // Measure container width reliably
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const measure = () => setContainerW(el.getBoundingClientRect().width);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Clear animation flag after month change
-  const prevKey = useRef(`${year}-${month}`);
-  useEffect(() => {
-    const key = `${year}-${month}`;
-    if (key !== prevKey.current) {
-      prevKey.current = key;
-      const t = setTimeout(() => { setDir(null); busy.current = false; }, 320);
-      return () => clearTimeout(t);
-    }
-  }, [year, month]);
-
-  // Compute cell size from container width
-  const GAP      = 3;
-  const PAD      = 10; // each side
-  const usable   = containerW - PAD * 2;
-  const cellSize = containerW > 0 ? Math.floor((usable - GAP * 6) / 7) : 0;
-
-  function renderGrid(y: number, mo: number) {
-    const days  = new Date(y, mo + 1, 0).getDate();
-    const first = new Date(y, mo, 1).getDay();
-    const dMap  = dayMapFn(y, mo);
-    const hMap  = holidaysFn(y, mo);
-
-    const items: React.ReactNode[] = [];
-    // Empty cells for offset
-    for (let i = 0; i < first; i++) {
-      items.push(<div key={`e${i}`} style={{ width: cellSize, height: cellSize }} />);
-    }
-    // Day cells
-    for (let i = 0; i < days; i++) {
-      const d       = i + 1;
-      const dateStr = toDateStr(new Date(y, mo, d));
-      const hol     = hMap.get(dateStr);
-      const evts    = dMap[d] ?? [];
-      const active  = y === year && mo === month && d === selectedDay;
-      const todayD  = isToday(d, y, mo);
-
-      // Build visual state styles inline — no CSS class size dependency
-      const cellBg  = active  ? 'var(--purple)'
-                    : todayD  ? 'rgba(124,106,240,.13)'
-                    : hol     ? 'rgba(255,107,107,.07)'
-                    : 'transparent';
-      const cellBox = todayD && !active ? '0 0 0 2px var(--purple)' : 'none';
-      const numCol  = active  ? '#fff'
-                    : todayD  ? 'var(--purple)'
-                    : hol     ? 'var(--coral,#FF6B8A)'
-                    : 'var(--dark)';
-      const numW    = active || todayD ? 800 : hol ? 700 : 500;
-
-      items.push(
-        <button
-          key={d}
-          onClick={() => { if (y === year && mo === month) onDayClick(d); }}
-          title={hol?.localName}
-          style={{
-            width: cellSize, height: cellSize,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: 2,
-            borderRadius: Math.round(cellSize * 0.28),
-            background: cellBg,
-            boxShadow: cellBox,
-            border: 'none', cursor: 'pointer',
-            fontFamily: 'inherit',
-            padding: 0,
-            flexShrink: 0,
-            transition: 'background .12s',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <span style={{
-            fontSize: Math.max(11, Math.round(cellSize * 0.34)),
-            fontWeight: numW,
-            color: numCol,
-            lineHeight: 1,
-            letterSpacing: active ? '-.3px' : '0',
-          }}>{d}</span>
-          {/* Dot indicators */}
-          {(hol || evts.length > 0) && (
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 5 }}>
-              {hol && (
-                <span style={{
-                  width: active ? 4 : 5, height: active ? 4 : 5,
-                  borderRadius: '50%',
-                  background: active ? 'rgba(255,255,255,.85)' : 'var(--coral,#FF6B8A)',
-                  flexShrink: 0,
-                }} />
-              )}
-              {!hol && evts[0] && (
-                <span style={{
-                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
-                  background: active ? 'rgba(255,255,255,.75)' : PRIORITY_COLORS[evts[0].priority],
-                }} />
-              )}
-              {!hol && evts[1] && (
-                <span style={{
-                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
-                  background: active ? 'rgba(255,255,255,.55)' : PRIORITY_COLORS[evts[1].priority],
-                }} />
-              )}
+      {/* ── Recurring delete scope dialog ────────────────────────────── */}
+      {deleteTarget && (
+        <div
+          onClick={() => setDeleteTarget(null)}
+          style={{ position:'fixed', inset:0, zIndex:500, background:'rgba(0,0,0,.6)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background:'var(--surf,#131424)', borderRadius:'22px 22px 0 0', border:'1px solid rgba(255,255,255,.09)', borderBottom:'none', boxShadow:'0 -24px 60px rgba(0,0,0,.4)', padding:'0 0 max(20px,env(safe-area-inset-bottom,20px))' }}
+          >
+            <div style={{ width:36, height:4, borderRadius:2, background:'rgba(255,255,255,.14)', margin:'10px auto 18px' }} />
+            <div style={{ padding:'0 20px 18px', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'var(--dark)', marginBottom:4 }}>Delete recurring activity</div>
+              <div style={{ fontSize:12, color:'var(--mid)' }}>
+                &ldquo;{deleteTarget._is_virtual ? deleteTarget.title : deleteTarget.title}&rdquo;
+              </div>
             </div>
-          )}
-        </button>
-      );
-    }
-    return items;
-  }
-
-  const THRESH = (containerW || 390) * 0.28;
-
-  function onTS(e: React.TouchEvent) {
-    if (busy.current) return;
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    setAxis(null); setOffsetX(0);
-  }
-  function onTM(e: React.TouchEvent) {
-    if (startX.current === null || busy.current) return;
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - (startY.current ?? 0);
-    if (!axis) {
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
-        setAxis(Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v');
-      return;
-    }
-    if (axis === 'v') return;
-    e.preventDefault();
-    const cap = (containerW || 390) * 0.55, r = 0.32;
-    setOffsetX(Math.abs(dx) > cap ? Math.sign(dx) * (cap + (Math.abs(dx) - cap) * r) : dx);
-  }
-  function onTE() {
-    if (!startX.current) return;
-    startX.current = null;
-    if (axis !== 'h' || busy.current) { setOffsetX(0); setAxis(null); return; }
-    const snap = offsetX > THRESH ? -1 : offsetX < -THRESH ? 1 : 0;
-    if (snap !== 0) {
-      busy.current = true;
-      setDir(snap < 0 ? 'r' : 'l');
-      setOffsetX(0); setAxis(null);
-      onMonthChange(snap as -1 | 1);
-    } else {
-      setOffsetX(0); setAxis(null);
-    }
-  }
-
-  const gridAnim: React.CSSProperties = offsetX !== 0
-    ? { transform: `translateX(${offsetX}px)`, transition: 'none', willChange: 'transform' }
-    : dir === 'l' ? { animation: 'calSlideL 280ms cubic-bezier(.25,.46,.45,.94) both' }
-    : dir === 'r' ? { animation: 'calSlideR 280ms cubic-bezier(.25,.46,.45,.94) both' }
-    : {};
-
-  // Grid container — use flexbox wrap so no CSS grid 1fr confusion
-  const gridStyle: React.CSSProperties = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: GAP,
-    padding: `4px ${PAD}px 6px`,
-    ...gridAnim,
-  };
-
-  return (
-    <div
-      ref={wrapRef}
-      style={{ overflow: 'hidden', touchAction: 'pan-y' }}
-      onTouchStart={onTS}
-      onTouchMove={onTM}
-      onTouchEnd={onTE}
-    >
-      {containerW > 0 && (
-        <div key={`${year}-${month}`} style={gridStyle}>
-          {renderGrid(year, month)}
+            <div style={{ padding:'12px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+              {deleteTarget._is_virtual && (
+                <button
+                  type="button"
+                  onClick={() => confirmDelete('this')}
+                  style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,255,255,.10)', background:'rgba(255,255,255,.05)', color:'var(--dark)', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+                >
+                  <div style={{ fontWeight:700 }}>This occurrence only</div>
+                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>Remove only {deleteTarget._occurrence_date}</div>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => confirmDelete('future')}
+                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,107,138,.22)', background:'rgba(255,107,138,.07)', color:'#FF6B8A', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+              >
+                <div style={{ fontWeight:700 }}>This and future occurrences</div>
+                <div style={{ fontSize:11, color:'rgba(255,107,138,.6)', marginTop:2 }}>Stop repeating from this date onwards</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDelete('all')}
+                style={{ padding:'14px 16px', borderRadius:14, border:'1px solid rgba(255,59,48,.25)', background:'rgba(255,59,48,.08)', color:'#FF3B30', fontSize:14, fontWeight:600, textAlign:'left', cursor:'pointer', fontFamily:'inherit' }}
+              >
+                <div style={{ fontWeight:700 }}>All occurrences</div>
+                <div style={{ fontSize:11, color:'rgba(255,59,48,.6)', marginTop:2 }}>Delete the entire recurring series</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                style={{ padding:'12px', borderRadius:14, border:'1px solid rgba(255,255,255,.08)', background:'transparent', color:'var(--mid)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', marginTop:2 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      <BottomNav />
+
+      <style jsx>{`
+        /* ── Page shell ── */
+        .page { height:100dvh; background:var(--bg); display:flex; flex-direction:column; font-family:inherit; color:var(--dark); overflow:hidden; }
+
+        /* ── Header ── */
+        .pg-header { padding:max(env(safe-area-inset-top,0px),14px) 20px 12px; display:flex; justify-content:space-between; align-items:flex-end; flex-shrink:0; background:var(--glass-bg,var(--surf)); backdrop-filter:var(--glass-blur,blur(18px)); -webkit-backdrop-filter:var(--glass-blur,blur(18px)); border-bottom:1px solid var(--glass-border,var(--border)); transition:background .25s ease,border-color .25s ease; }
+        .pg-title { font-size:22px; font-weight:800; color:var(--dark); }
+        .country-badge { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--purple); font-weight:600; margin-top:4px; }
+        .today-btn { padding:6px 14px; background:var(--glass-bg2,rgba(255,255,255,.07)); border:1px solid var(--glass-border,rgba(255,255,255,.10)); border-radius:20px; color:var(--purple); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .14s; flex-shrink:0; }
+        .today-btn:active { background:var(--pur-lt); }
+
+        /* ── View switcher ── */
+        .view-switcher { flex-shrink:0; display:flex; gap:6px; padding:10px 16px; background:var(--glass-bg,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
+        .view-pill { flex:1; padding:8px 4px; border-radius:10px; border:1.5px solid var(--glass-border,rgba(255,255,255,.08)); background:var(--glass-bg2,rgba(255,255,255,.04)); color:var(--mid); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .14s; letter-spacing:.2px; }
+        .view-pill.active { background:var(--purple); border-color:var(--purple); color:#fff; box-shadow:0 2px 12px rgba(124,106,240,.35); }
+        .view-pill:not(.active):active { background:var(--pur-lt); color:var(--purple); }
+
+        /* ── Month / period navigator ── */
+        .month-nav { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border));  transition:background .25s ease; }
+        .month-label { font-size:15px; font-weight:700; color:var(--dark); }
+        .nav-arrow { background:none; border:none; color:var(--mid); font-size:22px; cursor:pointer; padding:4px 10px; line-height:1; border-radius:8px; }
+        .nav-arrow:active { background:var(--surf2); }
+
+        /* ── Scrollable body ── */
+        .scroll-body { flex:1; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; position:relative; }
+
+        /* ════ MONTHLY ════ */
+        /* ── Calendar grid keyframes ── */
+        @keyframes calSlideL { from{transform:translateX(105%);opacity:.25} to{transform:translateX(0);opacity:1} }
+        @keyframes calSlideR { from{transform:translateX(-105%);opacity:.25} to{transform:translateX(0);opacity:1} }
+        .cal-day { width:100%; aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; background:transparent; gap:2px; border:none; transition:background .12s; padding:0; min-height:0; }
+        .cal-day:active { background:var(--pur-lt); }
+        .cal-day.active { background:var(--purple) !important; }
+        .cal-day.today:not(.active) { box-shadow:0 0 0 2px var(--purple); background:rgba(124,106,240,.10) !important; }
+        .cal-day.today:not(.active) .day-num { color:var(--purple); font-weight:900; }
+        .cal-day.holiday:not(.active) { background:rgba(255,107,107,.07); }
+        .day-num { font-size:13px; font-weight:600; color:var(--dark); line-height:1; }
+        .cal-day.active .day-num { color:#fff; }
+        .cal-day.holiday:not(.active) .day-num { color:var(--coral,#FF6B8A); font-weight:700; }
+        .day-indicators { display:flex; gap:2px; align-items:center; min-height:5px; }
+        .h-dot { width:5px; height:5px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
+        .cal-day.active .h-dot { background:rgba(255,255,255,.8); }
+        .dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
+        .cal-day.active .dot { background:rgba(255,255,255,.7) !important; }
+
+        /* ════ DAY PANEL ════ */
+        .day-panel { padding:14px 16px 16px; }
+
+        /* ════ WEEKLY ════ */
+        .week-strip { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:12px 12px 0; background:var(--glass-bg2,var(--surf)); border-bottom:1px solid var(--glass-border,var(--border)); }
+        .week-day-col { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 2px 10px; border-radius:12px; background:transparent; border:1.5px solid transparent; cursor:pointer; font-family:inherit; transition:all .14s; }
+        .week-day-col.today .wdc-num { color:var(--purple); font-weight:900; }
+        .week-day-col.today:not(.sel) { background:rgba(124,106,240,.08); box-shadow:0 0 0 1.5px var(--purple) inset; }
+        .week-day-col.sel { background:var(--pur-lt,rgba(124,106,240,.15)); border-color:var(--purple); }
+        .week-day-col.sel .wdc-num { color:var(--purple); font-weight:800; }
+        .wdc-name { font-size:9px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.5px; }
+        .wdc-num  { font-size:15px; font-weight:600; color:var(--dark); line-height:1; }
+        .wdc-cnt  { font-size:9px; font-weight:700; color:#fff; background:var(--purple); border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; }
+
+        .week-holiday-row { display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.18); border-radius:10px; margin-bottom:6px; }
+        .whr-dot { width:6px; height:6px; border-radius:50%; background:var(--coral,#FF6B8A); flex-shrink:0; }
+        .whr-name { font-size:12px; font-weight:600; color:var(--coral,#FF6B8A); flex:1; }
+
+        /* ════ YEARLY ════ */
+        /* ── YEARLY VIEW — uniform 3-column layout ── */
+        .year-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 9px;
+        }
+
+        /* Card shell — all 12 cards are visually identical in structure */
+        .year-month-card {
+          display: flex; flex-direction: column; gap: 0;
+          padding: 10px 7px 8px;
+          background: var(--glass-bg2, rgba(255,255,255,.04));
+          border: 1.5px solid var(--glass-border, rgba(255,255,255,.08));
+          border-radius: 14px;
+          cursor: pointer; font-family: inherit;
+          transition: border-color .18s, background .18s, transform .12s;
+          text-align: left; overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .year-month-card.current {
+          border-color: var(--purple);
+          border-width: 2px;
+          background: rgba(124,106,240,.07);
+        }
+        .year-month-card.sel:not(.current) {
+          border-color: rgba(124,106,240,.5);
+        }
+        .year-month-card:active { transform: scale(.96); opacity: .82; }
+
+        /* Card header: month name + activity badge */
+        .ymc-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 4px;
+        }
+        .ymc-name {
+          font-size: 12px; font-weight: 800;
+          color: var(--dark); letter-spacing: -.3px; line-height: 1;
+        }
+        .ymc-name.cur { color: var(--purple); }
+        .ymc-today-tag {
+          font-size: 8px; font-weight: 600;
+          color: var(--purple); opacity: .75;
+          letter-spacing: 0;
+        }
+        .ymc-count {
+          font-size: 8px; font-weight: 800;
+          color: var(--purple);
+          background: rgba(124,106,240,.15);
+          border-radius: 5px; padding: 1px 4px; line-height: 1.6;
+          flex-shrink: 0;
+        }
+
+        /* Day-of-week labels — 7 equal cols, minimal */
+        .ymc-dow {
+          display: grid; grid-template-columns: repeat(7, 1fr);
+          gap: 0; margin-bottom: 3px;
+        }
+        .ymc-dow-cell {
+          display: flex; align-items: center; justify-content: center;
+          font-size: 6px; font-weight: 700;
+          color: var(--mid); line-height: 1.4;
+          text-transform: uppercase;
+        }
+
+        /* 42-cell uniform grid — always 6 rows, never varies */
+        .ymc-grid {
+          display: grid; grid-template-columns: repeat(7, 1fr);
+          gap: 1px;
+        }
+        .ymc-cell {
+          height: 14px;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          border-radius: 2px; position: relative;
+        }
+        .ymc-cell span {
+          font-size: 7.5px; color: var(--dark);
+          line-height: 1; font-weight: 500;
+        }
+        /* Empty cells (before/after month days) — invisible but keep layout */
+        .ymc-cell.ymc-empty { pointer-events: none; }
+
+        /* Today — filled purple circle */
+        .ymc-cell.tod {
+          background: var(--purple);
+          border-radius: 50%;
+        }
+        .ymc-cell.tod span { color: #fff; font-weight: 800; font-size: 7px; }
+
+        /* Activity days — subtle dot indicator below the date */
+        .ymc-cell.has span { color: var(--purple); font-weight: 700; }
+        .ymc-cell.has::after {
+          content: '';
+          position: absolute; bottom: 1px;
+          width: 3px; height: 3px;
+          border-radius: 50%;
+          background: var(--purple); opacity: .65;
+        }
+
+        /* ════ SHARED ════ */
+        .holiday-banner { display:flex; align-items:center; gap:10px; background:rgba(255,107,107,.10); border:1px solid rgba(255,107,107,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
+        .hol-icon { display:flex; align-items:center; flex-shrink:0; }
+        .hol-info { flex:1; }
+        .hol-name { font-size:13px; font-weight:700; color:var(--coral,#FF6B8A); }
+        .hol-en   { font-size:10px; color:var(--mid); margin-top:1px; }
+        .hol-tag  { font-size:10px; font-weight:700; color:var(--coral,#FF6B8A); background:rgba(255,107,107,.15); padding:3px 8px; border-radius:20px; white-space:nowrap; }
+      `}</style>
     </div>
   );
 }
