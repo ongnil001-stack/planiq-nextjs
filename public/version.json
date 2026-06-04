@@ -1,8 +1,21 @@
 {
-  "version": "1.1.2",
-  "releaseDate": "2026-06-02",
-  "summary": "Recurring schedules work across all months, per-occurrence completion, accurate dates, and a smarter Focus Hub.",
+  "version": "1.1.3",
+  "releaseDate": "2026-06-04",
+  "summary": "Cleaner In Progress tracker, redesigned yearly overview, reliable update detection on every deploy.",
   "changelog": [
+    {
+      "version": "1.1.3",
+      "date": "2026-06-04",
+      "notes": [
+        "In Progress sheet redesigned — theme-aware gradient ring that matches your selected color theme, stat pills showing elapsed/total/remaining time, cleaner action buttons",
+        "Yearly Calendar replaced with clean annual overview — activity bar charts per month, no cramped date numbers, instantly readable at a glance",
+        "Software Update now detects every new deployment automatically using build SHA, not just version bumps",
+        "Update badge appears for both version changes and any new code push to Vercel",
+        "Profile > System Settings: added Privacy & Terms as a proper menu item",
+        "Software Update status row now shows a live indicator — green dot (up to date) or pulsing red dot (new update)",
+        "System Settings footer simplified to show current build version"
+      ]
+    },
     {
       "version": "1.1.2",
       "date": "2026-06-02",
@@ -38,16 +51,6 @@
         "Time-safe rescheduling — past time slots are now disabled",
         "Removed hardcoded demo data — all stats now use real user data",
         "Simplified swipe-to-delete: single tap, immediate action with undo"
-      ]
-    },
-    {
-      "version": "0.9.0",
-      "date": "2026-05-10",
-      "notes": [
-        "Built Active Session sheet with live countdown timer",
-        "Added real-time progress bar across all schedule views",
-        "Notification scheduler with browser push support",
-        "Workload balance sheet with interactive filters"
       ]
     }
   ]

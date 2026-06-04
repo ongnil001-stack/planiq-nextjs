@@ -1541,35 +1541,42 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding:'10px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
-            <div style={{
-              display:'grid',
-              gridTemplateColumns:'repeat(3, 1fr)',
-              gap:'8px',
-            }}>
+          <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+
+            {/* 3-column grid of month overview cards */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const cnt       = monthCounts[mo];
                 const isThisMon = mo === today.getMonth() && year === today.getFullYear();
                 const isSel     = mo === month && !isThisMon;
                 const daysIn    = new Date(year, mo + 1, 0).getDate();
-                const firstD    = new Date(year, mo, 1).getDay(); // 0=Sun
 
-                // Days with activities this month
+                // Which days have activities
                 const activeDays = new Set<number>();
                 schedules.forEach(s => {
                   const d = new Date(s.start_time);
                   if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
                 });
 
-                // 42 cells: 6 rows × 7 cols — null = empty spacer
-                const cells = Array.from({ length: 42 }, (_, i) => {
-                  const n = i - firstD + 1;
-                  return (n >= 1 && n <= daysIn) ? n : null;
+                // 5 equal segments → 5 bars (one per ~week of the month)
+                const bars = Array.from({ length: 5 }, (_, i) => {
+                  const segStart = Math.floor(i * daysIn / 5) + 1;
+                  const segEnd   = Math.floor((i + 1) * daysIn / 5);
+                  let   busy     = 0;
+                  for (let d = segStart; d <= segEnd; d++) {
+                    if (activeDays.has(d)) busy++;
+                  }
+                  const total = segEnd - segStart + 1;
+                  return total > 0 ? busy / total : 0; // density 0–1
                 });
 
-                const cardBg     = isThisMon ? 'var(--pur-lt,rgba(124,106,240,.09))' : 'var(--glass-bg2,rgba(255,255,255,.04))';
-                const cardBorder = isThisMon ? 'var(--purple)' : isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))';
-                const cardBW     = isThisMon ? '2px' : '1.5px';
+                const cardBg  = isThisMon
+                  ? 'var(--pur-lt,rgba(124,106,240,.10))'
+                  : 'var(--glass-bg2,rgba(255,255,255,.04))';
+                const cardBdr = isThisMon
+                  ? 'var(--purple)'
+                  : isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))';
+                const cardBW  = isThisMon ? '2px' : '1.5px';
 
                 return (
                   <button
@@ -1581,103 +1588,73 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                     }}
                     style={{
                       display:'flex', flexDirection:'column',
-                      padding:'8px 6px 7px',
+                      padding:'9px 8px 8px',
                       background: cardBg,
-                      border: `${cardBW} solid ${cardBorder}`,
-                      borderRadius:13,
+                      border: `${cardBW} solid ${cardBdr}`,
+                      borderRadius:14,
                       cursor:'pointer', fontFamily:'inherit',
-                      textAlign:'left', overflow:'hidden',
+                      textAlign:'left', minWidth:0,
                       WebkitTapHighlightColor:'transparent',
-                      transition:'transform .12s',
-                      minWidth:0,
+                      transition:'transform .12s, opacity .12s',
                     }}
                   >
-                    {/* ── Month header ── */}
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                    {/* Header: month name + NOW tag + count */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
                       <span style={{
-                        fontSize:11, fontWeight:800, lineHeight:1,
+                        fontSize:12, fontWeight:900, lineHeight:1,
                         color: isThisMon ? 'var(--purple)' : 'var(--dark)',
-                        letterSpacing:'-.1px',
+                        letterSpacing:'-.2px',
                       }}>
                         {MONTHS_SH[mo]}
                       </span>
-                      {cnt > 0 && (
-                        <span style={{
-                          fontSize:8, fontWeight:800, lineHeight:1.4,
-                          color:'var(--purple)',
-                          background:'var(--pur-lt,rgba(124,106,240,.12))',
-                          borderRadius:4, padding:'1px 4px',
-                          flexShrink:0,
-                        }}>
-                          {cnt}
-                        </span>
-                      )}
+                      <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
+                        {isThisMon && (
+                          <span style={{
+                            fontSize:7, fontWeight:800, letterSpacing:'.3px',
+                            color:'var(--purple)',
+                            background:'var(--pur-lt)',
+                            border:'1px solid var(--border2)',
+                            borderRadius:4, padding:'1px 4px',
+                          }}>NOW</span>
+                        )}
+                        {cnt > 0 && (
+                          <span style={{ fontSize:9, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
+                            {cnt}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* ── Day-of-week labels: S M T W T F S ── */}
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:2 }}>
-                      {['S','M','T','W','T','F','S'].map((d, i) => (
-                        <div key={i} style={{
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:'6px', fontWeight:700,
-                          color:'var(--lite)', lineHeight:1, padding:'1px 0',
-                        }}>
-                          {d}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* ── Date grid: 7 columns, square cells via padding-bottom trick ── */}
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', rowGap:0, columnGap:0 }}>
-                      {cells.map((dayNum, i) => {
-                        const isT    = dayNum !== null && dayNum === today.getDate() && isThisMon;
-                        const hasAct = dayNum !== null && activeDays.has(dayNum);
-
-                        // Cell background + text color
-                        const bg   = isT ? 'var(--purple)' : 'transparent';
-                        const col  = isT ? '#fff' : hasAct ? 'var(--purple)' : dayNum === null ? 'transparent' : 'var(--dark)';
-                        const fw   = isT ? 800 : hasAct ? 700 : 400;
-
+                    {/* Activity bar chart: 5 bars, height = segment activity density */}
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:26 }}>
+                      {bars.map((density, bi) => {
+                        const barH  = density === 0 ? 3 : Math.round(4 + density * 20);
+                        const barBg = density > 0 ? 'var(--purple)' : 'var(--border)';
+                        const barOp = density === 0 ? 0.18 : Math.min(1, 0.3 + density * 0.7);
                         return (
-                          // Outer: sets square shape via padding-bottom trick
-                          <div key={i} style={{ position:'relative', width:'100%', paddingBottom:'100%', height:0 }}>
-                            {/* Inner: absolutely fills the square, centers content */}
-                            <div style={{
-                              position:'absolute', inset:'1px',
-                              display:'flex', alignItems:'center', justifyContent:'center',
-                              borderRadius:'50%',
-                              background: bg,
-                            }}>
-                              {dayNum !== null && (
-                                <>
-                                  <span style={{ fontSize:'7.5px', fontWeight:fw, color:col, lineHeight:1, fontVariantNumeric:'tabular-nums' }}>
-                                    {dayNum}
-                                  </span>
-                                  {/* Activity dot — only on non-today activity days */}
-                                  {hasAct && !isT && (
-                                    <span style={{
-                                      position:'absolute', bottom:'4%', left:'50%',
-                                      transform:'translateX(-50%)',
-                                      width:'2px', height:'2px',
-                                      borderRadius:'50%', background:'var(--purple)', opacity:.7,
-                                    }} />
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
+                          <div key={bi} style={{
+                            flex:1, height:barH, borderRadius:2,
+                            background:barBg, opacity:barOp,
+                            alignSelf:'flex-end',
+                          }} />
                         );
                       })}
                     </div>
 
+                    {/* Footer: task count */}
+                    <div style={{ marginTop:5, minHeight:12 }}>
+                      {cnt > 0
+                        ? <span style={{ fontSize:9, fontWeight:700, color:'var(--mid)' }}>{cnt} task{cnt !== 1 ? 's' : ''}</span>
+                        : <span style={{ fontSize:9, color:'var(--lite)', opacity:.4 }}>—</span>
+                      }
+                    </div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Hint */}
-            <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
-              Tap any month to view the full schedule
+            <div style={{ textAlign:'center', marginTop:16, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+              Tap any month to see the full schedule
             </div>
           </div>
         )}
