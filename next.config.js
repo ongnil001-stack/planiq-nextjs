@@ -9,7 +9,7 @@ const AUTO_APP_VERSION = appVersionData.version; // e.g. "1.1.2"
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
-  skipWaiting: true,
+  skipWaiting: false,  // User controls when to apply — see worker/index.ts SKIP_WAITING handler
   disable: process.env.NODE_ENV === 'development',
   customWorkerDir: 'worker', // merges worker/index.ts into the generated SW
   fallbacks: {

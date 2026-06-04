@@ -1,8 +1,17 @@
 // ─── PlanIQ Custom Service Worker ────────────────────────────────────────────
 // next-pwa merges this file into the auto-generated Workbox service worker.
-// Handles: push notifications, notification click navigation.
+// Handles: push notifications, notification click, and controlled update flow.
 
 declare const self: ServiceWorkerGlobalScope;
+
+// ── Controlled update: only activate when the app explicitly asks ───────────
+// The app sends {type:'SKIP_WAITING'} when the user taps "Update Now".
+// This prevents silent mid-session refreshes.
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // ── Push event: show notification ──────────────────────────────────────────
 self.addEventListener('push', (event: PushEvent) => {
@@ -32,14 +41,12 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // If a PlanIQ window is already open, focus it
         for (const client of clientList) {
           if ('focus' in client) {
             client.postMessage({ type: 'NOTIFICATION_CLICK', url });
             return client.focus();
           }
         }
-        // Otherwise open a new window
         return self.clients.openWindow(url);
       })
   );

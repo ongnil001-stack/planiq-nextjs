@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import FocusHubSheet from '@/components/FocusHubSheet';
@@ -8,6 +8,17 @@ import FocusHubSheet from '@/components/FocusHubSheet';
 export default function BottomNav() {
   const pathname = usePathname();
   const [hubOpen, setHubOpen] = useState(false);
+  const [updateBadge, setUpdateBadge] = useState(false);
+
+  // Read update badge from localStorage (written by useAppUpdate when hasUpdate=true)
+  useEffect(() => {
+    const check = () => setUpdateBadge(localStorage.getItem('planiq_has_update') === '1');
+    check();
+    window.addEventListener('storage', check);
+    // Also poll every 30s in case the storage event doesn't fire cross-tab
+    const t = setInterval(check, 30_000);
+    return () => { window.removeEventListener('storage', check); clearInterval(t); };
+  }, []);
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
@@ -184,6 +195,17 @@ export default function BottomNav() {
         {/* ── Profile ── */}
         <Link href="/profile" style={ITEM(isActive('/profile'))} aria-label="Profile">
           <span style={BAR(isActive('/profile'))} />
+          {updateBadge && (
+            <span style={{
+              position: 'absolute',
+              top: 6, right: 'calc(50% - 16px)',
+              width: 8, height: 8,
+              borderRadius: '50%',
+              background: 'var(--coral, #FF5C7A)',
+              border: '1.5px solid var(--nav-glass)',
+              animation: 'pulseDot 1.4s ease-in-out infinite',
+            }} />
+          )}
           <span style={ICO}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.7"/>
@@ -198,6 +220,7 @@ export default function BottomNav() {
 
       {/* Focus Hub Sheet */}
       <FocusHubSheet open={hubOpen} onClose={() => setHubOpen(false)} />
+    <style>{`@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.35)}}`}</style>
     </>
   );
 }
