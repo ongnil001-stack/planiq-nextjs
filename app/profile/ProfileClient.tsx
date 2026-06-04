@@ -64,7 +64,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'>('none');
+  const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -143,6 +143,11 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
     setMaxVisitStreak(ci.maxStreak);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Auto-open changelog when entering Software Update view ───────────────
+  useEffect(() => {
+    if (settingsView === 'update') setChangelogOpen(true);
+  }, [settingsView]);
 
   function openEdit() {
     setEditName(profile?.full_name ?? '');
@@ -708,7 +713,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
             {/* Help & Feedback */}
             <button type="button" onClick={() => setFeedbackOpen(true)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(116,185,255,.12)', border: '1px solid rgba(116,185,255,.22)' }}>
                 <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
                   <path d="M3 10l14-8-4 8 4 8-14-8z" stroke="#74B9FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -717,6 +722,22 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Help &amp; Feedback</div>
                 <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Report bugs, suggest features</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            {/* Privacy & Terms */}
+            <button type="button" onClick={() => setSettingsView('privacy')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(52,211,153,.10)', border: '1px solid rgba(52,211,153,.20)' }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 2L4 5v5c0 4.1 2.6 7.9 6 9 3.4-1.1 6-4.9 6-9V5L10 2z" stroke="#34D399" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M7.5 10l2 2 3-3" stroke="#34D399" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Privacy &amp; Terms</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Data policy, terms of service</div>
               </div>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
@@ -742,11 +763,11 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
             </button>
           </div>
 
-          {/* Footer links */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '4px 0 24px' }}>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</a>
-            <span style={{ fontSize: 11, color: 'var(--mid)', opacity: 0.4 }}>·</span>
-            <a href="mailto:privacy@emlabs.ph" style={{ fontSize: 11, color: 'var(--mid)', textDecoration: 'none', fontWeight: 500 }}>Contact Us</a>
+          {/* Footer */}
+          <div style={{ textAlign: 'center', padding: '4px 0 28px' }}>
+            <span style={{ fontSize: 10, color: 'var(--mid)', opacity: 0.45, fontWeight: 500 }}>
+              PlanIQ v{appUpdate.currentVersionClean} · EM Labs
+            </span>
           </div>
         </div>
       </div>
@@ -755,9 +776,9 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
       <div style={{
         position: 'fixed', inset: 0, zIndex: 70,
         background: 'var(--bg, #080E1A)',
-        transform: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications') ? 'translateX(0)' : 'translateX(100%)',
+        transform: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy') ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.3s cubic-bezier(0.32,1,0.52,1)',
-        pointerEvents: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications') ? 'auto' : 'none',
+        pointerEvents: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy') ? 'auto' : 'none',
         display: 'flex', flexDirection: 'column',
       }}>
         {/* Sub-page header */}
@@ -778,7 +799,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               System Settings
             </button>
             <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 800, color: 'var(--dark)', marginRight: 110 }}>
-              {settingsView === 'account' ? 'Account' : settingsView === 'update' ? 'Software Update' : 'Notifications'}
+              {settingsView === 'account' ? 'Account' : settingsView === 'update' ? 'Software Update' : settingsView === 'privacy' ? 'Privacy & Terms' : 'Notifications'}
             </div>
           </div>
         </div>
@@ -826,6 +847,40 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
             </div>
           )}
 
+          {/* ── Privacy & Terms ── */}
+          {settingsView === 'privacy' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden' }}>
+                {[
+                  { label: 'Privacy Policy', url: '/privacy', iconPath: 'M9 12h6M9 8h6M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z', color: '#34D399', desc: 'How we collect and use your data' },
+                  { label: 'Terms of Service', url: '/privacy#terms', iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', color: '#60A5FA', desc: 'Acceptable use and service terms' },
+                ].map((item, i, arr) => (
+                  <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', textDecoration: 'none', WebkitTapHighlightColor: 'transparent' }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${item.color}18`, border: `1px solid ${item.color}28` }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <path d={item.iconPath} stroke={item.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{item.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>{item.desc}</div>
+                    </div>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
+                      <path d="M7 3L13 8L7 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </a>
+                ))}
+              </div>
+              <div style={{ textAlign: 'center', padding: '4px 0 8px' }}>
+                <div style={{ fontSize: 11, color: 'var(--mid)', lineHeight: 1.7, opacity: 0.7 }}>
+                  PlanIQ by EM Labs<br/>
+                  <span style={{ fontSize: 10 }}>v{appUpdate.currentVersionClean} · {new Date().getFullYear()}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Software Update ── */}
           {settingsView === 'update' && (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -854,13 +909,19 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                     )}
                   </div>
                 )}
-                <div style={{ display:'flex', gap:8, padding:'12px 16px' }}>
+                <div style={{ display:'flex', gap:8, padding:'12px 16px', flexWrap:'wrap' }}>
                   {appUpdate.hasUpdate ? (
-                    <button onClick={() => appUpdate.refreshToUpdate()} disabled={appUpdate.updating}
-                      style={{ flex:1, padding:'11px 0', borderRadius:10, border:'none', background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B', color:'#fff', fontSize:13, fontWeight:700, cursor: appUpdate.updating ? 'default' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                      {appUpdate.updating && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      {appUpdate.updating ? 'Applying…' : 'Update Now'}
-                    </button>
+                    <>
+                      <button onClick={() => appUpdate.refreshToUpdate()} disabled={appUpdate.updating}
+                        style={{ flex:1, minWidth:0, padding:'11px 0', borderRadius:10, border:'none', background: appUpdate.updating ? 'rgba(255,107,107,.6)' : '#FF6B6B', color:'#fff', fontSize:13, fontWeight:700, cursor: appUpdate.updating ? 'default' : 'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                        {appUpdate.updating && <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation:'spin 1s linear infinite' }}><path d="M4 10a6 6 0 1 1 1.2 3.6M4 14V10h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {appUpdate.updating ? 'Applying…' : 'Update Now'}
+                      </button>
+                      <button onClick={appUpdate.dismissUpdate}
+                        style={{ padding:'11px 14px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color:'var(--mid)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                        Dismiss
+                      </button>
+                    </>
                   ) : (
                     <button onClick={appUpdate.recheck} disabled={appUpdate.checking}
                       style={{ flex:1, padding:'11px 0', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surf2, rgba(255,255,255,.04))', color: appUpdate.checking ? 'var(--mid)' : 'var(--dark)', fontSize:13, fontWeight:600, cursor: appUpdate.checking ? 'default' : 'pointer', fontFamily:'inherit', opacity: appUpdate.checking ? .6 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
