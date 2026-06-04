@@ -808,6 +808,26 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setViewMode('daily');
   }
 
+  // Pre-compute yearly stats (only used in yearly view, cheap to compute always)
+  const yearlyStats = Array.from({ length: 12 }, (_, mo) => {
+    const daysIn     = new Date(year, mo + 1, 0).getDate();
+    const activeDays = new Set<number>();
+    schedules.forEach(s => {
+      const d = new Date(s.start_time);
+      if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
+    });
+    const busy = activeDays.size;
+    const free = daysIn - busy;
+    const bars = Array.from({ length: 5 }, (_, i) => {
+      const s1 = Math.floor(i * daysIn / 5) + 1;
+      const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
+      let   n  = 0;
+      for (let d = s1; d <= s2; d++) if (activeDays.has(d)) n++;
+      return (s2 - s1 + 1) > 0 ? n / (s2 - s1 + 1) : 0;
+    });
+    return { daysIn, busy, free, bars };
+  });
+
   return (
     <div className="page">
 
@@ -1540,134 +1560,603 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         )}
 
         {/* ── YEARLY VIEW ── */}
-        {viewMode === 'yearly' && (() => {
-          // Pre-compute per-month stats once
-          const monthStats = Array.from({ length: 12 }, (_, mo) => {
-            const daysIn     = new Date(year, mo + 1, 0).getDate();
-            const activeDays = new Set<number>();
-            schedules.forEach(s => {
-              const d = new Date(s.start_time);
-              if (d.getFullYear() === year && d.getMonth() === mo) activeDays.add(d.getDate());
-            });
-            const busy = activeDays.size;
-            const free = daysIn - busy;
-            // 5 bars: divide month into 5 equal segments, each bar = density of that segment
-            const bars = Array.from({ length: 5 }, (_, i) => {
-              const s1 = Math.floor(i * daysIn / 5) + 1;
-              const s2 = Math.min(Math.floor((i + 1) * daysIn / 5), daysIn);
-              let n = 0;
-              for (let d = s1; d <= s2; d++) if (activeDays.has(d)) n++;
-              return (s2 - s1 + 1) > 0 ? n / (s2 - s1 + 1) : 0;
-            });
-            return { daysIn, busy, free, bars, activeDays };
-          });
-
-          return (
-            <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
-                {monthStats.map(({ daysIn, busy, free, bars }, mo) => {
-                  const isThisMon = mo === today.getMonth() && year === today.getFullYear();
-                  const isSel     = mo === month && !isThisMon;
-
-                  return (
-                    <button
-                      key={mo}
-                      onClick={() => {
-                        setViewDate(new Date(year, mo, 1));
-                        setSelectedDay(isThisMon ? today.getDate() : 1);
-                        setViewMode('monthly');
-                      }}
-                      style={{
-                        display:'flex', flexDirection:'column', gap:0,
-                        padding:'10px 9px 9px',
-                        background: isThisMon
-                          ? 'var(--pur-lt,rgba(124,106,240,.10))'
-                          : 'var(--glass-bg2,rgba(255,255,255,.04))',
-                        border: isThisMon
-                          ? '2px solid var(--purple)'
-                          : `1.5px solid ${isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))'}`,
-                        borderRadius:14, cursor:'pointer',
-                        fontFamily:'inherit', textAlign:'left',
-                        minWidth:0, overflow:'hidden',
-                        WebkitTapHighlightColor:'transparent',
-                      }}
-                    >
-                      {/* ── Row 1: Month name + NOW/count ── */}
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-                        <span style={{
-                          fontSize:13, fontWeight:900, lineHeight:1,
-                          color: isThisMon ? 'var(--purple)' : 'var(--dark)',
-                          letterSpacing:'-.3px',
-                        }}>
-                          {MONTHS_SH[mo]}
-                        </span>
-                        <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
-                          {isThisMon && (
-                            <span style={{
-                              fontSize:7, fontWeight:800, letterSpacing:'.4px',
-                              color:'var(--purple)', background:'var(--pur-lt)',
-                              border:'1px solid var(--border2)',
-                              borderRadius:4, padding:'1px 4px',
-                            }}>NOW</span>
-                          )}
-                          {busy > 0 && (
-                            <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
-                              {busy}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* ── Row 2: Activity bars (5 segments ≈ weeks) ── */}
-                      <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:24, marginBottom:6 }}>
-                        {bars.map((density, bi) => (
-                          <div key={bi} style={{
-                            flex:1, alignSelf:'flex-end',
-                            height: density === 0 ? 3 : Math.round(4 + density * 19),
-                            borderRadius:2,
-                            background: density > 0 ? 'var(--purple)' : 'var(--border)',
-                            opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65),
-                          }} />
-                        ))}
-                      </div>
-
-                      {/* ── Row 3: Busy / Free counts ── */}
-                      <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                        {busy > 0 ? (
-                          <>
-                            <span style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'var(--pur-lt)', borderRadius:4, padding:'1px 5px' }}>
-                              {busy}b
-                            </span>
-                            <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>
-                              {free}f
-                            </span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize:9, color:'var(--lite)', opacity:.5 }}>quiet</span>
+        {viewMode === 'yearly' && (
+          <div style={{ padding:'12px 10px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
+              {yearlyStats.map(({ daysIn, busy, free, bars }, mo) => {
+                const isThisMon = mo === today.getMonth() && year === today.getFullYear();
+                const isSel     = mo === month && !isThisMon;
+                return (
+                  <button
+                    key={mo}
+                    onClick={() => {
+                      setViewDate(new Date(year, mo, 1));
+                      setSelectedDay(isThisMon ? today.getDate() : 1);
+                      setViewMode('monthly');
+                    }}
+                    style={{
+                      display:'flex', flexDirection:'column', gap:0,
+                      padding:'10px 9px 9px',
+                      background: isThisMon
+                        ? 'var(--pur-lt,rgba(124,106,240,.10))'
+                        : 'var(--glass-bg2,rgba(255,255,255,.04))',
+                      border: isThisMon
+                        ? '2px solid var(--purple)'
+                        : `1.5px solid ${isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))'}`,
+                      borderRadius:14, cursor:'pointer',
+                      fontFamily:'inherit', textAlign:'left',
+                      minWidth:0, overflow:'hidden',
+                      WebkitTapHighlightColor:'transparent',
+                    }}
+                  >
+                    {/* Month name + NOW badge + count */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                      <span style={{
+                        fontSize:13, fontWeight:900, lineHeight:1,
+                        color: isThisMon ? 'var(--purple)' : 'var(--dark)',
+                        letterSpacing:'-.3px',
+                      }}>
+                        {MONTHS_SH[mo]}
+                      </span>
+                      <div style={{ display:'flex', alignItems:'center', gap:3, flexShrink:0 }}>
+                        {isThisMon && (
+                          <span style={{
+                            fontSize:7, fontWeight:800, letterSpacing:'.4px',
+                            color:'var(--purple)', background:'var(--pur-lt)',
+                            border:'1px solid var(--border2)',
+                            borderRadius:4, padding:'1px 4px',
+                          }}>NOW</span>
+                        )}
+                        {busy > 0 && (
+                          <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>
+                            {busy}
+                          </span>
                         )}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
 
-              {/* Legend */}
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginTop:14 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)', opacity:.8 }} />
-                  <span style={{ fontSize:10, color:'var(--mid)' }}>b = busy days</span>
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background:'var(--border)', opacity:.5 }} />
-                  <span style={{ fontSize:10, color:'var(--mid)' }}>f = free days</span>
-                </div>
+                    {/* Activity bars — 5 segments ≈ weeks */}
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:24, marginBottom:6 }}>
+                      {bars.map((density, bi) => (
+                        <div key={bi} style={{
+                          flex:1, alignSelf:'flex-end',
+                          height: density === 0 ? 3 : Math.round(4 + density * 19),
+                          borderRadius:2,
+                          background: density > 0 ? 'var(--purple)' : 'var(--border)',
+                          opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65),
+                        }} />
+                      ))}
+                    </div>
+
+                    {/* Busy / Free counts */}
+                    <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                      {busy > 0 ? (
+                        <>
+                          <span style={{
+                            fontSize:9, fontWeight:700,
+                            color:'var(--purple)',
+                            background:'var(--pur-lt)',
+                            borderRadius:4, padding:'1px 5px',
+                          }}>
+                            {busy}b
+                          </span>
+                          <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>
+                            {free}f
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize:9, color:'var(--lite)', opacity:.5 }}>quiet</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Legend + hint */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginTop:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)', opacity:.8 }} />
+                <span style={{ fontSize:10, color:'var(--mid)' }}>b = busy days</span>
               </div>
-              <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
-                Tap any month to see the full schedule
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:'var(--border)', opacity:.5 }} />
+                <span style={{ fontSize:10, color:'var(--mid)' }}>f = free days</span>
               </div>
             </div>
-          );
-        })()}
+            <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+              Tap any month to see the full schedule
+            </div>
+          </div>
+        )}
+
+';
+
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import type { Schedule } from '@/types/database';
+import { PRIORITY_COLORS } from '@/lib/utils';
+import { getHolidays, buildHolidayMap, toDateStr, type Holiday } from '@/lib/holidays';
+import { COUNTRIES } from '@/lib/countries';
+import BottomNav from '@/components/layout/BottomNav';
+import AddScheduleSheet from '@/components/AddScheduleSheet';
+import SwipeDeleteRow from '@/components/SwipeDeleteRow';
+import { createClient } from '@/lib/supabase/client';
+import NotificationPrompt from '@/components/notifications/NotificationPrompt';
+import { checkAndNotify } from '@/lib/notifications';
+import { buildDisplaySchedules, type DisplaySchedule, type CompletionMap } from '@/lib/recurrence';
+import { fetchCompletions } from '@/lib/scheduleExpand';
+
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS     = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SH  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+type ViewMode = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// ── SVG TypeIcon — shared across all views ─────────────────────────────────────
+function TypeIcon({ type }: { type: string }) {
+  const col = type === 'task' ? 'var(--mint,#2DD4BF)' : type === 'reminder' ? 'var(--amber,#FDCB6E)' : type === 'block' ? 'var(--coral,#FF6B8A)' : 'var(--cyan,#00C6FF)';
+  if (type === 'task') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <rect x="1" y="1" width="14" height="14" rx="3" stroke={col} strokeWidth="1.4"/>
+      <polyline points="4,8 7,11 12,5" stroke={col} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (type === 'reminder') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <path d="M8 2a4 4 0 014 4v3l1 1v1H3v-1l1-1V6a4 4 0 014-4z" stroke={col} strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M6.5 13a1.5 1.5 0 003 0" stroke={col} strokeWidth="1.4"/>
+    </svg>
+  );
+  if (type === 'block') return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <circle cx="8" cy="8" r="6" stroke={col} strokeWidth="1.4"/>
+      <path d="M4 4l8 8" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, display:'block' }}>
+      <rect x="1" y="3" width="14" height="12" rx="2.5" stroke={col} strokeWidth="1.4"/>
+      <path d="M1 7h14" stroke={col} strokeWidth="1.4"/>
+      <path d="M5 1v3M11 1v3" stroke={col} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ── SVG flag icons ─────────────────────────────────────────────────────────────
+function CountryFlag({ code }: { code: string }) {
+  if (code === 'PH') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="6.5" fill="#0038A8"/>
+      <rect y="6.5" width="20" height="6.5" fill="#CE1126"/>
+      <polygon points="0,0 9,6.5 0,13" fill="#FFFFFF"/>
+      <circle cx="4.2" cy="6.5" r="1.4" fill="#FCD116"/>
+      {[0,45,90,135,180,225,270,315].map((deg,i) => {
+        const a = deg * Math.PI / 180;
+        return <line key={i}
+          x1={4.2 + Math.cos(a)*1.7} y1={6.5 + Math.sin(a)*1.7}
+          x2={4.2 + Math.cos(a)*2.6} y2={6.5 + Math.sin(a)*2.6}
+          stroke="#FCD116" strokeWidth="0.55"/>;
+      })}
+      <polygon points="1.6,1.5 1.85,2.2 2.55,2.2 2,2.6 2.2,3.3 1.6,2.9 1,3.3 1.2,2.6 0.65,2.2 1.35,2.2" fill="#FCD116"/>
+      <polygon points="1.6,9.7 1.85,10.4 2.55,10.4 2,10.8 2.2,11.5 1.6,11.1 1,11.5 1.2,10.8 0.65,10.4 1.35,10.4" fill="#FCD116"/>
+      <polygon points="6.2,5.8 6.45,6.5 7.15,6.5 6.6,6.9 6.8,7.6 6.2,7.2 5.6,7.6 5.8,6.9 5.25,6.5 5.95,6.5" fill="#FCD116"/>
+    </svg>
+  );
+  if (code === 'US') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" fill="#B22234"/>
+      {[1,3,5,7,9,11].map(y => <rect key={y} y={y} width="20" height="1" fill="#FFF"/>)}
+      <rect width="9" height="7" fill="#3C3B6E"/>
+      {[1,3,5].flatMap(row => [1,3,5,7].map(col =>
+        <circle key={`${row}${col}`} cx={col} cy={row} r="0.6" fill="#FFF"/>
+      ))}
+    </svg>
+  );
+  if (code === 'GB') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" rx="2" fill="#012169"/>
+      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#FFF" strokeWidth="3"/>
+      <path d="M0,0 L20,13 M20,0 L0,13" stroke="#C8102E" strokeWidth="1.8"/>
+      <path d="M10,0 V13 M0,6.5 H20" stroke="#FFF" strokeWidth="3.5"/>
+      <path d="M10,0 V13 M0,6.5 H20" stroke="#C8102E" strokeWidth="2.2"/>
+    </svg>
+  );
+  if (code === 'AU') return (
+    <svg width="20" height="13" viewBox="0 0 20 13" xmlns="http://www.w3.org/2000/svg"
+      style={{ display:'block', borderRadius:2, flexShrink:0, border:'1px solid rgba(255,255,255,.1)' }}>
+      <rect width="20" height="13" rx="2" fill="#00008B"/>
+      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#FFF" strokeWidth="1.5"/>
+      <path d="M0,0 L6,4 M6,0 L0,4" stroke="#C8102E" strokeWidth="0.9"/>
+      <path d="M3,0 V4 M0,2 H6" stroke="#FFF" strokeWidth="1.8"/>
+      <path d="M3,0 V4 M0,2 H6" stroke="#C8102E" strokeWidth="1.1"/>
+      <circle cx="14" cy="4" r="0.8" fill="#FFF"/>
+      <circle cx="17" cy="7" r="0.8" fill="#FFF"/>
+      <circle cx="12" cy="8" r="0.8" fill="#FFF"/>
+      <circle cx="15" cy="11" r="0.8" fill="#FFF"/>
+    </svg>
+  );
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:13, borderRadius:2, background:'var(--pur-lt)', color:'var(--purple)', fontSize:7, fontWeight:800, letterSpacing:'.5px', flexShrink:0 }}>{code}</span>
+  );
+}
+
+// ── Shared sub-components ──────────────────────────────────────────────────────
+function HolidayBanner({ holiday }: { holiday: Holiday }) {
+  return (
+    <div className="holiday-banner">
+      <span className="hol-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="4" width="16" height="14" rx="3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+          <path d="M2 8h16" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5"/>
+          <path d="M6 2v3M14 2v3" stroke="var(--coral,#FF6B8A)" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="7" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+          <circle cx="10" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+          <circle cx="13" cy="12" r="1" fill="var(--coral,#FF6B8A)"/>
+        </svg>
+      </span>
+      <div className="hol-info">
+        <div className="hol-name">{holiday.localName}</div>
+        {holiday.localName !== holiday.name && <div className="hol-en">{holiday.name}</div>}
+      </div>
+      <span className="hol-tag">Holiday</span>
+    </div>
+  );
+}
+
+function EventCard({ s, compact = false, onEdit }: { s: Schedule; compact?: boolean; onEdit?: (s: Schedule) => void }) {
+  const pColor = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+  const loc    = (s as Schedule & { location?: string }).location;
+  const startD = new Date(s.start_time);
+  const endD   = s.end_time ? new Date(s.end_time) : null;
+  const Tag    = onEdit ? 'button' : 'div';
+  return (
+    <Tag
+      {...(onEdit ? { onClick: () => onEdit(s) } : {})}
+      style={{
+        display:'flex', flexDirection:'column', gap: compact ? 3 : 4,
+        padding: compact ? '8px 10px 8px 12px' : '10px 12px 10px 14px',
+        borderRadius: compact ? 10 : 12,
+        background:'var(--surf)',
+        border:'1px solid var(--glass-border,var(--border))',
+        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
+        opacity: s.is_completed ? 0.5 : 1,
+        width: onEdit ? '100%' : undefined,
+        textAlign: onEdit ? 'left' : undefined,
+        cursor: onEdit ? 'pointer' : 'default',
+        fontFamily:'inherit',
+        transition: onEdit ? 'background .1s' : undefined,
+      } as React.CSSProperties}>
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <TypeIcon type={s.type} />
+        <span style={{
+          fontSize: compact ? 13 : 14, fontWeight:700, color:'var(--dark)',
+          flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          textDecoration: s.is_completed ? 'line-through' : 'none',
+        }}>{s.title}</span>
+        {s.is_completed
+          ? <span style={{ fontSize:11, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>✓</span>
+          : onEdit && <span style={{ fontSize:9, color:'var(--mid)', flexShrink:0, opacity:.5 }}>›</span>
+        }
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+          {endD && !s.all_day ? ` — ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+        </span>
+        {loc && <>
+          <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+          <span style={{ fontSize:10, color:'var(--mid)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:120 }}>{loc}</span>
+        </>}
+        <span style={{
+          fontSize:9, fontWeight:800, color:pColor,
+          background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`,
+          padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0,
+        }}>{s.priority}</span>
+      </div>
+    </Tag>
+  );
+}
+
+// ── Activity detail card — for Activities panel and Monthly Log ────────────────
+function ActivityDetailCard({ s, dayDate, onClick }: { s: Schedule; dayDate: Date; onClick: () => void }) {
+  const pColor  = PRIORITY_COLORS[s.priority] || 'var(--purple)';
+  const startD  = new Date(s.start_time);
+  const endD    = s.end_time ? new Date(s.end_time) : null;
+  const desc    = (s as Schedule & { description?: string; notes?: string }).description
+               || (s as Schedule & { description?: string; notes?: string }).notes
+               || '';
+  const typeLabelMap: Record<string, string> = { task:'Task', reminder:'Reminder', block:'Block', event:'Event' };
+  const typeLabel = typeLabelMap[s.type] ?? s.type;
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width:'100%', textAlign:'left', background:'var(--surf)',
+        border:'1px solid var(--glass-border,var(--border))',
+        borderLeftWidth:3, borderLeftColor:pColor, borderLeftStyle:'solid',
+        borderRadius:12, padding:'10px 12px 10px 14px',
+        cursor:'pointer', fontFamily:'inherit',
+        boxShadow:'0 1px 5px rgba(0,0,0,.07)',
+        opacity: s.is_completed ? 0.55 : 1,
+        display:'flex', flexDirection:'column', gap:5,
+        transition:'background .1s',
+      }}>
+      {/* Title + status */}
+      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        <TypeIcon type={s.type} />
+        <span style={{
+          fontSize:13, fontWeight:700, color:'var(--dark)', flex:1,
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          textDecoration: s.is_completed ? 'line-through' : 'none',
+        }}>{s.title}</span>
+        {s.is_completed
+          ? <span style={{ fontSize:10, color:'var(--mint,#2DD4BF)', fontWeight:800, flexShrink:0 }}>Done ✓</span>
+          : <span style={{ fontSize:9, fontWeight:800, color:pColor, background:`rgba(${pColor==='#FF3B30'?'255,59,48':pColor==='#FF6B8A'?'255,107,138':pColor==='#FDCB6E'?'253,203,110':'0,206,201'},.12)`, padding:'1px 6px', borderRadius:5, letterSpacing:'.4px', textTransform:'uppercase', flexShrink:0 }}>{s.priority}</span>
+        }
+      </div>
+      {/* Date + time */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {dayDate.toLocaleDateString('en-US',{ weekday:'short', month:'short', day:'numeric' })}
+        </span>
+        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+        <span style={{ fontSize:10, color:'var(--mid)', fontWeight:600 }}>
+          {s.all_day ? 'All day' : startD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}
+          {endD && !s.all_day ? ` – ${endD.toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit', hour12:true })}` : ''}
+        </span>
+        <span style={{ fontSize:10, color:'var(--border)' }}>·</span>
+        <span style={{ fontSize:10, color:'var(--mid)' }}>{typeLabel}</span>
+      </div>
+      {/* Description / notes */}
+      {desc ? (
+        <div style={{ fontSize:11, color:'var(--mid)', opacity:0.8, lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }}>
+          {desc}
+        </div>
+      ) : null}
+    </button>
+  );
+}
 
 
+// ── DOW header — aligned with CalendarTrack cells ─────────────────────────────
+function CalDowHeader() {
+  const ref   = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const measure = () => setW(el.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el); return () => ro.disconnect();
+  }, []);
+  const GAP = 3, PAD = 10;
+  const cellSize = w > 0 ? Math.floor((w - PAD*2 - GAP*6) / 7) : 0;
+  return (
+    <div ref={ref} style={{ display:'flex', gap:GAP, padding:`6px ${PAD}px 2px`, background:'var(--glass-bg2,var(--surf))' }}>
+      {DAYS_SHORT.map(d => (
+        <div key={d} style={{
+          width: cellSize, flexShrink:0,
+          textAlign:'center', fontSize:10, fontWeight:700,
+          color:'var(--dark)', opacity:.45, textTransform:'uppercase', letterSpacing:'.5px',
+        }}>{d}</div>
+      ))}
+    </div>
+  );
+}
 
+// ── Fluid swipe calendar track ────────────────────────────────────────────────
+interface CalTrackProps {
+  year: number; month: number;
+  selectedDay: number;
+  dayMapFn:    (y: number, mo: number) => Record<number, import('@/types/database').Schedule[]>;
+  holidaysFn:  (y: number, mo: number) => Map<string, import('@/lib/holidays').Holiday>;
+  isToday:     (d: number, y: number, mo: number) => boolean;
+  onDayClick:  (d: number) => void;
+  onMonthChange: (delta: -1 | 1) => void;
+}
+function CalendarTrack({
+  year, month, selectedDay,
+  dayMapFn, holidaysFn, isToday,
+  onDayClick, onMonthChange,
+}: CalTrackProps) {
+  const wrapRef  = useRef<HTMLDivElement>(null);
+  const startX   = useRef<number | null>(null);
+  const startY   = useRef<number | null>(null);
+  const busy     = useRef(false);
+  const [containerW, setContainerW] = useState(0);
+  const [offsetX,    setOffsetX]    = useState(0);
+  const [dir,        setDir]        = useState<'l'|'r'|null>(null);
+  const [axis,       setAxis]       = useState<'h'|'v'|null>(null);
+
+  // Measure container width reliably
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setContainerW(el.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Clear animation flag after month change
+  const prevKey = useRef(`${year}-${month}`);
+  useEffect(() => {
+    const key = `${year}-${month}`;
+    if (key !== prevKey.current) {
+      prevKey.current = key;
+      const t = setTimeout(() => { setDir(null); busy.current = false; }, 320);
+      return () => clearTimeout(t);
+    }
+  }, [year, month]);
+
+  // Compute cell size from container width
+  const GAP      = 3;
+  const PAD      = 10; // each side
+  const usable   = containerW - PAD * 2;
+  const cellSize = containerW > 0 ? Math.floor((usable - GAP * 6) / 7) : 0;
+
+  function renderGrid(y: number, mo: number) {
+    const days  = new Date(y, mo + 1, 0).getDate();
+    const first = new Date(y, mo, 1).getDay();
+    const dMap  = dayMapFn(y, mo);
+    const hMap  = holidaysFn(y, mo);
+
+    const items: React.ReactNode[] = [];
+    // Empty cells for offset
+    for (let i = 0; i < first; i++) {
+      items.push(<div key={`e${i}`} style={{ width: cellSize, height: cellSize }} />);
+    }
+    // Day cells
+    for (let i = 0; i < days; i++) {
+      const d       = i + 1;
+      const dateStr = toDateStr(new Date(y, mo, d));
+      const hol     = hMap.get(dateStr);
+      const evts    = dMap[d] ?? [];
+      const active  = y === year && mo === month && d === selectedDay;
+      const todayD  = isToday(d, y, mo);
+
+      // Build visual state styles inline — no CSS class size dependency
+      const cellBg  = active  ? 'var(--purple)'
+                    : todayD  ? 'rgba(124,106,240,.13)'
+                    : hol     ? 'rgba(255,107,107,.07)'
+                    : 'transparent';
+      const cellBox = todayD && !active ? '0 0 0 2px var(--purple)' : 'none';
+      const numCol  = active  ? '#fff'
+                    : todayD  ? 'var(--purple)'
+                    : hol     ? 'var(--coral,#FF6B8A)'
+                    : 'var(--dark)';
+      const numW    = active || todayD ? 800 : hol ? 700 : 500;
+
+      items.push(
+        <button
+          key={d}
+          onClick={() => { if (y === year && mo === month) onDayClick(d); }}
+          title={hol?.localName}
+          style={{
+            width: cellSize, height: cellSize,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 2,
+            borderRadius: Math.round(cellSize * 0.28),
+            background: cellBg,
+            boxShadow: cellBox,
+            border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit',
+            padding: 0,
+            flexShrink: 0,
+            transition: 'background .12s',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <span style={{
+            fontSize: Math.max(11, Math.round(cellSize * 0.34)),
+            fontWeight: numW,
+            color: numCol,
+            lineHeight: 1,
+            letterSpacing: active ? '-.3px' : '0',
+          }}>{d}</span>
+          {/* Dot indicators */}
+          {(hol || evts.length > 0) && (
+            <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 5 }}>
+              {hol && (
+                <span style={{
+                  width: active ? 4 : 5, height: active ? 4 : 5,
+                  borderRadius: '50%',
+                  background: active ? 'rgba(255,255,255,.85)' : 'var(--coral,#FF6B8A)',
+                  flexShrink: 0,
+                }} />
+              )}
+              {!hol && evts[0] && (
+                <span style={{
+                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
+                  background: active ? 'rgba(255,255,255,.75)' : PRIORITY_COLORS[evts[0].priority],
+                }} />
+              )}
+              {!hol && evts[1] && (
+                <span style={{
+                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
+                  background: active ? 'rgba(255,255,255,.55)' : PRIORITY_COLORS[evts[1].priority],
+                }} />
+              )}
+            </div>
+          )}
+        </button>
+      );
+    }
+    return items;
+  }
+
+  const THRESH = (containerW || 390) * 0.28;
+
+  function onTS(e: React.TouchEvent) {
+    if (busy.current) return;
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    setAxis(null); setOffsetX(0);
+  }
+  function onTM(e: React.TouchEvent) {
+    if (startX.current === null || busy.current) return;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - (startY.current ?? 0);
+    if (!axis) {
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
+        setAxis(Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v');
+      return;
+    }
+    if (axis === 'v') return;
+    e.preventDefault();
+    const cap = (containerW || 390) * 0.55, r = 0.32;
+    setOffsetX(Math.abs(dx) > cap ? Math.sign(dx) * (cap + (Math.abs(dx) - cap) * r) : dx);
+  }
+  function onTE() {
+    if (!startX.current) return;
+    startX.current = null;
+    if (axis !== 'h' || busy.current) { setOffsetX(0); setAxis(null); return; }
+    const snap = offsetX > THRESH ? -1 : offsetX < -THRESH ? 1 : 0;
+    if (snap !== 0) {
+      busy.current = true;
+      setDir(snap < 0 ? 'r' : 'l');
+      setOffsetX(0); setAxis(null);
+      onMonthChange(snap as -1 | 1);
+    } else {
+      setOffsetX(0); setAxis(null);
+    }
+  }
+
+  const gridAnim: React.CSSProperties = offsetX !== 0
+    ? { transform: `translateX(${offsetX}px)`, transition: 'none', willChange: 'transform' }
+    : dir === 'l' ? { animation: 'calSlideL 280ms cubic-bezier(.25,.46,.45,.94) both' }
+    : dir === 'r' ? { animation: 'calSlideR 280ms cubic-bezier(.25,.46,.45,.94) both' }
+    : {};
+
+  // Grid container — use flexbox wrap so no CSS grid 1fr confusion
+  const gridStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: GAP,
+    padding: `4px ${PAD}px 6px`,
+    ...gridAnim,
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{ overflow: 'hidden', touchAction: 'pan-y' }}
+      onTouchStart={onTS}
+      onTouchMove={onTM}
+      onTouchEnd={onTE}
+    >
+      {containerW > 0 && (
+        <div key={`${year}-${month}`} style={gridStyle}>
+          {renderGrid(year, month)}
+        </div>
+      )}
+    </div>
+  );
+}
