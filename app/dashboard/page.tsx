@@ -3,10 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { fetchExpandedSchedules } from '@/lib/scheduleExpand';
 import DashboardClient from './DashboardClient';
 
-// Always render fresh per-user data. This route is already dynamic (reads auth
-// cookies), and a time-based cache let a cross-route mutation (e.g. adding a
-// schedule on /schedule/new) show stale data on the next soft navigation here.
-export const revalidate = 0;
+// 15-second cache: fresh enough for a task planner, avoids a full Supabase
+// round-trip on every Home tap. Adding/completing tasks invalidates via router.refresh().
+// After 15 s Next.js revalidates in the background (stale-while-revalidate).
+export const revalidate = 15;
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -32,7 +32,9 @@ export default async function DashboardPage() {
   // Wide window: 28 days back (for streak) through 60 days ahead (for upcoming).
   // Recurring schedules are expanded into occurrences and per-occurrence
   // completion is applied, so every derived list below is recurrence-aware.
-  const rangeEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60, 23, 59, 59, 999);
+  // 30-day lookahead is enough for the dashboard widgets (was 60).
+  // The calendar page handles longer-horizon data independently.
+  const rangeEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30, 23, 59, 59, 999);
   const nowMs = Date.now();
 
   const [

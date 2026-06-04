@@ -61,7 +61,7 @@ export interface AppUpdateState {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const POLL_MS        = 3 * 60 * 1000;
+const POLL_MS        = 15 * 60 * 1000;  // 15 min — reduced from 3 min for performance
 const DISMISSED_KEY  = 'planiq_dismissed_sha';
 const LAST_SHA_KEY   = 'planiq_last_sha';
 const LAST_VER_KEY   = 'planiq_last_version';
@@ -171,9 +171,35 @@ export function useAppUpdate(): AppUpdateState {
   }, []);
 
   useEffect(() => {
-    fetchAll();
-    const t = setInterval(fetchAll, POLL_MS);
-    return () => clearInterval(t);
+    // Only poll when the page is visible — pause when app is backgrounded
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (timer) return;
+      fetchAll(); // immediate check when becoming visible
+      timer = setInterval(fetchAll, POLL_MS);
+    };
+    const stopPolling = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') startPolling();
+      else stopPolling();
+    };
+
+    // Start immediately if already visible
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState === 'visible') startPolling();
+      document.addEventListener('visibilitychange', onVisibility);
+    }
+
+    return () => {
+      stopPolling();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility);
+      }
+    };
   }, [fetchAll]);
 
   // ── Derive hasUpdate ──────────────────────────────────────────────────────

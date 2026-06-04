@@ -69,9 +69,10 @@ export default function ProgressPage() {
       const now   = new Date();
       const today = startOfDay(now);
       const from  = addDays(today, -27);
-      // Window: 28 days back through 60 days ahead, recurring expanded with
-      // per-occurrence completion so Progress reflects recurring activities too.
-      const rangeEnd = addDays(today, 60); rangeEnd.setHours(23, 59, 59, 999);
+      // Window: 28 days back through 14 days ahead (was 60).
+      // Progress module only shows past activity; 14d forward is enough for
+      // pending/upcoming counts without fetching unnecessary future data.
+      const rangeEnd = addDays(today, 14); rangeEnd.setHours(23, 59, 59, 999);
 
       const schedules = await fetchExpandedSchedules(supabase, user.id, from, rangeEnd);
 

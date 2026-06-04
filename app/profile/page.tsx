@@ -2,9 +2,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ProfileClient from './ProfileClient';
 
-// Always render fresh per-user data so profile edits (name, designation, photo,
-// country) are reflected immediately on the next navigation, not up to 60s later.
-export const revalidate = 0;
+// 30-second cache: profile edits are infrequent. Saves a Supabase round-trip
+// on most Profile taps. router.refresh() is called after any profile mutation.
+export const revalidate = 30;
 
 export default async function ProfilePage() {
   const supabase = createClient();

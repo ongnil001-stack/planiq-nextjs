@@ -30,7 +30,7 @@ export default function UpdateBanner() {
     check();
     window.addEventListener('storage', check);
     // Poll every 15s in case storage event doesn't fire in same tab
-    const t = setInterval(check, 15_000);
+    const t = setInterval(check, 60_000);  // 60s — was 15s; localStorage check is cheap but 15s is still noisy
     return () => { window.removeEventListener('storage', check); clearInterval(t); };
   }, []);
 
