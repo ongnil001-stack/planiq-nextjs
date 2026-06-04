@@ -500,6 +500,9 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
   const [holidays,   setHolidays]   = useState<Map<string, Holiday>>(new Map());
   const [countryCode,setCountryCode]= useState('');
   const [schedules,  setSchedules]  = useState<Schedule[]>(initialSchedules);
+  // Yearly view: full-year schedule data (separate from monthly schedules)
+  const [yearlySchedules,  setYearlySchedules]  = useState<Schedule[]>([]);
+  const [yearlyLoading,    setYearlyLoading]    = useState(false);
   // Per-occurrence completion map for the visible month (recurring schedules).
   const [completions, setCompletions] = useState<CompletionMap>(new Map());
   // Mirror of the EXPANDED schedules (recurring occurrences included) so the
@@ -576,6 +579,37 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setSchedules(merged);
     // Per-occurrence completions for this month (recurring schedules)
     setCompletions(await fetchCompletions(supabase, user.id, monthStart, monthEnd));
+  }, []);
+
+  // Fetch all schedules for a full year (used by Yearly view)
+  const fetchYearSchedules = useCallback(async (y: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setYearlyLoading(true);
+    const yearStart = new Date(y, 0, 1).toISOString();
+    const yearEnd   = new Date(y, 11, 31, 23, 59, 59, 999).toISOString();
+    try {
+      const [{ data: regular }, { data: recurring }] = await Promise.all([
+        supabase.from('schedules').select('*')
+          .eq('user_id', user.id)
+          .gte('start_time', yearStart)
+          .lte('start_time', yearEnd)
+          .order('start_time'),
+        supabase.from('schedules').select('*')
+          .eq('user_id', user.id)
+          .not('recurrence_rule', 'is', null)
+          .lt('start_time', yearStart)
+          .or(`recurrence_end.is.null,recurrence_end.gte.${yearStart.slice(0,10)}`)
+          .order('start_time'),
+      ]);
+      const ids = new Set((regular ?? []).map(s => s.id));
+      setYearlySchedules([
+        ...(regular ?? []),
+        ...(recurring ?? []).filter(s => !ids.has(s.id)),
+      ] as Schedule[]);
+    } catch { /* ignore */ }
+    finally { setYearlyLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Refresh schedules (called after save/edit)
@@ -821,6 +855,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
     setSelectedDay(d);
     setViewMode('daily');
   }
+
+  // Load full-year schedules when entering Yearly view or navigating to a new year
+  useEffect(() => {
+    if (viewMode === 'yearly') fetchYearSchedules(year);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, year]);
 
   return (
     <div className="page">
@@ -1556,27 +1596,42 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
           <div style={{ padding:'12px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
+
+            {/* Loading indicator while fetching year data */}
+            {yearlyLoading && (
+              <div style={{ textAlign:'center', padding:'8px 0 4px', fontSize:11, color:'var(--mid)' }}>
+                Loading schedule data…
+              </div>
+            )}
+
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'7px' }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const daysIn = new Date(year, mo + 1, 0).getDate();
                 const firstD = new Date(year, mo, 1).getDay();
-                // Activity days — boolean[] avoids Set<T> TSX generic ambiguity
+                const isThisMon = mo === today.getMonth() && year === today.getFullYear();
+                const isSel     = mo === month && !isThisMon;
+
+                // Expand recurring schedules for this month using buildDisplaySchedules
+                const moStart = new Date(year, mo, 1);
+                const moEnd   = new Date(year, mo + 1, 0, 23, 59, 59, 999);
+                const moDisplaySchedules = buildDisplaySchedules(yearlySchedules, moStart, moEnd, completions);
+
+                // Activity days — which dates have user-created activities
                 const dayHasAct: boolean[] = [];
-                schedules.forEach(s => {
+                moDisplaySchedules.forEach(s => {
                   const sd = new Date(s.start_time);
                   if (sd.getFullYear() === year && sd.getMonth() === mo) {
                     dayHasAct[sd.getDate()] = true;
                   }
                 });
-                // Holiday days — check holidays map (keys: YYYY-MM-DD)
+
+                // Holiday days — check holidays map (YYYY-MM-DD keys)
                 const dayIsHol: boolean[] = [];
                 for (let d = 1; d <= daysIn; d++) {
                   const mo2 = String(mo + 1).padStart(2, '0');
                   const d2  = String(d).padStart(2, '0');
                   if (holidays.has(year + '-' + mo2 + '-' + d2)) dayIsHol[d] = true;
                 }
-                const isThisMon = mo === today.getMonth() && year === today.getFullYear();
-                const isSel     = mo === month && !isThisMon;
 
                 // 42 cells: 6 rows × 7 cols
                 const cells: (number | null)[] = [];
@@ -1595,8 +1650,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       setViewMode('monthly');
                     }}
                     style={{
-                      display: 'flex',
-                      flexDirection: 'column',
+                      display: 'flex', flexDirection: 'column',
                       padding: '8px 7px 7px',
                       background: isThisMon
                         ? 'var(--pur-lt,rgba(124,106,240,.10))'
@@ -1604,15 +1658,12 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       border: isThisMon
                         ? '2px solid var(--purple)'
                         : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
-                      borderRadius: 13,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      textAlign: 'left',
-                      minWidth: 0,
-                      WebkitTapHighlightColor: 'transparent',
+                      borderRadius: 13, cursor: 'pointer',
+                      fontFamily: 'inherit', textAlign: 'left',
+                      minWidth: 0, WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    {/* Month label — no NOW text, current month shown via border only */}
+                    {/* Month label — current month shown via border, no text label */}
                     <div style={{ marginBottom: 5 }}>
                       <span style={{
                         fontSize: 11, fontWeight: 900, lineHeight: 1,
@@ -1623,7 +1674,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       </span>
                     </div>
 
-                    {/* Date grid */}
+                    {/* Date grid with explicit pixel cells */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: `repeat(7,${cellPx}px)`,
@@ -1635,28 +1686,23 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                         const isHol   = dayNum !== null && dayIsHol[dayNum] === true;
                         const hasBoth = hasAct && isHol;
 
-                        // Cell background: today > activity > holiday > empty
+                        // Priority: today > activity > holiday > empty
                         let bg = 'transparent';
-                        if (isToday)   bg = 'var(--purple)';
-                        else if (hasAct && !isHol) bg = 'var(--pur-lt,rgba(124,106,240,.15))';
-                        else if (isHol && !hasAct) bg = 'rgba(255,92,122,.15)';
-                        else if (hasBoth)           bg = 'var(--pur-lt,rgba(124,106,240,.15))';
+                        if (isToday)        bg = 'var(--purple)';
+                        else if (hasAct)    bg = 'var(--pur-lt,rgba(124,106,240,.18))';
+                        else if (isHol)     bg = 'rgba(255,92,122,.15)';
 
-                        // Text color: today > activity > holiday > normal
                         let col = 'var(--dark)';
-                        if (isToday)       col = '#fff';
-                        else if (hasAct)   col = 'var(--purple)';
-                        else if (isHol)    col = 'var(--coral,#FF5C7A)';
+                        if (isToday)        col = '#fff';
+                        else if (hasAct)    col = 'var(--purple)';
+                        else if (isHol)     col = 'var(--coral,#FF5C7A)';
 
-                        const fw = isToday || hasAct || isHol ? 700 : 400;
+                        const fw = (isToday || hasAct || isHol) ? 700 : 400;
 
                         return (
                           <div key={ci} style={{
-                            width: cellPx,
-                            height: cellPx,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            width: cellPx, height: cellPx,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                             position: 'relative',
                             borderRadius: '50%',
                             background: bg,
@@ -1665,26 +1711,21 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                             {dayNum !== null && (
                               <>
                                 <span style={{
-                                  fontSize: fSize,
-                                  lineHeight: 1,
-                                  fontWeight: fw,
-                                  color: col,
+                                  fontSize: fSize, lineHeight: 1,
+                                  fontWeight: fw, color: col,
                                   fontVariantNumeric: 'tabular-nums',
-                                  pointerEvents: 'none',
-                                  userSelect: 'none',
+                                  pointerEvents: 'none', userSelect: 'none',
                                 }}>
                                   {dayNum}
                                 </span>
-                                {/* Holiday dot indicator — shown for holiday+activity overlap */}
-                                {hasBoth && !isToday && (
+                                {/* Coral dot for holiday-only or both: shown in corner */}
+                                {isHol && !isToday && (
                                   <span style={{
-                                    position: 'absolute',
-                                    bottom: '2px',
-                                    right: '2px',
-                                    width: '3px',
-                                    height: '3px',
+                                    position: 'absolute', bottom: '1px', right: '1px',
+                                    width: '2.5px', height: '2.5px',
                                     borderRadius: '50%',
                                     background: 'var(--coral,#FF5C7A)',
+                                    opacity: hasBoth ? 1 : 0.7,
                                     flexShrink: 0,
                                   }} />
                                 )}
@@ -1704,6 +1745,7 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             </div>
           </div>
         )}
+
 
 
 
