@@ -64,9 +64,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [emailVisible, setEmailVisible] = useState(false);
   const [themeFlash,   setThemeFlash]   = useState<string | null>(null);
   const [changelogOpen, setChangelogOpen] = useState(false);
-  // Which changelog versions have their notes fully expanded
-  // Type assertion avoids TSX generic <T> ambiguity: useState<Record<K,V>> → useState(init as Type)
-  const [expandedVersions, setExpandedVersions] = useState({} as {[v:string]:boolean});
+  // Track expanded changelog versions as a plain string array — no TypeScript generics needed
+  const [expandedVersions, setExpandedVersions] = useState([] as string[]);
   const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1023,7 +1022,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                 {changelogOpen && appUpdate.changelog.length > 0 && (
                   <div style={{ borderTop:'1px solid var(--border)', padding:'12px 14px 14px', display:'flex', flexDirection:'column', gap:16 }}>
                     {appUpdate.changelog.map((entry, i) => {
-                      const isExp   = expandedVersions[entry.version] === true;
+                      const isExp   = expandedVersions.indexOf(entry.version) >= 0;
                       const PREVIEW = 3;
                       const hasMore = entry.notes.length > PREVIEW;
                       const shown   = isExp ? entry.notes : entry.notes.slice(0, PREVIEW);
@@ -1043,7 +1042,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                           </ul>
                           {hasMore && (
                             <button
-                              onClick={() => setExpandedVersions(prev => ({ ...prev, [entry.version]: !prev[entry.version] }))}
+                              onClick={() => setExpandedVersions(prev => isExp ? prev.filter(v => v !== entry.version) : [...prev, entry.version])}
                               style={{ marginTop:7, fontSize:11, fontWeight:700, color:'var(--purple)', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0 }}
                             >
                               {isExp ? '↑ Show less' : `+ ${entry.notes.length - PREVIEW} more changes`}
