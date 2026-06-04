@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { fetchExpandedSchedules } from '@/lib/scheduleExpand';
 import BottomNav from '@/components/layout/BottomNav';
+import AILoadingIndicator from '@/components/AILoadingIndicator';
 import SmartReschedulePanel from '@/components/SmartReschedulePanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
