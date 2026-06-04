@@ -1642,44 +1642,6 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
             </div>
           </div>
         )}
-                          <span style={{ fontSize:10, fontWeight:800, color: isThisMon ? 'var(--purple)' : 'var(--mid)' }}>{busy}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:24, marginBottom:6 }}>
-                      {bars.map((density, bi) => (
-                        <div key={bi} style={{ flex:1, alignSelf:'flex-end', height: density === 0 ? 3 : Math.round(4 + density * 19), borderRadius:2, background: density > 0 ? 'var(--purple)' : 'var(--border)', opacity: density === 0 ? 0.2 : Math.min(1, 0.35 + density * 0.65) }} />
-                      ))}
-                    </div>
-                    <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                      {busy > 0 ? (
-                        <>
-                          <span style={{ fontSize:9, fontWeight:700, color:'var(--purple)', background:'var(--pur-lt)', borderRadius:4, padding:'1px 5px' }}>{busy}b</span>
-                          <span style={{ fontSize:9, fontWeight:600, color:'var(--lite)' }}>{free}f</span>
-                        </>
-                      ) : (
-                        <span style={{ fontSize:9, color:'var(--lite)', opacity:.5 }}>quiet</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:14, marginTop:14 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)', opacity:.8 }} />
-                <span style={{ fontSize:10, color:'var(--mid)' }}>b = busy days</span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:8, height:8, borderRadius:2, background:'var(--border)', opacity:.5 }} />
-                <span style={{ fontSize:10, color:'var(--mid)' }}>f = free days</span>
-              </div>
-            </div>
-            <div style={{ textAlign:'center', marginTop:6, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
-              Tap any month to see the full schedule
-            </div>
-          </div>
-        )}
 
       </div>{/* end scroll-body */}
 
