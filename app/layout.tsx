@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import ThemeProvider from '@/components/ThemeProvider';
 import UpdateBanner from '@/components/UpdateBanner';
+import RoutePrefetcher from '@/components/RoutePrefetcher';
 import PostHogProvider from '@/components/PostHogProvider';
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0-early-access';
@@ -88,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }}>
           PlanIQ {APP_VERSION}
         </div>
+        <RoutePrefetcher />
         <UpdateBanner />
         </PostHogProvider>
       </body>

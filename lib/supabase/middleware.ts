@@ -9,13 +9,9 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }: any) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -25,25 +21,27 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // ── PERFORMANCE FIX ──────────────────────────────────────────────────────
+  // getUser() makes a network round-trip to Supabase on EVERY navigation.
+  // getSession() reads the JWT from cookies locally — no network call.
+  // For routing/redirect decisions, getSession() is sufficient and ~10× faster.
+  // Actual server page components use getUser() for security-critical queries.
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
+  // ─────────────────────────────────────────────────────────────────────────
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users away from protected routes
-  const protectedPaths = ['/dashboard', '/schedule', '/calendar', '/ai-analysis'];
-  const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
-
+  // Protected routes — redirect to login if no session
+  const protectedPaths = ['/dashboard', '/schedule', '/calendar', '/ai-analysis', '/progress', '/profile'];
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p));
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
-  // Exception: /reset-password and /auth/callback must stay accessible
-  // for the password-recovery session (which IS authenticated).
+  // Auth pages — redirect logged-in users to dashboard
   const isRecoveryRoute = pathname.startsWith('/reset-password') || pathname.startsWith('/auth/callback');
   if ((pathname === '/login' || pathname === '/signup') && user && !isRecoveryRoute) {
     const url = request.nextUrl.clone();

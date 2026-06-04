@@ -137,7 +137,7 @@ export default function BottomNav() {
       <nav style={NAV}>
 
         {/* ── Home ── */}
-        <Link href="/dashboard" style={ITEM(isActive('/dashboard'))} aria-label="Home">
+        <Link href="/dashboard" prefetch={true} style={ITEM(isActive('/dashboard'))} aria-label="Home">
           <span style={BAR(isActive('/dashboard'))} />
           <span style={ICO}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -149,7 +149,7 @@ export default function BottomNav() {
         </Link>
 
         {/* ── Schedule ── */}
-        <Link href="/calendar" style={ITEM(isActive('/calendar'))} aria-label="Schedule">
+        <Link href="/calendar"  prefetch={true} style={ITEM(isActive('/calendar'))} aria-label="Schedule">
           <span style={BAR(isActive('/calendar'))} />
           <span style={ICO}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -180,7 +180,7 @@ export default function BottomNav() {
         </button>
 
         {/* ── Progress ── */}
-        <Link href="/progress" style={ITEM(isActive('/progress'))} aria-label="Progress">
+        <Link href="/progress"  prefetch={true} style={ITEM(isActive('/progress'))} aria-label="Progress">
           <span style={BAR(isActive('/progress'))} />
           <span style={ICO}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -193,7 +193,7 @@ export default function BottomNav() {
         </Link>
 
         {/* ── Profile ── */}
-        <Link href="/profile" style={ITEM(isActive('/profile'))} aria-label="Profile">
+        <Link href="/profile"   prefetch={true} style={ITEM(isActive('/profile'))} aria-label="Profile">
           <span style={BAR(isActive('/profile'))} />
           {updateBadge && (
             <span style={{
