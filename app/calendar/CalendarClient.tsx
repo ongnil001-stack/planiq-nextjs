@@ -1541,12 +1541,19 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
 
         {/* ── YEARLY VIEW ── */}
         {viewMode === 'yearly' && (
-          <div style={{ padding:'10px 8px', paddingBottom:'max(env(safe-area-inset-bottom,0px),80px)' }}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px' }}>
+          <div style={{
+            padding: '12px 8px',
+            paddingBottom: 'max(env(safe-area-inset-bottom,0px),80px)',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3,1fr)',
+              gap: '7px',
+            }}>
               {Array.from({ length: 12 }, (_, mo) => {
                 const daysIn = new Date(year, mo + 1, 0).getDate();
-                const firstD = new Date(year, mo, 1).getDay(); // 0 = Sunday
-                // Track activity days — boolean[] avoids Set<T> generic ambiguity in TSX
+                const firstD = new Date(year, mo, 1).getDay();
+                // boolean[] avoids Set<T> generic which confuses TSX parser
                 const dayHasAct: boolean[] = [];
                 schedules.forEach(s => {
                   const sd = new Date(s.start_time);
@@ -1573,62 +1580,101 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                       setViewMode('monthly');
                     }}
                     style={{
-                      display:'flex', flexDirection:'column',
-                      padding:'8px 6px 6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: '8px 7px 7px',
                       background: isThisMon
                         ? 'var(--pur-lt,rgba(124,106,240,.10))'
                         : 'var(--glass-bg2,rgba(255,255,255,.04))',
                       border: isThisMon
                         ? '2px solid var(--purple)'
-                        : ('1.5px solid ' + (isSel ? 'var(--border2)' : 'var(--glass-border,rgba(255,255,255,.08))')),
-                      borderRadius:13, cursor:'pointer',
-                      fontFamily:'inherit', textAlign:'left',
-                      minWidth:0, overflow:'hidden',
-                      WebkitTapHighlightColor:'transparent',
+                        : ('1.5px solid ' + (isSel
+                            ? 'var(--border2)'
+                            : 'var(--glass-border,rgba(255,255,255,.08))')),
+                      borderRadius: 13,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      minWidth: 0,
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    {/* ── Month header ── */}
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ fontSize:11, fontWeight:900, lineHeight:1, letterSpacing:'-.2px', color: isThisMon ? 'var(--purple)' : 'var(--dark)' }}>
+                    {/* Month label */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 5,
+                    }}>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        letterSpacing: '-.2px',
+                        color: isThisMon ? 'var(--purple)' : 'var(--dark)',
+                      }}>
                         {MONTHS_SH[mo]}
                       </span>
                       {isThisMon && (
-                        <span style={{ fontSize:7, fontWeight:800, color:'var(--purple)', opacity:.85 }}>now</span>
+                        <span style={{
+                          fontSize: 7,
+                          fontWeight: 800,
+                          letterSpacing: '.3px',
+                          color: 'var(--purple)',
+                          opacity: .8,
+                        }}>
+                          NOW
+                        </span>
                       )}
                     </div>
 
-                    {/* ── Date grid: 7 cols, aspect-ratio:1 inline (bypasses styled-jsx) ── */}
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'1px' }}>
+                    {/* Date grid — paddingBottom:100% guarantees square cells at any width */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(7,1fr)',
+                      gap: '2px',
+                    }}>
                       {cells.map((dayNum, ci) => {
-                        if (dayNum === null) {
-                          return <div key={ci} style={{ aspectRatio:'1' }} />;
-                        }
-                        const isToday = isThisMon && dayNum === today.getDate();
-                        const hasAct  = dayHasAct[dayNum] === true;
+                        const isToday = dayNum !== null && isThisMon && dayNum === today.getDate();
+                        const hasAct  = dayNum !== null && dayHasAct[dayNum] === true;
                         return (
+                          // Outer: creates square via padding-bottom trick
                           <div key={ci} style={{
-                            aspectRatio:'1',
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            position:'relative',
-                            borderRadius:'50%',
-                            background: isToday ? 'var(--purple)' : 'transparent',
+                            position: 'relative',
+                            width: '100%',
+                            paddingBottom: '100%',
+                            height: 0,
                           }}>
-                            <span style={{
-                              fontSize:'7.5px', lineHeight:1,
-                              fontWeight: isToday ? 800 : hasAct ? 700 : 400,
-                              color: isToday ? '#fff' : hasAct ? 'var(--purple)' : 'var(--dark)',
+                            {/* Inner: fills the square, centres the number */}
+                            <div style={{
+                              position: 'absolute',
+                              inset: '1px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '50%',
+                              background: isToday
+                                ? 'var(--purple)'
+                                : hasAct
+                                  ? 'var(--pur-lt,rgba(124,106,240,.12))'
+                                  : 'transparent',
                             }}>
-                              {dayNum}
-                            </span>
-                            {hasAct && !isToday && (
-                              <span style={{
-                                position:'absolute', bottom:'4%', left:'50%',
-                                transform:'translateX(-50%)',
-                                width:'2px', height:'2px',
-                                borderRadius:'50%',
-                                background:'var(--purple)', opacity:.65,
-                              }} />
-                            )}
+                              {dayNum !== null && (
+                                <span style={{
+                                  fontSize: '7.5px',
+                                  lineHeight: 1,
+                                  fontWeight: isToday ? 800 : hasAct ? 600 : 400,
+                                  color: isToday
+                                    ? '#fff'
+                                    : hasAct
+                                      ? 'var(--purple)'
+                                      : 'var(--dark)',
+                                  fontVariantNumeric: 'tabular-nums',
+                                }}>
+                                  {dayNum}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -1637,11 +1683,20 @@ export default function CalendarClient({ initialSchedules }: { initialSchedules:
                 );
               })}
             </div>
-            <div style={{ textAlign:'center', marginTop:14, fontSize:11, color:'var(--mid)', fontWeight:500 }}>
+
+            {/* Footer */}
+            <div style={{
+              textAlign: 'center',
+              marginTop: 14,
+              fontSize: 11,
+              color: 'var(--mid)',
+              fontWeight: 500,
+            }}>
               Tap any month to see the full schedule
             </div>
           </div>
         )}
+
 
       </div>{/* end scroll-body */}
 
