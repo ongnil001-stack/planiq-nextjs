@@ -207,7 +207,7 @@ export default function ProgressPage() {
     <div style={{ height:'100dvh', overflow:'hidden', background:'var(--bg)', display:'flex', flexDirection:'column', fontFamily:'inherit', color:'var(--dark)' }}>
 
       {/* ── Header ── */}
-      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),20px) 20px 14px', background:'transparent', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),20px) 20px 10px', background:'transparent', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, letterSpacing:'-.4px', color:'var(--dark)' }}>Progress</div>
           <div style={{ fontSize:12, color:'var(--mid)', marginTop:1 }}>Last 28 days · {totalDone} tasks completed</div>
@@ -227,7 +227,7 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Stat pills — OUTSIDE scroll container so iOS touch events are reliable ── */}
-      <div style={{ flexShrink:0, padding:'12px 16px 0', background:'var(--bg)' }}>
+      <div style={{ flexShrink:0, padding:'10px 16px 16px', background:'var(--bg)' }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
           {/* Done — clickable */}
           <button
@@ -265,7 +265,7 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'12px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
+      <div style={{ flex:1, overflowY:'auto', overscrollBehavior:'contain', padding:'4px 16px 0', maxHeight:`calc(100dvh - ${hdrH}px - 64px - max(env(safe-area-inset-bottom,0px),20px))` }}>
       <div style={{ paddingBottom:'16px' }}>
 
         {/* ── Productivity score bar — tap for details ── */}
