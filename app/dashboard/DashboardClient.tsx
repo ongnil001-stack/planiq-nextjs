@@ -1357,8 +1357,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
               {profile.designation}
             </div>
           )}
-          {/* Date — slightly larger than usual label */}
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--mid)', letterSpacing: '.1px' }}>
+          {/* Date — visible but smaller than name */}
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--mid)', letterSpacing: '.1px', marginTop: 8 }}>
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
