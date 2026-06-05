@@ -1,19 +1,20 @@
 /**
  * Font preference — save/load the user's chosen font style.
- * Applied via data-font attribute on <html> so all CSS inherits it.
+ * Applied via data-font on <html>; body uses font-family:inherit so it cascades globally.
  */
 
-export const FONT_IDS = ['default', 'modern', 'soft', 'readable', 'professional'] as const;
+export const FONT_IDS = ['default', 'modern', 'soft', 'professional', 'creative', 'readable'] as const;
 export type FontId = typeof FONT_IDS[number];
 
 export const FONT_META: Record<FontId, {
-  name: string; desc: string; family: string; sample: string;
+  name: string; desc: string; family: string; tag: string;
 }> = {
-  default:      { name: 'PlanIQ Standard', desc: 'Balanced and recommended',  family: 'Sora',             sample: 'The quick brown fox' },
-  modern:       { name: 'Modern',          desc: 'Sharp and tech-focused',     family: 'Inter',            sample: 'The quick brown fox' },
-  soft:         { name: 'Soft',            desc: 'Rounded and friendly',       family: 'DM Sans',          sample: 'The quick brown fox' },
-  readable:     { name: 'Readable',        desc: 'Clear and easy on the eyes', family: 'Nunito',           sample: 'The quick brown fox' },
-  professional: { name: 'Professional',    desc: 'Polished and formal',        family: 'Plus Jakarta Sans', sample: 'The quick brown fox' },
+  default:      { name: 'PlanIQ Standard', desc: 'Clean, balanced — the original PlanIQ feel',    family: 'Sora',             tag: 'DEFAULT'  },
+  modern:       { name: 'Modern Focus',    desc: 'Sharp, geometric, tech-forward',                 family: 'Inter',            tag: 'CRISP'    },
+  soft:         { name: 'Soft Planner',    desc: 'Rounded, friendly — calming on the eyes',        family: 'DM Sans',          tag: 'CALM'     },
+  professional: { name: 'Pro Mode',        desc: 'Polished and business-grade',                    family: 'Plus Jakarta Sans', tag: 'FORMAL'   },
+  creative:     { name: 'Creative Flow',   desc: 'Geometric with personality — stands out cleanly',family: 'Space Grotesk',    tag: 'UNIQUE'   },
+  readable:     { name: 'Bold Clarity',    desc: 'Optimised legibility — great for long reading',  family: 'Nunito',           tag: 'CLEAR'    },
 };
 
 const LS_KEY = 'planiq_font';
@@ -37,7 +38,5 @@ export function saveFont(id: FontId) {
 
 export function applyFontFromStorage() {
   const id = getSavedFont();
-  if (id !== 'default') {
-    document.documentElement.setAttribute('data-font', id);
-  }
+  if (id !== 'default') document.documentElement.setAttribute('data-font', id);
 }

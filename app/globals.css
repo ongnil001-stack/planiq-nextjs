@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600&family=Inter:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -746,19 +746,25 @@ html[data-theme="clean"] {
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html {
   height: 100%;
   font-family: 'Sora', 'DM Sans', system-ui, sans-serif;
+}
+body {
+  height: 100%;
+  font-family: inherit; /* inherits from html — lets data-font override cascade */
   background: var(--bg);
   color: var(--dark);
   -webkit-font-smoothing: antialiased;
   transition: background 0.25s ease, color 0.2s ease;
 }
 /* ── Font style overrides via data-font attribute ────────────────────────── */
+/* Body inherits from html, so these cascade to the entire app */
 html[data-font="modern"]       { font-family: 'Inter', system-ui, sans-serif; }
 html[data-font="soft"]         { font-family: 'DM Sans', system-ui, sans-serif; }
-html[data-font="readable"]     { font-family: 'Nunito', system-ui, sans-serif; }
+html[data-font="readable"]     { font-family: 'Nunito', system-ui, sans-serif; letter-spacing: .01em; }
 html[data-font="professional"] { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+html[data-font="creative"]     { font-family: 'Space Grotesk', system-ui, sans-serif; }
 
 /* pixel theme monospace override */
 html[data-theme="pixel"] {
