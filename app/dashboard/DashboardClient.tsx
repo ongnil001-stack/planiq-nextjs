@@ -944,15 +944,34 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   // ── Render: Performance Card ──────────────────────────────────────────
   function renderPerformanceCard() {
     const compact = isCompact('performanceCard');
+
+    // Animation params scaled to workload intensity
+    const wLevel   = workloadScore >= 85 ? 'full' : workloadScore >= 65 ? 'busy' : workloadScore >= 30 ? 'ok' : workloadScore > 0 ? 'light' : 'none';
+    const ringDur  = wLevel === 'full' ? '1.4s' : wLevel === 'busy' ? '2.2s' : wLevel === 'ok' ? '3.2s' : '4.4s';
+    const glowOp   = wLevel === 'full' ? .22  : wLevel === 'busy' ? .16 : wLevel === 'ok' ? .10 : .06;
+
     return (
       <div key="performanceCard" style={S.widget}>
-        <div style={{ ...S.card, cursor: 'pointer' }} onClick={() => !compact && setPerfExpanded(v => !v)}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ ...S.card, cursor: 'pointer', overflow: 'hidden' }} onClick={() => !compact && setPerfExpanded(v => !v)}>
+
+          {/* Ambient background pulse — scales with workload */}
+          {wLevel !== 'none' && !compact && (
+            <div style={{
+              position: 'absolute', top: -20, left: -20, width: 100, height: 100,
+              borderRadius: '50%', pointerEvents: 'none',
+              background: `radial-gradient(circle, ${ch.c1}66 0%, transparent 70%)`,
+              opacity: glowOp,
+              animation: `perfAmbient ${ringDur} ease-in-out infinite`,
+            }} />
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
               {!compact && (
                 <div style={{ width: 54, height: 54, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg style={{ position: 'absolute', top: 0, left: 0 }} viewBox="0 0 54 54" width="54" height="54">
                     <circle cx="27" cy="27" r="22.5" fill="none" stroke="var(--border2)" strokeWidth="4"/>
+                    {/* Main progress arc */}
                     <circle
                       cx="27" cy="27" r="22.5" fill="none"
                       stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
@@ -960,6 +979,17 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
                       transform="rotate(-90 27 27)"
                       style={{ transition: 'stroke-dashoffset .6s ease' }}
                     />
+                    {/* Shimmer highlight — travels along the filled arc */}
+                    {wLevel !== 'none' && workloadScore > 5 && (
+                      <circle
+                        cx="27" cy="27" r="22.5" fill="none"
+                        stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeLinecap="round"
+                        strokeDasharray={`${circumference * 0.12} ${circumference * 0.88}`}
+                        strokeDashoffset={strokeOffset + circumference * 0.06}
+                        transform="rotate(-90 27 27)"
+                        style={{ animation: `perfShimmer ${ringDur} ease-in-out infinite` }}
+                      />
+                    )}
                   </svg>
                   <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{workloadScore === 0 ? '—' : workloadScore}</div>
                 </div>
@@ -978,7 +1008,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           </div>
 
           {!compact && perfExpanded && (
-            <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', position: 'relative' }}>
               {[['Workload', workloadScore === 0 ? '—' : workloadScore], ['Tasks', totalToday], ['Today', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
                 <div key={String(lbl)} style={{ display: 'flex', alignItems: 'stretch' }}>
                   {i > 0 && <div style={{ width: 1, background: 'var(--border)', margin: '4px 0', flexShrink: 0 }} />}
@@ -1306,6 +1336,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   @keyframes wlBreath{0%,100%{transform:scale(1);opacity:var(--wo,.15)}50%{transform:scale(var(--ws,1.08));opacity:calc(var(--wo,.15) * 2.2)}}
   @keyframes wlPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
   @keyframes wlOrbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes perfAmbient{0%,100%{transform:scale(1);opacity:var(--go,.08)}50%{transform:scale(1.3);opacity:calc(var(--go,.08)*2.5)}}
+  @keyframes perfShimmer{0%{stroke-dashoffset:var(--so,200);opacity:.7}60%{opacity:.9}100%{stroke-dashoffset:calc(var(--so,200) - 141.3);opacity:.5}}
 `}</style>
 
       {/* Header — seamless, blends into page background */}
