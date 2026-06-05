@@ -167,7 +167,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState({} as {[k:string]:boolean});
   const toggleSection = (key: string) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   // Read AI mode from saved dashboard preferences
   const [aiMode, setAiMode] = useState<string>('onOpen');
