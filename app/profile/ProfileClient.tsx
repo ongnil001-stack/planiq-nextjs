@@ -14,6 +14,8 @@ import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import SparkAssistant from '@/components/SparkAssistant';
 import ThemePickerSheet from '@/components/ThemePickerSheet';
+import FontPickerSheet from '@/components/FontPickerSheet';
+import { FONT_META, getSavedFont, saveFont, type FontId } from '@/lib/fontPref';
 import { loadFullPrefs } from '@/lib/dashboardPrefs';
 import { getCheckinData } from '@/lib/checkin';
 import { track, resetAnalytics } from '@/lib/analytics';
@@ -83,6 +85,8 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [activeTooltip,  setActiveTooltip]  = useState<string | null>(null);
   const [awardAnimOn,    setAwardAnimOn]    = useState(true);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showFontPicker,  setShowFontPicker]  = useState(false);
+  const [activeFont,      setActiveFont]      = useState<FontId>('default');
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
@@ -142,6 +146,17 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
     ro.observe(hdrRef.current);
     setHdrH(hdrRef.current.offsetHeight);
     return () => ro.disconnect();
+  }, []);
+
+  // ── Load saved font on mount ──
+  useEffect(() => {
+    setActiveFont(getSavedFont());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'planiq_font') setActiveFont(getSavedFont());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Load award animation setting from dashboard prefs ──
@@ -211,6 +226,11 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
     } catch (err: any) {
       toast.error(err.message || 'Failed to save.');
     } finally { setSaving(false); }
+  }
+
+  function handleApplyFont(id: FontId) {
+    setActiveFont(id);
+    saveFont(id);
   }
 
   function handleApplyTheme(id: ThemeId) {
@@ -512,6 +532,49 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           active={activeTheme}
           onSelect={id => handleApplyTheme(id)}
           onClose={() => setShowThemePicker(false)}
+        />
+
+        {/* Font Style row */}
+        <button
+          onClick={() => setShowFontPicker(true)}
+          style={{
+            width:'100%', display:'flex', alignItems:'center', gap:12,
+            padding:'13px 16px', marginBottom:8,
+            background:'var(--glass-bg2,rgba(255,255,255,.04))',
+            border:'1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+            borderRadius:14, cursor:'pointer',
+            fontFamily:'inherit', textAlign:'left',
+            WebkitTapHighlightColor:'transparent',
+          }}
+        >
+          <div style={{
+            width:44, height:36, borderRadius:10, flexShrink:0,
+            background:'var(--glass-bg)', border:'1px solid var(--border)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            <span style={{
+              fontFamily: `'${FONT_META[activeFont].family}', system-ui, sans-serif`,
+              fontSize:17, fontWeight:800, color:'var(--purple)', lineHeight:1,
+            }}>Aa</span>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)', marginBottom:2 }}>
+              {FONT_META[activeFont].name}
+            </div>
+            <div style={{ fontSize:11, color:'var(--mid)' }}>
+              {FONT_META[activeFont].desc}
+            </div>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)', flexShrink:0 }}>
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <FontPickerSheet
+          open={showFontPicker}
+          active={activeFont}
+          onSelect={id => handleApplyFont(id)}
+          onClose={() => setShowFontPicker(false)}
         />
 
         {/* Awards & Momentum — computed from real user data */}

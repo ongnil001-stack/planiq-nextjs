@@ -91,6 +91,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <RoutePrefetcher />
         <UpdateBanner />
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try {
+              var f = localStorage.getItem('planiq_font');
+              if (f && f !== 'default') document.documentElement.setAttribute('data-font', f);
+            } catch(e){}
+          })();
+        ` }} />
         </PostHogProvider>
       </body>
     </html>
