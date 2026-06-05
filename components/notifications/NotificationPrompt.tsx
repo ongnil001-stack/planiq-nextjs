@@ -6,7 +6,6 @@ import { notificationsSupported, notificationPermission, setupPushNotifications 
 /**
  * Subtle banner shown once after the user saves their first schedule.
  * Appears at the top of the calendar — dismissible, never aggressive.
- * Pass `show={true}` to display it.
  */
 export default function NotificationPrompt({ onDismiss }: { onDismiss?: () => void }) {
   const [visible,  setVisible]  = useState(false);
@@ -14,7 +13,6 @@ export default function NotificationPrompt({ onDismiss }: { onDismiss?: () => vo
   const [result,   setResult]   = useState<'idle'|'granted'|'denied'>('idle');
 
   useEffect(() => {
-    // Only show if notifications are supported and not yet decided
     if (notificationsSupported() && notificationPermission() === 'default') {
       setVisible(true);
     }
@@ -42,9 +40,10 @@ export default function NotificationPrompt({ onDismiss }: { onDismiss?: () => vo
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '11px 16px',
-      background: 'rgba(124,106,240,0.10)',
-      border: '1px solid rgba(124,106,240,0.28)',
+      padding: '12px 16px',
+      /* Theme-aware: pur-lt is correctly tinted per theme */
+      background: 'var(--pur-lt, rgba(124,106,240,.10))',
+      border: '1px solid var(--border2, rgba(124,106,240,.28))',
       borderRadius: 14, margin: '0 0 14px',
     }}>
       {/* Bell icon */}
@@ -54,19 +53,23 @@ export default function NotificationPrompt({ onDismiss }: { onDismiss?: () => vo
 
       <div style={{ flex: 1, minWidth: 0 }}>
         {result === 'granted' ? (
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#A78BFA' }}>
-            Reminders enabled — you'll be notified before each event.
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--purple)' }}>
+            Reminders enabled — you&apos;ll be notified before each event.
           </p>
         ) : result === 'denied' ? (
-          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+          /* Fix: was rgba(255,255,255,.5) — invisible on light themes */
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--mid)' }}>
             Notifications blocked. Enable them in your browser settings to get reminders.
           </p>
         ) : (
           <>
-            <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--dark, #fff)' }}>
+            <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 700,
+              /* var(--dark) = dark text on light themes, light text on dark themes */
+              color: 'var(--dark)' }}>
               Enable activity reminders
             </p>
-            <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.42)' }}>
+            {/* Fix: was rgba(255,255,255,.42) — invisible on light themes */}
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--mid)', lineHeight: 1.45 }}>
               Get notified before your events and tasks start.
             </p>
           </>
@@ -79,22 +82,26 @@ export default function NotificationPrompt({ onDismiss }: { onDismiss?: () => vo
             onClick={handleEnable}
             disabled={loading}
             style={{
-              padding: '7px 14px', borderRadius: 10, border: 'none',
-              background: 'var(--purple, #7C6AF0)', color: '#fff',
+              padding: '8px 14px', borderRadius: 10, border: 'none',
+              background: 'var(--purple)', color: '#fff',
               fontSize: 12, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
               fontFamily: 'inherit', opacity: loading ? 0.7 : 1,
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             {loading ? 'Enabling…' : 'Enable'}
           </button>
+          {/* Fix: was rgba(255,255,255,.4) text + rgba(255,255,255,.07) bg — invisible on light */}
           <button
             onClick={handleDismiss}
             style={{
-              padding: '7px 10px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.07)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'rgba(255,255,255,0.4)', fontSize: 12,
+              padding: '8px 10px', borderRadius: 10,
+              background: 'var(--glass-bg2, rgba(255,255,255,.06))',
+              border: '1px solid var(--border)',
+              color: 'var(--mid)',
+              fontSize: 12, fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
             }}
           >
             Later
