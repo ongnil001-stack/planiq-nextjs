@@ -133,12 +133,26 @@ export default function ProgressPage() {
   }, []);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const thisWeekDays    = days.slice(-7);
+  // Current week: always Sun (day 0) → Sat (day 6), regardless of what day today is.
+  // Build by finding this week's Sunday, then mapping all 7 days against the loaded data.
+  const todayDateObj  = new Date(todayIso + 'T12:00:00');
+  const weekSunday    = new Date(todayDateObj);
+  weekSunday.setDate(todayDateObj.getDate() - todayDateObj.getDay()); // rewind to Sunday
+
+  const thisWeekDays = Array.from({ length: 7 }, (_, i) => {
+    const d       = new Date(weekSunday);
+    d.setDate(weekSunday.getDate() + i);
+    const dateStr = isoDate(d);
+    // Find loaded data or return an empty placeholder (future days not yet loaded)
+    return days.find(day => day.date === dateStr) ?? { date: dateStr, planned: 0, done: 0 };
+  });
+
   const thisWeekPlanned = thisWeekDays.reduce((a,b) => a + b.planned, 0);
   const thisWeekDone    = thisWeekDays.reduce((a,b) => a + b.done,    0);
   const thisWeekRate    = thisWeekPlanned > 0 ? Math.round((thisWeekDone/thisWeekPlanned)*100) : 0;
   const overallRate     = totalPlanned    > 0 ? Math.round((totalDone/totalPlanned)*100)       : 0;
-  const maxBar          = Math.max(...days.map(d => d.planned), 1);
+  // maxBar scoped to this week — prevents a big week from dwarfing all bars in the chart
+  const maxBar          = Math.max(...thisWeekDays.map(d => d.planned), 1);
   const todayIso        = isoDate(new Date());
 
   // Productivity score: blend of this-week rate (60%) + streak factor (40%)
@@ -288,28 +302,88 @@ export default function ProgressPage() {
 
         {/* ══ THIS WEEK tab ══ */}
         {tab === 'week' && (<>
-          {/* Bar chart */}
-          <div style={{ ...card, padding:'16px 14px 12px' }}>
-            <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)', marginBottom:14 }}>Daily Completion</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:5, height:72 }}>
+          {/* Bar chart — Sun→Sat current week */}
+          <div style={{ ...card, padding:'16px 14px 14px' }}>
+            {/* Header */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+              <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)' }}>Daily Completion</div>
+              <div style={{ fontSize:10, fontWeight:600, color:'var(--mid)' }}>
+                {thisWeekDone}/{thisWeekPlanned} this week
+              </div>
+            </div>
+
+            {/* Chart area */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:6, alignItems:'flex-end' }}>
               {thisWeekDays.map((d) => {
-                const dayDate = new Date(d.date + 'T12:00:00');
-                const barH    = d.planned > 0 ? Math.max(8, Math.round((d.planned / maxBar) * 64)) : 3;
-                const pct     = d.planned > 0 ? Math.round((d.done/d.planned)*100) : 0;
-                const isToday = d.date === todayIso;
+                const dayDate  = new Date(d.date + 'T12:00:00');
+                const isFuture = d.date > todayIso;
+                const isToday  = d.date === todayIso;
+                const pct      = d.planned > 0 ? Math.round((d.done / d.planned) * 100) : 0;
+                const complete  = pct >= 100 && d.planned > 0;
+                const partial   = pct > 0 && pct < 100;
+                const noTasks   = d.planned === 0;
+
+                // Bar height: scale to maxBar, min 4px for empty
+                const barH = noTasks || isFuture
+                  ? 4
+                  : Math.max(10, Math.round((d.planned / maxBar) * 68));
+
+                const trackColor  = isToday
+                  ? 'rgba(124,106,240,.18)'
+                  : isFuture
+                    ? 'rgba(124,106,240,.06)'
+                    : 'rgba(124,106,240,.10)';
+                const fillColor   = complete ? 'var(--mint,#2DD4BF)' : 'var(--purple,#7C6AF0)';
+
                 return (
-                  <div key={d.date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                    <div style={{ width:'100%', position:'relative', height:barH, borderRadius:6, overflow:'hidden', background:'rgba(124,106,240,.10)' }}>
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background: pct>=100?'var(--mint,#2DD4BF)':'var(--purple,#7C6AF0)', borderRadius:6, transition:'height .3s ease' }}/>
+                  <div key={d.date} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+                    {/* Bar column */}
+                    <div style={{
+                      width:'100%', height: barH,
+                      borderRadius: 6, overflow:'hidden',
+                      background: trackColor,
+                      position:'relative',
+                      boxShadow: isToday ? '0 0 0 1.5px var(--border2)' : 'none',
+                    }}>
+                      {!noTasks && !isFuture && (
+                        <div style={{
+                          position:'absolute', bottom:0, left:0, right:0,
+                          height:`${pct}%`,
+                          background: fillColor,
+                          borderRadius:6,
+                          transition:'height .4s ease',
+                        }}/>
+                      )}
                     </div>
-                    <span style={{ fontSize:9, fontWeight:700, color:isToday?'var(--purple)':'var(--mid)' }}>{DAY3[dayDate.getDay()].slice(0,1)}</span>
+
+                    {/* Day label */}
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: isToday ? 900 : 600,
+                      color: isToday ? 'var(--purple)' : isFuture ? 'var(--lite)' : 'var(--mid)',
+                      letterSpacing:'.2px',
+                    }}>
+                      {['S','M','T','W','T','F','S'][dayDate.getDay()]}
+                    </span>
                   </div>
                 );
               })}
             </div>
-            <div style={{ display:'flex', gap:12, marginTop:10 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:4 }}><div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)' }}/><span style={{ fontSize:10, color:'var(--mid)' }}>Partial</span></div>
-              <div style={{ display:'flex', alignItems:'center', gap:4 }}><div style={{ width:8, height:8, borderRadius:2, background:'var(--mint,#2DD4BF)' }}/><span style={{ fontSize:10, color:'var(--mid)' }}>Complete</span></div>
+
+            {/* Legend */}
+            <div style={{ display:'flex', gap:14, marginTop:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:'var(--purple)' }}/>
+                <span style={{ fontSize:10, color:'var(--mid)', fontWeight:500 }}>Partial</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:'var(--mint,#2DD4BF)' }}/>
+                <span style={{ fontSize:10, color:'var(--mid)', fontWeight:500 }}>Complete</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background:'rgba(124,106,240,.08)', border:'1px solid rgba(124,106,240,.15)' }}/>
+                <span style={{ fontSize:10, color:'var(--mid)', fontWeight:500 }}>No tasks</span>
+              </div>
             </div>
           </div>
 
