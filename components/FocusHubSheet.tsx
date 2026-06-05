@@ -168,7 +168,12 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiError,   setAiError]   = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
   // Read AI mode from saved dashboard preferences
-  const [aiMode, setAiMode] = useState<string>('onOpen');
+  // Lazy initializer: reads saved pref synchronously so the auto-trigger
+  // useEffect never sees the default 'onOpen' when user has set 'manual'.
+  const [aiMode, setAiMode] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'onOpen';
+    try { return loadFullPrefs().aiRefreshInterval; } catch { return 'onOpen'; }
+  });
 
   // ── Read AI mode from saved prefs (respects Manual Only setting) ──────────
   useEffect(() => {
@@ -333,8 +338,8 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     const updated = schedules.map(s => s.id === sched.id ? { ...s, is_completed: true } : s);
     setSchedules(updated);
     setMarking(null);
-    // Refresh brief — completed items are filtered out so AI won't re-flag them
-    fetchAiBrief(updated, mode);
+    // Refresh brief only when AI is not set to manual
+    if (aiMode !== 'manual') fetchAiBrief(updated, mode);
   }
 
   async function deleteSchedule(sched: DisplaySchedule) {
@@ -352,7 +357,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     }
     const updated = schedules.filter(s => s.id !== sched.id);
     setSchedules(updated);
-    fetchAiBrief(updated, mode);
+    if (aiMode !== 'manual') fetchAiBrief(updated, mode);
   }
 
   // Mark an overdue item as missed — acknowledges it won't happen and removes it
