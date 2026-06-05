@@ -13,6 +13,7 @@ import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import SparkAssistant from '@/components/SparkAssistant';
+import ThemePickerSheet from '@/components/ThemePickerSheet';
 import { loadFullPrefs } from '@/lib/dashboardPrefs';
 import { getCheckinData } from '@/lib/checkin';
 import { track, resetAnalytics } from '@/lib/analytics';
@@ -81,6 +82,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [feedbackOpen,   setFeedbackOpen]   = useState(false);
   const [activeTooltip,  setActiveTooltip]  = useState<string | null>(null);
   const [awardAnimOn,    setAwardAnimOn]    = useState(true);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
@@ -451,7 +453,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
       >
       <div style={{ paddingBottom: '16px' }}>
 
-        {/* Appearance */}
+        {/* Appearance — compact row, opens ThemePickerSheet */}
         <div className={s.sh}><div className={s.shT}>
           <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
             <path d="M7.5 2C4.46 2 2 4.46 2 7.5C2 10.54 4.46 13 7.5 13H8.5C9.05 13 9.5 12.55 9.5 12C9.5 11.72 9.4 11.47 9.22 11.28C9.04 11.09 8.94 10.84 8.94 10.57C8.94 10.01 9.39 9.57 9.94 9.57H11C12.1 9.57 13 8.67 13 7.57C13 4.51 10.54 2 7.5 2Z" stroke="currentColor" strokeWidth="1.4"/>
@@ -463,32 +465,54 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           Appearance
         </div></div>
 
-        <div className={s.themeGrid}>
-          {THEMES.map(t => (
-            <div key={t.id} role="button" tabIndex={0}
-              className={`${s.thCard}${activeTheme === t.id ? ` ${s.thCardActive}` : ''}`}
-              onClick={() => handleApplyTheme(t.id as ThemeId)}
-              onKeyDown={e => e.key === 'Enter' && handleApplyTheme(t.id as ThemeId)}>
-              <div className={s.thPreview}>
-                <div className={s.thPBg}  style={{ background: t.bg  }} />
-                <div className={s.thPPri} style={{ background: t.pri }} />
-                <div className={s.thPAcc} style={{ background: t.acc }} />
+        {/* Theme row — shows current theme + opens picker */}
+        <button
+          onClick={() => setShowThemePicker(true)}
+          style={{
+            width:'100%', display:'flex', alignItems:'center', gap:12,
+            padding:'13px 16px', marginBottom:8,
+            background:'var(--glass-bg2,rgba(255,255,255,.04))',
+            border:'1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+            borderRadius:14, cursor:'pointer',
+            fontFamily:'inherit', textAlign:'left',
+            WebkitTapHighlightColor:'transparent',
+          }}
+        >
+          {/* Current theme swatch */}
+          {(() => {
+            const t = THEME_META[activeTheme];
+            return (
+              <div style={{
+                width:44, height:36, borderRadius:10, overflow:'hidden',
+                flexShrink:0, display:'flex',
+                border:'1px solid rgba(255,255,255,.12)',
+                boxShadow:'0 2px 8px rgba(0,0,0,.2)',
+              }}>
+                <div style={{ flex:2, background:t.bg  }} />
+                <div style={{ flex:1.5, background:t.pri }} />
+                <div style={{ flex:1, background:t.acc }} />
               </div>
-              <div className={s.thName}>{t.name}</div>
-              <div className={s.thDesc}>{t.desc}</div>
-              <div className={s.thCardFoot}>
-                <span className={s.thTag}>{t.tag}</span>
-                {activeTheme === t.id && (
-                  <span className={s.thCheck}>
-                    <svg width="12" height="10" viewBox="0 0 13 10" fill="none">
-                      <polyline points="1,5 5,9 12,1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                )}
-              </div>
+            );
+          })()}
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)', marginBottom:2 }}>
+              {THEME_META[activeTheme].name}
             </div>
-          ))}
-        </div>
+            <div style={{ fontSize:11, color:'var(--mid)' }}>
+              {THEME_META[activeTheme].desc} · {THEME_IDS.length} themes available
+            </div>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)', flexShrink:0 }}>
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <ThemePickerSheet
+          open={showThemePicker}
+          active={activeTheme}
+          onSelect={id => handleApplyTheme(id)}
+          onClose={() => setShowThemePicker(false)}
+        />
 
         {/* Awards & Momentum — computed from real user data */}
         {(() => {
