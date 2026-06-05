@@ -135,7 +135,8 @@ export default function ProgressPage() {
   // ── Derived ───────────────────────────────────────────────────────────────
   // Current week: always Sun (day 0) → Sat (day 6), regardless of what day today is.
   // Build by finding this week's Sunday, then mapping all 7 days against the loaded data.
-  const todayDateObj  = new Date(todayIso + 'T12:00:00');
+  const todayIso2     = isoDate(new Date());  // component-scope todayIso2 (separate from load() scope)
+  const todayDateObj  = new Date(todayIso2 + 'T12:00:00');
   const weekSunday    = new Date(todayDateObj);
   weekSunday.setDate(todayDateObj.getDate() - todayDateObj.getDay()); // rewind to Sunday
 
@@ -153,7 +154,6 @@ export default function ProgressPage() {
   const overallRate     = totalPlanned    > 0 ? Math.round((totalDone/totalPlanned)*100)       : 0;
   // maxBar scoped to this week — prevents a big week from dwarfing all bars in the chart
   const maxBar          = Math.max(...thisWeekDays.map(d => d.planned), 1);
-  const todayIso        = isoDate(new Date());
 
   // Productivity score: blend of this-week rate (60%) + streak factor (40%)
   const streakFactor  = Math.min(streak * 5, 40);
@@ -316,8 +316,8 @@ export default function ProgressPage() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:6, alignItems:'flex-end' }}>
               {thisWeekDays.map((d) => {
                 const dayDate  = new Date(d.date + 'T12:00:00');
-                const isFuture = d.date > todayIso;
-                const isToday  = d.date === todayIso;
+                const isFuture = d.date > todayIso2;
+                const isToday  = d.date === todayIso2;
                 const pct      = d.planned > 0 ? Math.round((d.done / d.planned) * 100) : 0;
                 const complete  = pct >= 100 && d.planned > 0;
                 const partial   = pct > 0 && pct < 100;
@@ -396,7 +396,7 @@ export default function ProgressPage() {
             {thisWeekDays.map((d, i) => {
               const dd      = new Date(d.date + 'T12:00:00');
               const rate    = d.planned > 0 ? Math.round((d.done/d.planned)*100) : null;
-              const isToday = d.date === todayIso;
+              const isToday = d.date === todayIso2;
               const sc      = rate !== null ? scoreColor(rate) : 'var(--mid)';
               return (
                 <div key={d.date} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 16px', borderBottom: i < 6 ? '1px solid var(--border)' : 'none', background: isToday ? 'rgba(124,106,240,.04)' : 'transparent' }}>
@@ -436,7 +436,7 @@ export default function ProgressPage() {
               {days.map((d) => {
                 const barH  = d.planned > 0 ? Math.max(4, Math.round((d.planned/maxBar)*52)) : 2;
                 const pct   = d.planned > 0 ? Math.round((d.done/d.planned)*100) : 0;
-                const isToday = d.date === todayIso;
+                const isToday = d.date === todayIso2;
                 return (
                   <div key={d.date} style={{ flex:1 }}>
                     <div style={{ width:'100%', position:'relative', height:barH, borderRadius:3, background:'rgba(124,106,240,.08)' }}>
