@@ -10,13 +10,11 @@
 
 /* ── Header ── */
 .profHdr {
-  background: var(--glass-bg, var(--surf));
-  backdrop-filter: var(--glass-blur, blur(18px));
-  -webkit-backdrop-filter: var(--glass-blur, blur(18px));
+  background: transparent;
   padding: max(env(safe-area-inset-top, 0px), 14px) 22px 20px;
   text-align: center;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--glass-border, var(--border));
+  /* seamless — no bottom border */
   box-shadow: 0 4px 24px rgba(0,0,0,.10);
   transition: background 0.25s ease, border-color 0.25s ease;
 }

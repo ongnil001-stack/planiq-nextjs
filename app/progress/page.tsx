@@ -207,7 +207,7 @@ export default function ProgressPage() {
     <div style={{ height:'100dvh', overflow:'hidden', background:'var(--bg)', display:'flex', flexDirection:'column', fontFamily:'inherit', color:'var(--dark)' }}>
 
       {/* ── Header ── */}
-      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),14px) 20px 14px', background:'var(--glass-bg,var(--surf))', backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)', borderBottom:'1px solid var(--glass-border,var(--border))', transition:'background .25s ease,border-color .25s ease', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div ref={hdrRef} style={{ flexShrink:0, padding:'max(env(safe-area-inset-top,0px),20px) 20px 14px', background:'transparent', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, letterSpacing:'-.4px', color:'var(--dark)' }}>Progress</div>
           <div style={{ fontSize:12, color:'var(--mid)', marginTop:1 }}>Last 28 days · {totalDone} tasks completed</div>
