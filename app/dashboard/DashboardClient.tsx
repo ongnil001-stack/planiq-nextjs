@@ -782,54 +782,117 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   // ── Render: Quick Stats ───────────────────────────────────────────────────────
   function renderQuickStats() {
     const compact = isCompact('quickStats');
+
+    // Workload level: drives animation intensity
+    const wLevel = workloadScore >= 85 ? 'overloaded'
+                 : workloadScore >= 65 ? 'busy'
+                 : workloadScore >= 30 ? 'ok'
+                 : workloadScore > 0  ? 'light'
+                 : 'none';
+
+    const wColor = workloadScore >= 85 ? ch.full
+                 : workloadScore >= 65 ? ch.warn
+                 : workloadScore >= 30 ? ch.ok
+                 : 'var(--mid)';
+
+    const wLabel = scoreLabel;
+
+    // Animation timing per level (CSS custom props injected inline)
+    const animDur   = wLevel === 'overloaded' ? '1.2s' : wLevel === 'busy' ? '1.8s' : wLevel === 'ok' ? '2.6s' : '3.6s';
+    const animScale = wLevel === 'overloaded' ? 1.22  : wLevel === 'busy' ? 1.15 : wLevel === 'ok' ? 1.10 : 1.06;
+
     return (
       <div key="quickStats" style={S.widget}>
-        <div style={{ ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: compact ? '10px 14px' : '14px 16px' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, position: 'relative' }}>
-            {/* Ambient glow behind streak — pulses when streak > 0 */}
-            {streakDays > 0 && (
-              <div style={{
-                position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
-                width: 48, height: 48, borderRadius: '50%',
-                background: 'var(--amber)', opacity: streakDays >= 7 ? .15 : .08,
-                filter: 'blur(10px)',
-                animation: 'streakPulse 2.4s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-            )}
-            {/* Flame / bolt icon — animated when active */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ position: 'relative', zIndex: 1, animation: streakDays > 0 ? 'streakBolt 2.4s ease-in-out infinite' : 'none' }}>
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
-                stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                fill={streakDays >= 3 ? 'var(--amber-lt, rgba(255,184,48,.22))' : 'none'}/>
-            </svg>
-            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)', position: 'relative', zIndex: 1 }}>{streakDays}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Streak</div>
-            {(() => {
-              const n = countEarnedAwards({ streakDays, tasksDone, avgScore: null, focusWins, visitStreak, maxVisitStreak });
-              return n > 0 ? (
-                <div style={{ fontSize: 9, color: 'var(--amber)', fontWeight: 700, letterSpacing: '.3px', marginTop: -1 }}>
-                  {n}/{TOTAL_AWARDS} awards
+        <div style={{ ...S.card, padding: compact ? '12px 14px' : '16px 16px 14px' }}>
+
+          {/* ── Top row: Workload state animated orb ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: compact ? 10 : 12 }}>
+
+            {/* Animated workload orb */}
+            <div style={{ position: 'relative', width: 56, height: 56, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+
+              {/* Layer 1 — outermost ambient ring (slowest) */}
+              {wLevel !== 'none' && (
+                <div style={{
+                  position: 'absolute', inset: -6, borderRadius: '50%',
+                  border: `1.5px solid ${wColor}`,
+                  opacity: wLevel === 'overloaded' ? .35 : wLevel === 'busy' ? .25 : .15,
+                  animation: `wlBreath ${animDur} ease-in-out infinite`,
+                  animationDelay: '0s',
+                }} />
+              )}
+
+              {/* Layer 2 — mid ring (visible from OK up) */}
+              {(wLevel === 'ok' || wLevel === 'busy' || wLevel === 'overloaded') && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  border: `2px solid ${wColor}`,
+                  opacity: .3,
+                  animation: `wlBreath ${animDur} ease-in-out .${wLevel === 'overloaded' ? '2' : '4'}s infinite`,
+                }} />
+              )}
+
+              {/* Layer 3 — orbiting dot (busy + overloaded) */}
+              {(wLevel === 'busy' || wLevel === 'overloaded') && (
+                <div style={{
+                  position: 'absolute', width: '100%', height: '100%',
+                  animation: `wlOrbit ${wLevel === 'overloaded' ? '1.6s' : '2.4s'} linear infinite`,
+                }}>
+                  <div style={{
+                    position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)',
+                    width: 6, height: 6, borderRadius: '50%', background: wColor,
+                    boxShadow: `0 0 6px ${wColor}`,
+                  }} />
                 </div>
-              ) : null;
-            })()}
+              )}
+
+              {/* Core circle — always shown */}
+              <div style={{
+                width: 46, height: 46, borderRadius: '50%',
+                background: `${wColor}18`,
+                border: `2px solid ${wColor}40`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 1,
+                animation: wLevel !== 'none' ? `wlPulse ${animDur} ease-in-out infinite` : 'none',
+              }}>
+                <div style={{ fontSize: workloadScore >= 100 ? 11 : 13, fontWeight: 900, color: wColor, lineHeight: 1, letterSpacing: '-.3px' }}>
+                  {workloadScore === 0 ? '—' : workloadScore}
+                </div>
+                <div style={{ fontSize: 7, fontWeight: 700, color: wColor, opacity: .8, letterSpacing: '.2px', textTransform: 'uppercase', lineHeight: 1 }}>
+                  {wLevel === 'none' ? 'idle' : wLevel}
+                </div>
+              </div>
+            </div>
+
+            {/* Workload label + streak info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.3px', lineHeight: 1, marginBottom: 3 }}>
+                {wLabel}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {streakDays > 0 ? `${streakDays}-day streak` : 'No streak yet'}
+                <span style={{ opacity: .4 }}>·</span>
+                {completedToday}/{totalToday} done
+              </div>
+            </div>
           </div>
-          <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--mint)', opacity: .85 }}>
-              <path d="M4 10L8 14L16 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--mint)' }}>{completedToday}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Today</div>
-          </div>
-          <div style={{ width: 1, height: compact ? 28 : 36, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--purple)', opacity: .85 }}>
-              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 6v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--purple)' }}>{workloadScore === 0 ? '—' : workloadScore}</div>
-            <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Workload</div>
+
+          {/* ── Bottom row: 3 mini stats ── */}
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border)', paddingTop: 10, gap: 0 }}>
+            {[
+              { val: streakDays, lbl: 'Streak', col: 'var(--amber)',  icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' },
+              { val: completedToday, lbl: 'Done today', col: 'var(--mint)', icon: 'M4 10L8 14L16 6' },
+              { val: totalToday,     lbl: 'Planned',   col: 'var(--purple)', icon: 'M8 6h8M8 10h5M8 14h3' },
+            ].map((s, i) => (
+              <div key={s.lbl} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, position: 'relative' }}>
+                {i > 0 && <div style={{ position: 'absolute', left: 0, top: 2, bottom: 2, width: 1, background: 'var(--border)' }} />}
+                <div style={{ fontSize: compact ? 16 : 18, fontWeight: 900, color: s.col, lineHeight: 1, letterSpacing: '-.3px' }}>{s.val}</div>
+                <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.2px', textTransform: 'uppercase' }}>{s.lbl}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -1240,6 +1303,9 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}
   @keyframes streakPulse{0%,100%{opacity:.08;transform:translateX(-50%) scale(1)}50%{opacity:.18;transform:translateX(-50%) scale(1.2)}}
   @keyframes streakBolt{0%,100%{transform:scale(1) translateY(0);filter:none}45%{transform:scale(1.12) translateY(-1px);filter:drop-shadow(0 0 4px var(--amber))}50%{transform:scale(1.08) translateY(-1px)}55%{transform:scale(1.12) translateY(-1px);filter:drop-shadow(0 0 4px var(--amber))}}
+  @keyframes wlBreath{0%,100%{transform:scale(1);opacity:var(--wo,.15)}50%{transform:scale(var(--ws,1.08));opacity:calc(var(--wo,.15) * 2.2)}}
+  @keyframes wlPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  @keyframes wlOrbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 `}</style>
 
       {/* Header — seamless, blends into page background */}
