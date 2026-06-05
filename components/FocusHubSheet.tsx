@@ -167,6 +167,8 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   // Read AI mode from saved dashboard preferences
   const [aiMode, setAiMode] = useState<string>('onOpen');
 
@@ -619,8 +621,21 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 </p>
               ) : null}
 
-              {/* AI Insight Cards */}
-              {aiFocusItems.map((item, i) => (
+              {/* AI Insight Cards — collapsible */}
+              {aiFocusItems.length > 0 && (
+                <div style={{ marginBottom:8 }}>
+                  <button onClick={() => toggleSection('insights')} style={{
+                    display:'flex', alignItems:'center', justifyContent:'space-between',
+                    width:'100%', padding:'6px 0 8px', background:'none', border:'none',
+                    cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent',
+                  }}>
+                    <span style={{ ...T_SEC, marginBottom:0, display:'flex', alignItems:'center', gap:6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 3C9.24 3 7 5.24 7 8c0 1.85 1 3.47 2.5 4.37V15h5v-2.63C16 11.47 17 9.85 17 8c0-2.76-2.24-5-5-5z" stroke="var(--purple)" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9.5 19h5M10.5 21h3" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      Insights · {aiFocusItems.length}
+                    </span>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ transform: collapsed['insights'] ? 'rotate(-90deg)' : 'rotate(0deg)', transition:'transform .2s', color:'var(--lite)' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  {!collapsed['insights'] && aiFocusItems.map((item, i) => (
                 <div key={i} style={AI_CARD(item.accent)}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                     <span style={{ fontSize: '16px', lineHeight: 1, marginTop: '1px' }}>
@@ -654,17 +669,20 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                   </div>
                 </div>
               ))}
+                </div>
+              )}
 
-              {/* ── OVERDUE ITEMS (always shown, all modes) ── */}
+              {/* ── OVERDUE ITEMS — collapsible ── */}
               {overdueItems.length > 0 && (
                 <>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, marginBottom:10 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M12 9v5m0 2.5v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    <p style={{ ...T_SEC, marginBottom:0, color:'#FF6B8A' }}>Overdue · {overdueItems.length}</p>
-                  </div>
+                  <button onClick={() => toggleSection('overdue')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'8px 0 6px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 9v5m0 2.5v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/></svg>
+                      <p style={{ ...T_SEC, marginBottom:0, color:'#FF6B8A' }}>Overdue · {overdueItems.length}</p>
+                    </div>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ transform: collapsed['overdue'] ? 'rotate(-90deg)' : 'rotate(0deg)', transition:'transform .2s', color:'#FF6B8A' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  {!collapsed['overdue'] && (
                   {overdueItems.map(s => {
                     const d = daysOverdue(s, now);
                     const dueDate = new Date(s.end_time || s.start_time)
@@ -711,15 +729,18 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                       </SwipeDeleteRow>
                     );
                   })}
+                  )}
                 </>
               )}
 
-              {/* ── TODAY'S ITEMS / UPCOMING THIS WEEK ── */}
+              {/* ── TODAY'S ITEMS / UPCOMING THIS WEEK — collapsible ── */}
               {displayItems.length > 0 && (
                 <>
-                  <p style={{ ...T_SEC, marginTop: overdueItems.length > 0 ? '16px' : '8px' }}>
-                    {mode === 'today' ? "Today's Schedule" : mode === 'week' ? 'Upcoming This Week' : 'This Month'}
-                  </p>
+                  <button onClick={() => toggleSection('schedule')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'8px 0 6px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', WebkitTapHighlightColor:'transparent', marginTop: overdueItems.length > 0 ? 8 : 4 }}>
+                    <p style={{ ...T_SEC, marginBottom:0 }}>{mode === 'today' ? "Today's Schedule" : mode === 'week' ? 'Upcoming This Week' : 'This Month'} · {displayItems.length}</p>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ transform: collapsed['schedule'] ? 'rotate(-90deg)' : 'rotate(0deg)', transition:'transform .2s', color:'var(--lite)' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  {!collapsed['schedule'] && (
                   {displayItems.slice(0, 8).map(s => (
                     <SwipeDeleteRow key={s.id} onDelete={() => deleteSchedule(s)} undoLabel={`"${s.title}" deleted`} borderRadius={10}>
                       <div style={S_ITEM}>
@@ -747,6 +768,7 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                     <p style={{ fontSize:'12px', color:'var(--lite)', textAlign:'center', marginTop:'4px' }}>
                       +{displayItems.length - 8} more — view in Schedule
                     </p>
+                  )}
                   )}
                 </>
               )}

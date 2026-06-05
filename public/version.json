@@ -1,68 +1,54 @@
 {
-  "version": "1.1.4",
-  "releaseDate": "2026-06-04",
-  "summary": "Yearly Calendar now shows clean date grids, updates are user-controlled, and the Profile badge alerts you to new releases.",
+  "version": "1.1.5",
+  "releaseDate": "2026-06-05",
+  "summary": "Major UI polish: clean Profile page, collapsible Focus Hub, Theme Picker, Font Style, Awards Sheet, and 17 new themes.",
   "changelog": [
+    {
+      "version": "1.1.5",
+      "date": "2026-06-05",
+      "notes": [
+        "Profile page restructured: Awards, Themes, and Font now open as dedicated bottom sheets instead of filling the page",
+        "Focus Hub sections are now collapsible — tap any section header (Insights, Overdue, Schedule) to expand or collapse it",
+        "17 themes available through a grouped Theme Picker sheet: Recommended, Dark, Light categories",
+        "Font Style setting added: choose from PlanIQ Standard, Modern, Soft, Readable, or Professional — applies instantly across the whole app",
+        "SparkAssistant mascot reacts to your achievement state in the Awards section",
+        "Awards detail moved to a dedicated sheet with grouped categories: Streaks, Visits, Completion, Focus",
+        "Daily Completion chart in Progress now always starts on Sunday and shows the correct calendar week",
+        "Calendar activity indicators redesigned: soft background tint + count badge instead of tiny invisible dots",
+        "Task Completion prompt (Time's Up modal) redesigned with cleaner hierarchy and better button spacing",
+        "Stats strip alignment fixed: all four columns use fixed-height rows so numbers, labels, and icons stay level"
+      ]
+    },
     {
       "version": "1.1.4",
       "date": "2026-06-04",
       "notes": [
-        "Yearly Calendar: fixed date cell sizing — cells are now computed from your exact screen width so dates never stack, overlap, or cluster",
-        "Yearly Calendar: activity days highlighted with a soft accent background; today highlighted with a filled accent circle",
-        "Yearly Calendar: scroll stops cleanly at the last month row — no empty space below",
-        "Software Update: updates are now user-controlled — the app will never silently refresh while you are adding schedules or editing tasks",
-        "Software Update: a new Service Worker waits for your permission before activating (no more surprise reloads)",
-        "Profile tab: a pulsing badge dot now appears on the Profile icon when a new update is ready, so you always know before going into settings",
-        "Update flow: tapping Update Now sends an explicit activation signal to the waiting update, then reloads cleanly"
+        "Yearly Calendar: fixed date cell sizing so dates never stack, overlap, or cluster",
+        "Activity days highlighted with a soft accent background; today highlighted with a filled accent circle",
+        "Software Update: now detects every Vercel deployment automatically using build SHA",
+        "Update badge appears on Profile icon when a new version is ready",
+        "User-controlled update flow: tap Update Now to apply, app never refreshes silently mid-session"
       ]
     },
     {
       "version": "1.1.3",
       "date": "2026-06-04",
       "notes": [
-        "In Progress sheet redesigned — theme-aware gradient ring that matches your selected color theme",
-        "In Progress: stat pills now show elapsed time, total duration, and remaining time side by side",
-        "In Progress: action buttons cleaner — Mark as Completed (primary), Reschedule and Keep Going (secondary row)",
-        "Profile > System Settings: Privacy and Terms added as a proper slide-in page instead of a footer link",
-        "Software Update: now detects every Vercel deployment using build SHA, not just version number bumps",
-        "Software Update: version.json served with no-cache headers so Vercel CDN never returns a stale version",
-        "Software Update: ninja update detection — if the app updated while closed, a banner shows what changed on next open"
+        "In Progress sheet redesigned with theme-aware gradient ring and stat pills",
+        "Privacy and Terms added as a proper slide-in settings page",
+        "Software Update page shows build SHA for precise version tracking",
+        "System Settings navigation improved with consistent back/forward transitions"
       ]
     },
     {
       "version": "1.1.2",
       "date": "2026-06-02",
       "notes": [
-        "Fixed Add Schedule saving the wrong date — the date you pick is now exactly the date that saves (timezone offset was being applied in the wrong direction)",
-        "Recurring schedules now appear correctly every week and in all future months across Daily, Weekly, Monthly, and Yearly views",
-        "Per-occurrence completion — completing one day of a repeating task no longer marks the entire series as done",
-        "Focus Hub: overdue items now flagged separately with Reschedule, Mark Completed, Mark Missed, and Clear options",
-        "Smart Reschedule now shows the full date and time for cross-day moves",
-        "AI Priorities: added a This Month summary covering busy days, free days, and overload risks",
-        "Theme polish: charts, score rings, and progress bars now follow the selected color theme throughout the app"
-      ]
-    },
-    {
-      "version": "1.1.0",
-      "date": "2026-05-27",
-      "notes": [
-        "Unified System Settings under Profile — Account, Notifications, Customize Dashboard, and Software Update all in one slide-in settings center",
-        "iPhone-style navigation: tap any setting to slide into its own page, back button returns to the list",
-        "AI assistant tone rewritten — supportive planning partner, no longer judgmental about missed tasks",
-        "Calendar Yearly view: month cards with day-of-week headers and highlighted today date",
-        "Streak algorithm fixed — streaks no longer reset to zero at the start of a new day",
-        "Dashboard metrics clarified — Today count and Load score now clearly labeled so the numbers make sense"
-      ]
-    },
-    {
-      "version": "1.0.0",
-      "date": "2026-05-20",
-      "notes": [
-        "All colors now use CSS variables — every screen adapts correctly when you switch themes",
-        "Added Missed and Skip options to the task completion prompt",
-        "Time-safe rescheduling — past time slots are disabled when moving a task",
-        "Removed all hardcoded demo data — every stat and score now reflects your real activity",
-        "Swipe-to-delete simplified: single tap, immediate action with an undo option"
+        "Fixed Add Schedule saving the wrong date in some timezones",
+        "Recurring schedules now appear correctly every week and in all future months",
+        "Per-occurrence completion fixed for repeating tasks",
+        "Focus Hub overdue items now have dedicated Reschedule, Complete, Missed, and Clear actions",
+        "Theme polish: charts, score rings, and progress bars follow the selected theme"
       ]
     }
   ]
