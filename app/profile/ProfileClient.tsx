@@ -77,6 +77,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [visitStreak,    setVisitStreak]    = useState(0);
   const [maxVisitStreak, setMaxVisitStreak] = useState(0);
   const [feedbackOpen,   setFeedbackOpen]   = useState(false);
+  const [activeTooltip,  setActiveTooltip]  = useState<string | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
@@ -311,30 +312,53 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
         {/* Stats row — sourced from real DB data */}
         <div className={s.profStats}>
-          <div className={s.ps}>
-            <div className={s.psV}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span style={{ color: 'var(--amber)' }}>{streakDays}</span>
-            </div>
-            <div className={s.psL}>Streak</div>
-          </div>
-          <div className={s.ps}>
-            <div className={s.psV} style={{ color: 'var(--mint)' }}>{tasksDone}</div>
-            <div className={s.psL}>Completed</div>
-          </div>
-          <div className={s.ps}>
-            <div className={s.psV} style={{ color: 'var(--purple)' }}>{avgScore !== null ? `${avgScore}%` : '—'}</div>
-            <div className={s.psL}>28-Day Rate</div>
-          </div>
-          <div className={s.ps}>
-            <div className={s.psV} style={{ color: 'var(--coral)' }}>
-              {countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak })}
-              <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--mid)', marginLeft: 1 }}>/{TOTAL_AWARDS}</span>
-            </div>
-            <div className={s.psL}>Awards</div>
-          </div>
+          {/* Each stat has a tap-to-reveal tooltip */}
+          {([
+            { key: 'streak',   val: <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{color:'var(--amber)'}}>{streakDays}</span></>, label: 'Streak', tip: 'Consecutive days with ≥1 completed task' },
+            { key: 'done',     val: <span style={{color:'var(--mint)'}}>{tasksDone}</span>, label: 'Completed', tip: 'Total tasks completed since you joined' },
+            { key: 'rate',     val: <span style={{color:'var(--purple)'}}>{avgScore !== null ? `${avgScore}%` : '—'}</span>, label: '28-Day Rate', tip: 'Your completion rate over the last 28 days' },
+            { key: 'awards',   val: <><span style={{color:'var(--coral)'}}>{countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak })}</span><span style={{fontSize:10,fontWeight:500,color:'var(--mid)',marginLeft:1}}>/{TOTAL_AWARDS}</span></>, label: 'Awards', tip: 'Productivity milestones unlocked' },
+          ] as Array<{key:string;val:React.ReactNode;label:string;tip:string}>).map(stat => {
+            const tipKey = 'hdr-' + stat.key;
+            const open   = activeTooltip === tipKey;
+            return (
+              <div key={stat.key} className={s.ps} style={{ position: 'relative' }}>
+                <div className={s.psV}>{stat.val}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                  <span className={s.psL}>{stat.label}</span>
+                  <button
+                    onClick={() => setActiveTooltip(open ? null : tipKey)}
+                    style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', WebkitTapHighlightColor:'transparent' }}
+                    aria-label={`About ${stat.label}`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6.5" stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.3"/>
+                      <path d="M8 7v4" stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/>
+                      <circle cx="8" cy="5.5" r=".75" fill={open ? 'var(--purple)' : 'var(--lite)'}/>
+                    </svg>
+                  </button>
+                </div>
+                {open && (
+                  <div style={{
+                    position:'absolute', bottom:'calc(100% + 6px)', left:'50%',
+                    transform:'translateX(-50%)',
+                    width:140, padding:'7px 9px',
+                    background:'var(--surf)',
+                    border:'1.5px solid var(--border2)',
+                    borderRadius:10,
+                    fontSize:10, color:'var(--dark)',
+                    lineHeight:1.5, fontWeight:500,
+                    zIndex:50, textAlign:'center',
+                    boxShadow:'0 4px 16px rgba(0,0,0,.18)',
+                    pointerEvents:'none',
+                    whiteSpace:'normal',
+                  }}>
+                    {stat.tip}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -411,29 +435,76 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                 </div>
               </div>
 
-              {/* Momentum stats strip */}
+              {/* Momentum stats strip — tap ⓘ for explanation */}
               <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(2,1fr)',
                 gap: 8, margin: '0 0 12px',
               }}>
-                {[
-                  { label: 'Momentum Streak', value: streakDays === 0 ? '—' : `${streakDays}d`, sub: streakDays === 0 ? 'No streak yet' : streakDays === 1 ? 'Started today!' : 'days in a row', color: 'var(--amber)', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z' },
-                  { label: 'Focus Wins', value: focusWins === 0 ? '—' : `${focusWins}`, sub: focusWins === 0 ? 'No perfect days yet' : focusWins === 1 ? 'perfect day' : 'perfect days', color: 'var(--mint)', icon: 'M9 11l3 3L22 4M21 12a9 9 0 11-9-9' },
-                  { label: 'Tasks Done', value: tasksDone === 0 ? '0' : tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone), sub: tasksDone === 1 ? 'task completed' : 'tasks completed', color: 'var(--purple)', icon: 'M5 13l4 4L19 7' },
-                  { label: 'Visit Streak', value: visitStreak === 0 ? '—' : `${visitStreak}d`, sub: visitStreak === 0 ? 'Open app daily' : visitStreak === 1 ? 'day in a row' : 'days in a row', color: 'var(--sky, #0EA5E9)', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                ].map(stat => (
-                  <div key={stat.label} style={{
-                    background: 'var(--glass-bg2, rgba(255,255,255,.04))',
-                    border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
-                    borderRadius: 14, padding: '12px 10px', textAlign: 'center',
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 6px', display: 'block' }}>
-                      <path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: stat.color, lineHeight: 1, letterSpacing: '-.5px' }}>{stat.value}</div>
-                    <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '.4px', lineHeight: 1.3 }}>{stat.label}</div>
-                  </div>
-                ))}
+                {([
+                  { label: 'Momentum Streak', value: streakDays === 0 ? '—' : `${streakDays}d`, sub: streakDays === 0 ? 'No streak yet' : streakDays === 1 ? 'Started today!' : 'days in a row', color: 'var(--amber)', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', tip: 'Consecutive days you completed at least one task. Resets if you miss a day.' },
+                  { label: 'Focus Wins', value: focusWins === 0 ? '—' : `${focusWins}`, sub: focusWins === 0 ? 'No perfect days yet' : focusWins === 1 ? 'perfect day' : 'perfect days', color: 'var(--mint)', icon: 'M9 11l3 3L22 4M21 12a9 9 0 11-9-9', tip: 'Days where you completed 100% of your planned tasks — a perfect day.' },
+                  { label: 'Tasks Done', value: tasksDone === 0 ? '0' : tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone), sub: tasksDone === 1 ? 'task completed' : 'tasks completed', color: 'var(--purple)', icon: 'M5 13l4 4L19 7', tip: 'Total number of tasks and activities you have completed since joining.' },
+                  { label: 'Visit Streak', value: visitStreak === 0 ? '—' : `${visitStreak}d`, sub: visitStreak === 0 ? 'Open app daily' : visitStreak === 1 ? 'day in a row' : 'days in a row', color: 'var(--sky, #0EA5E9)', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', tip: 'Consecutive days you opened PlanIQ. Keep showing up every day.' },
+                ] as Array<{label:string;value:string;sub:string;color:string;icon:string;tip:string}>).map(stat => {
+                  const isOpen = activeTooltip === stat.label;
+                  return (
+                    <div key={stat.label} style={{
+                      background: 'var(--glass-bg2, rgba(255,255,255,.04))',
+                      border: `1.5px solid ${isOpen ? 'var(--border2)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
+                      borderRadius: 14, padding: '12px 10px',
+                      textAlign: 'center', position: 'relative',
+                      transition: 'border-color .15s',
+                    }}>
+                      {/* ⓘ info button */}
+                      <button
+                        onClick={() => setActiveTooltip(isOpen ? null : stat.label)}
+                        style={{
+                          position: 'absolute', top: 6, right: 6,
+                          width: 18, height: 18, borderRadius: '50%',
+                          background: isOpen ? 'var(--pur-lt)' : 'transparent',
+                          border: 'none', cursor: 'pointer', padding: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          WebkitTapHighlightColor: 'transparent',
+                          transition: 'background .15s',
+                        }}
+                        aria-label={`About ${stat.label}`}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="8" r="6.5" stroke={isOpen ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.3"/>
+                          <path d="M8 7v4" stroke={isOpen ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/>
+                          <circle cx="8" cy="5.5" r=".75" fill={isOpen ? 'var(--purple)' : 'var(--lite)'}/>
+                        </svg>
+                      </button>
+
+                      {/* Icon */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 6px', display: 'block' }}>
+                        <path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {/* Value */}
+                      <div style={{ fontSize: 20, fontWeight: 900, color: stat.color, lineHeight: 1, letterSpacing: '-.5px' }}>{stat.value}</div>
+                      {/* Label */}
+                      <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '.4px', lineHeight: 1.3 }}>{stat.label}</div>
+
+                      {/* Inline tooltip — slides in when ⓘ is tapped */}
+                      {isOpen && (
+                        <div style={{
+                          marginTop: 8,
+                          padding: '7px 8px',
+                          background: 'var(--pur-lt,rgba(124,106,240,.10))',
+                          border: '1px solid var(--border2)',
+                          borderRadius: 8,
+                          fontSize: 10,
+                          color: 'var(--dark)',
+                          lineHeight: 1.5,
+                          textAlign: 'left',
+                          fontWeight: 500,
+                        }}>
+                          {stat.tip}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Earned awards */}
