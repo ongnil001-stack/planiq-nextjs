@@ -1388,7 +1388,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             PlanIQ
           </div>
           {/* User name — primary identity */}
-          <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.6px', lineHeight: 1.1, marginBottom: 2 }}>
+          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--dark)', letterSpacing: '-.3px', lineHeight: 1.1, marginBottom: 2 }}>
             {profile?.full_name?.split(' ')[0] || firstName || 'Planner'}
           </div>
           {/* Designation — secondary identity */}
