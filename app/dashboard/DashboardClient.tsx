@@ -945,23 +945,36 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   function renderPerformanceCard() {
     const compact = isCompact('performanceCard');
 
-    // Animation params scaled to workload intensity
-    const wLevel   = workloadScore >= 85 ? 'full' : workloadScore >= 65 ? 'busy' : workloadScore >= 30 ? 'ok' : workloadScore > 0 ? 'light' : 'none';
-    const ringDur  = wLevel === 'full' ? '1.4s' : wLevel === 'busy' ? '2.2s' : wLevel === 'ok' ? '3.2s' : '4.4s';
-    const glowOp   = wLevel === 'full' ? .22  : wLevel === 'busy' ? .16 : wLevel === 'ok' ? .10 : .06;
+    // Workload level drives animation intensity
+    const wLevel  = workloadScore >= 85 ? 'full'
+                  : workloadScore >= 65 ? 'busy'
+                  : workloadScore >= 30 ? 'ok'
+                  : workloadScore  >  0 ? 'light'
+                  : 'none';
+
+    // Breathing speed: slower = calmer, faster = more energy
+    const breathDur = wLevel === 'full' ? '1.4s'
+                    : wLevel === 'busy' ? '2.0s'
+                    : wLevel === 'ok'   ? '3.0s'
+                    : '4.2s';
+
+    // Streak glow intensity
+    const streakActive = streakDays > 0;
+    const streakGlowOp = streakDays >= 7 ? .22 : streakDays >= 3 ? .15 : streakDays > 0 ? .10 : 0;
 
     return (
       <div key="performanceCard" style={S.widget}>
-        <div style={{ ...S.card, cursor: 'pointer', overflow: 'hidden' }} onClick={() => !compact && setPerfExpanded(v => !v)}>
+        {/* Tap → Progress page (no dropdown) */}
+        <Link href="/progress" style={{ ...S.card, textDecoration: 'none', cursor: 'pointer', overflow: 'hidden', display: 'block' }}>
 
-          {/* Ambient background pulse — scales with workload */}
+          {/* Workload ambient — subtle energy glow near the ring */}
           {wLevel !== 'none' && !compact && (
             <div style={{
-              position: 'absolute', top: -20, left: -20, width: 100, height: 100,
+              position: 'absolute', top: -8, left: -8, width: 80, height: 80,
               borderRadius: '50%', pointerEvents: 'none',
-              background: `radial-gradient(circle, ${ch.c1}66 0%, transparent 70%)`,
-              opacity: glowOp,
-              animation: `perfAmbient ${ringDur} ease-in-out infinite`,
+              background: `radial-gradient(circle, ${ch.c1}55 0%, transparent 70%)`,
+              opacity: wLevel === 'full' ? .18 : wLevel === 'busy' ? .13 : wLevel === 'ok' ? .09 : .05,
+              animation: `ringBreathe ${breathDur} ease-in-out infinite`,
             }} />
           )}
 
@@ -969,61 +982,88 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
               {!compact && (
                 <div style={{ width: 54, height: 54, borderRadius: '50%', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg style={{ position: 'absolute', top: 0, left: 0 }} viewBox="0 0 54 54" width="54" height="54">
-                    <circle cx="27" cy="27" r="22.5" fill="none" stroke="var(--border2)" strokeWidth="4"/>
-                    {/* Main progress arc */}
-                    <circle
-                      cx="27" cy="27" r="22.5" fill="none"
-                      stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
-                      strokeDasharray={circumference} strokeDashoffset={strokeOffset}
-                      transform="rotate(-90 27 27)"
-                      style={{ transition: 'stroke-dashoffset .6s ease' }}
-                    />
-                    {/* Shimmer highlight — travels along the filled arc */}
-                    {wLevel !== 'none' && workloadScore > 5 && (
+                  {/* Ring breathing wrapper */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    animation: wLevel !== 'none' ? `ringBreathe ${breathDur} ease-in-out infinite` : 'none',
+                    borderRadius: '50%',
+                  }}>
+                    <svg viewBox="0 0 54 54" width="54" height="54">
+                      {/* Track */}
+                      <circle cx="27" cy="27" r="22.5" fill="none" stroke="var(--border2)" strokeWidth="4"/>
+                      {/* Filled arc — smooth workload fill */}
                       <circle
                         cx="27" cy="27" r="22.5" fill="none"
-                        stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeLinecap="round"
-                        strokeDasharray={`${circumference * 0.12} ${circumference * 0.88}`}
-                        strokeDashoffset={strokeOffset + circumference * 0.06}
+                        stroke="url(#scoreGrad)" strokeWidth="4" strokeLinecap="round"
+                        strokeDasharray={circumference} strokeDashoffset={strokeOffset}
                         transform="rotate(-90 27 27)"
-                        style={{ animation: `perfShimmer ${ringDur} ease-in-out infinite` }}
+                        style={{ transition: 'stroke-dashoffset .6s ease' }}
                       />
-                    )}
-                  </svg>
-                  <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{workloadScore === 0 ? '—' : workloadScore}</div>
+                    </svg>
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 1, fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>
+                    {workloadScore === 0 ? '—' : workloadScore}
+                  </div>
                 </div>
               )}
+
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>{scoreLabel}{compact && workloadScore > 0 ? ` — ${workloadScore}` : ''}</div>
-                <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2 }}>
-                  <svg width="13" height="13" viewBox="0 0 15 15" fill="none" style={{ display:'inline', verticalAlign:'middle', marginRight: 3 }}>
-                    <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                  </svg>
-                  {streakDays}-day streak · {totalToday} tasks today
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>
+                  {scoreLabel}{compact && workloadScore > 0 ? ` — ${workloadScore}` : ''}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {/* Streak flame with glow when active */}
+                  <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                    {streakActive && (
+                      <span style={{
+                        position: 'absolute', inset: -4, borderRadius: '50%',
+                        background: 'var(--amber)', opacity: streakGlowOp,
+                        filter: 'blur(5px)',
+                        animation: `streakGlowPulse ${streakDays >= 7 ? '1.6s' : '2.4s'} ease-in-out infinite`,
+                        pointerEvents: 'none',
+                      }} />
+                    )}
+                    <svg width="11" height="11" viewBox="0 0 15 15" fill="none" style={{ position: 'relative', zIndex: 1 }}>
+                      <path d="M7.5 13.5C5.01 13.5 3 11.49 3 9C3 6.5 5.5 4.5 5.5 2.5C5.5 2.5 6.5 4 7.5 4C8.5 4 9.5 2 9.5 2C9.5 2 12 4.5 12 7.5C12 10.8 10.07 13.5 7.5 13.5Z"
+                        stroke={streakActive ? 'var(--amber)' : 'currentColor'} strokeWidth="1.4" strokeLinejoin="round"
+                        fill={streakDays >= 3 ? 'var(--amber-lt,rgba(255,184,48,.22))' : 'none'}/>
+                    </svg>
+                  </span>
+                  {streakDays > 0 ? `${streakDays}-day streak` : 'No streak yet'}
+                  <span style={{ opacity: .4 }}>·</span>
+                  {completedToday}/{totalToday} done
                 </div>
               </div>
             </div>
-            {!compact && <div style={{ fontSize: 18, color: 'var(--mid)', lineHeight: 1, transform: perfExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }}>⌄</div>}
+
+            {/* Navigate hint — replaces dropdown arrow */}
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--lite)', flexShrink: 0 }}>
+              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
 
-          {!compact && perfExpanded && (
-            <div style={{ display: 'flex', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', position: 'relative' }}>
-              {[['Workload', workloadScore === 0 ? '—' : workloadScore], ['Tasks', totalToday], ['Today', completedToday], ['Streak', streakDays]].map(([lbl, val], i) => (
-                <div key={String(lbl)} style={{ display: 'flex', alignItems: 'stretch' }}>
+          {/* Bottom stats row — always visible, no expand needed */}
+          {!compact && (
+            <div style={{ display: 'flex', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              {([['Workload', workloadScore === 0 ? '—' : workloadScore, ch.c1],
+                 ['Done', completedToday, 'var(--mint)'],
+                 ['Planned', totalToday, 'var(--purple)'],
+                 ['Streak', streakDays > 0 ? `${streakDays}d` : '—', 'var(--amber)']] as [string,string|number,string][]).map(([lbl, val, col], i) => (
+                <div key={lbl} style={{ flex: 1, display: 'flex', alignItems: 'stretch' }}>
                   {i > 0 && <div style={{ width: 1, background: 'var(--border)', margin: '4px 0', flexShrink: 0 }} />}
-                  <div style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--dark)' }}>{val}</div>
-                    <div style={{ fontSize: 10, color: 'var(--mid)', marginTop: 2, fontWeight: 600 }}>{lbl}</div>
+                  <div style={{ flex: 1, textAlign: 'center', padding: '0 4px' }}>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: '-.4px', lineHeight: 1 }}>{val}</div>
+                    <div style={{ fontSize: 9, color: 'var(--mid)', marginTop: 3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px' }}>{lbl}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Link>
       </div>
     );
   }
+
 
   // ── Render: Weekly Schedule ───────────────────────────────────────────
   function renderWeeklySchedule() {
@@ -1336,8 +1376,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
   @keyframes wlBreath{0%,100%{transform:scale(1);opacity:var(--wo,.15)}50%{transform:scale(var(--ws,1.08));opacity:calc(var(--wo,.15) * 2.2)}}
   @keyframes wlPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
   @keyframes wlOrbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  @keyframes perfAmbient{0%,100%{transform:scale(1);opacity:var(--go,.08)}50%{transform:scale(1.3);opacity:calc(var(--go,.08)*2.5)}}
-  @keyframes perfShimmer{0%{stroke-dashoffset:var(--so,200);opacity:.7}60%{opacity:.9}100%{stroke-dashoffset:calc(var(--so,200) - 141.3);opacity:.5}}
+  @keyframes ringBreathe{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.025);opacity:.88}}
+  @keyframes streakGlowPulse{0%,100%{opacity:var(--sgo,.10);transform:scale(1)}50%{opacity:calc(var(--sgo,.10)*2.2);transform:scale(1.4)}}
 `}</style>
 
       {/* Header — seamless, blends into page background */}
