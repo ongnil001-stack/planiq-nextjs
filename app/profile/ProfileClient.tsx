@@ -453,25 +453,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   </button>
                 </div>
 
-                {/* Tooltip — floats above the stat card */}
-                {open && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 140, padding: '7px 9px',
-                    background: 'var(--surf)',
-                    border: '1.5px solid var(--border2)',
-                    borderRadius: 10,
-                    fontSize: 10, color: 'var(--dark)',
-                    lineHeight: 1.5, fontWeight: 500,
-                    zIndex: 50, textAlign: 'center',
-                    boxShadow: '0 4px 16px rgba(0,0,0,.18)',
-                    pointerEvents: 'none',
-                    whiteSpace: 'normal',
-                  }}>
-                    {stat.tip}
-                  </div>
-                )}
+
               </div>
             );
           })}
@@ -594,11 +576,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin:'0 auto 6px',display:'block' }}><path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       <div style={{ fontSize:20,fontWeight:900,color:stat.color,lineHeight:1,letterSpacing:'-.5px' }}>{stat.value}</div>
                       <div style={{ fontSize:9,color:'var(--mid)',fontWeight:600,marginTop:4,textTransform:'uppercase',letterSpacing:'.4px',lineHeight:1.3 }}>{stat.label}</div>
-                      {isOpen && (
-                        <div style={{ marginTop:8,padding:'7px 8px',background:'var(--pur-lt,rgba(124,106,240,.10))',border:'1px solid var(--border2)',borderRadius:8,fontSize:10,color:'var(--dark)',lineHeight:1.5,textAlign:'left',fontWeight:500 }}>
-                          {stat.tip}
-                        </div>
-                      )}
+
                     </div>
                   );
                 })}
@@ -1432,6 +1410,62 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
         onClose={() => setShowCustomize(false)}
         onSaved={() => setShowCustomize(false)}
       />
+
+      {/* ── Metric Info Sheet — renders at fixed bottom, handles all ⓘ taps ── */}
+      {activeTooltip && (() => {
+        const ALL_TIPS: Record<string, { title: string; body: string }> = {
+          'hdr-streak':   { title: 'Streak', body: 'Consecutive days where you completed at least one task. Resets if you miss a full day.' },
+          'hdr-done':     { title: 'Completed', body: 'Total tasks and activities you have completed since joining PlanIQ.' },
+          'hdr-rate':     { title: '28-Day Rate', body: 'Your task completion percentage over the last 28 days. Higher is better!' },
+          'hdr-awards':   { title: 'Awards', body: 'Productivity milestones you have unlocked. Tap View All Awards to see your progress.' },
+          'Momentum Streak': { title: 'Momentum Streak', body: 'Consecutive days you completed at least one task. Resets if you skip a day entirely.' },
+          'Focus Wins':   { title: 'Focus Wins', body: 'Days where you completed 100% of your planned tasks — a perfect productivity day.' },
+          'Tasks Done':   { title: 'Tasks Done', body: 'Total tasks and activities you have completed since joining PlanIQ.' },
+          'Visit Streak': { title: 'Visit Streak', body: 'Consecutive days you opened PlanIQ. Keep the habit going every day.' },
+        };
+        const tip = ALL_TIPS[activeTooltip];
+        if (!tip) return null;
+        return (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setActiveTooltip(null)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 200,
+                background: 'rgba(0,0,0,.35)',
+                backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+              }}
+            />
+            {/* Sheet */}
+            <div style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              zIndex: 201,
+              background: 'var(--surf)',
+              border: '1px solid var(--glass-border,rgba(255,255,255,.09))',
+              borderBottom: 'none',
+              borderRadius: '20px 20px 0 0',
+              padding: '0 0 max(env(safe-area-inset-bottom,0px),24px)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,.3)',
+            }}>
+              {/* Handle */}
+              <div style={{ width:32,height:4,borderRadius:2,background:'var(--border2)',margin:'10px auto 0' }} />
+              {/* Content */}
+              <div style={{ padding:'16px 22px 4px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:16, fontWeight:800, color:'var(--dark)', marginBottom:8 }}>{tip.title}</div>
+                  <div style={{ fontSize:13, color:'var(--mid)', lineHeight:1.6, fontWeight:500 }}>{tip.body}</div>
+                </div>
+                <button
+                  onClick={() => setActiveTooltip(null)}
+                  style={{ width:28,height:28,borderRadius:'50%',background:'var(--glass-bg2)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0,WebkitTapHighlightColor:'transparent' }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       <FeedbackSheet
         open={feedbackOpen}
