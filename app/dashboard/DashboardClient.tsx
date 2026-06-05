@@ -51,9 +51,9 @@ interface Props {
 
 const GREETING = () => {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening'; // kept for potential future use
 };
 
 const DAY_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
@@ -74,22 +74,19 @@ const S = {
     overflow: 'hidden',
   },
   hdr: {
-    /* Status bar clearance + compact breathing room */
-    paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)',
-    paddingBottom: '14px',
+    /* Seamless header — no card, no border, blends into bg */
+    paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)',
+    paddingBottom: '8px',
     paddingLeft: '22px',
     paddingRight: '22px',
     display: 'flex',
-    alignItems: 'center',           /* avatar vertically centred with text block */
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     flexShrink: 0,
     position: 'relative' as const,
     zIndex: 10,
-    background: 'var(--glass-bg, var(--bg))',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderBottom: '1px solid var(--glass-border, var(--border))',
-    transition: 'background .25s ease, border-color .25s ease',
+    background: 'transparent',
+    transition: 'background .25s ease',
   },
   scrl: {
     overflowY: 'auto' as const,
@@ -1227,17 +1224,24 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       {/* Pulse dot keyframe */}
       <style>{`@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}`}</style>
 
-      {/* Header */}
+      {/* Header — seamless, no card/box */}
       <div ref={hdrRef} style={S.hdr}>
-        {/* Greeting text */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ fontSize: 19, fontWeight: 700, color: 'var(--dark)', letterSpacing: '-.3px', margin: 0, lineHeight: 1.2 }}>{GREETING()}, {firstName}</h2>
-          {profile?.designation && (
-            <p style={{ fontSize: 12, color: 'var(--purple)', marginTop: 2, fontWeight: 500, margin: '2px 0 0', lineHeight: 1 }}>{profile.designation}</p>
-          )}
+          {/* App brand */}
+          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--purple)', letterSpacing: '1.4px', textTransform: 'uppercase', marginBottom: 4, opacity: .8 }}>
+            PlanIQ
+          </div>
+          {/* User designation */}
+          <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.4px', lineHeight: 1.15, marginBottom: 3 }}>
+            {profile?.designation || firstName || 'Planner'}
+          </div>
+          {/* Date */}
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--mid)', letterSpacing: '.1px' }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
         </div>
-        {/* Avatar — 42px, centred next to text */}
-        <Link href="/profile" style={{ width: 42, height: 42, minWidth: 42, flexShrink: 0, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxShadow: '0 2px 10px rgba(139,124,246,0.35)', marginLeft: 12 }}>
+        {/* Avatar */}
+        <Link href="/profile" style={{ width: 42, height: 42, minWidth: 42, flexShrink: 0, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxShadow: '0 2px 10px rgba(139,124,246,0.25)', marginLeft: 12, marginTop: 2 }}>
           <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
