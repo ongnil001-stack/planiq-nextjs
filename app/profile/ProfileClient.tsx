@@ -322,47 +322,116 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
         </button>
 
         {/* Stats row — sourced from real DB data */}
+        {/* Stats row — consistent structure: value → sub → label+ⓘ */}
         <div className={s.profStats}>
-          {/* Each stat has a tap-to-reveal tooltip */}
           {([
-            { key: 'streak',   val: <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{color:'var(--amber)'}}>{streakDays}</span></>, label: 'Streak', tip: 'Consecutive days with ≥1 completed task' },
-            { key: 'done',     val: <span style={{color:'var(--mint)'}}>{tasksDone}</span>, label: 'Completed', tip: 'Total tasks completed since you joined' },
-            { key: 'rate',     val: <span style={{color:'var(--purple)'}}>{avgScore !== null ? `${avgScore}%` : '—'}</span>, label: '28-Day Rate', tip: 'Your completion rate over the last 28 days' },
-            { key: 'awards',   val: <><span style={{color:'var(--coral)'}}>{countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak })}</span><span style={{fontSize:10,fontWeight:500,color:'var(--mid)',marginLeft:1}}>/{TOTAL_AWARDS}</span></>, label: 'Awards', tip: 'Productivity milestones unlocked' },
-          ] as Array<{key:string;val:React.ReactNode;label:string;tip:string}>).map(stat => {
+            {
+              key: 'streak',
+              num: String(streakDays),
+              sub: null,
+              color: 'var(--amber)',
+              label: 'Streak',
+              tip: 'Consecutive days with ≥1 completed task',
+            },
+            {
+              key: 'done',
+              num: tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone),
+              sub: null,
+              color: 'var(--mint)',
+              label: 'Completed',
+              tip: 'Total tasks completed since you joined',
+            },
+            {
+              key: 'rate',
+              num: avgScore !== null ? `${avgScore}%` : '—',
+              sub: null,
+              color: 'var(--purple)',
+              label: '28-Day Rate',
+              tip: 'Your completion rate over the last 28 days',
+            },
+            {
+              key: 'awards',
+              num: String(countEarnedAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak })),
+              sub: `/${TOTAL_AWARDS}`,
+              color: 'var(--coral)',
+              label: 'Awards',
+              tip: 'Productivity milestones unlocked',
+            },
+          ] as Array<{key:string;num:string;sub:string|null;color:string;label:string;tip:string}>).map(stat => {
             const tipKey = 'hdr-' + stat.key;
             const open   = activeTooltip === tipKey;
             return (
               <div key={stat.key} className={s.ps} style={{ position: 'relative' }}>
-                <div className={s.psV}>{stat.val}</div>
-                <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                  <span className={s.psL}>{stat.label}</span>
+
+                {/* Value row — fixed height so all columns align */}
+                <div style={{
+                  height: 28,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+                }}>
+                  <span style={{
+                    fontSize: 17, fontWeight: 800, color: stat.color,
+                    lineHeight: 1, letterSpacing: '-.3px',
+                  }}>
+                    {stat.num}
+                  </span>
+                  {stat.sub && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 500, color: 'var(--mid)',
+                      lineHeight: 1, alignSelf: 'flex-end', paddingBottom: 1,
+                    }}>
+                      {stat.sub}
+                    </span>
+                  )}
+                </div>
+
+                {/* Label + ⓘ — fixed height, always centered */}
+                <div style={{
+                  height: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                  marginTop: 3,
+                }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 600, color: 'var(--mid)',
+                    textTransform: 'uppercase', letterSpacing: '.4px',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {stat.label}
+                  </span>
                   <button
                     onClick={() => setActiveTooltip(open ? null : tipKey)}
-                    style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', WebkitTapHighlightColor:'transparent' }}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: 0, display: 'flex', flexShrink: 0,
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
                     aria-label={`About ${stat.label}`}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                      <circle cx="8" cy="8" r="6.5" stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.3"/>
-                      <path d="M8 7v4" stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/>
-                      <circle cx="8" cy="5.5" r=".75" fill={open ? 'var(--purple)' : 'var(--lite)'}/>
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6.5"
+                        stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.3"/>
+                      <path d="M8 7v4"
+                        stroke={open ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/>
+                      <circle cx="8" cy="5.5" r=".75"
+                        fill={open ? 'var(--purple)' : 'var(--lite)'}/>
                     </svg>
                   </button>
                 </div>
+
+                {/* Tooltip — floats above the stat card */}
                 {open && (
                   <div style={{
-                    position:'absolute', bottom:'calc(100% + 6px)', left:'50%',
-                    transform:'translateX(-50%)',
-                    width:140, padding:'7px 9px',
-                    background:'var(--surf)',
-                    border:'1.5px solid var(--border2)',
-                    borderRadius:10,
-                    fontSize:10, color:'var(--dark)',
-                    lineHeight:1.5, fontWeight:500,
-                    zIndex:50, textAlign:'center',
-                    boxShadow:'0 4px 16px rgba(0,0,0,.18)',
-                    pointerEvents:'none',
-                    whiteSpace:'normal',
+                    position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 140, padding: '7px 9px',
+                    background: 'var(--surf)',
+                    border: '1.5px solid var(--border2)',
+                    borderRadius: 10,
+                    fontSize: 10, color: 'var(--dark)',
+                    lineHeight: 1.5, fontWeight: 500,
+                    zIndex: 50, textAlign: 'center',
+                    boxShadow: '0 4px 16px rgba(0,0,0,.18)',
+                    pointerEvents: 'none',
+                    whiteSpace: 'normal',
                   }}>
                     {stat.tip}
                   </div>
