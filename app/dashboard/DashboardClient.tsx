@@ -438,7 +438,7 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
 
   // ── Prefs helpers ──────────────────────────────────────────────────────
   const cardOrder: DashboardCardKey[] = prefs?.order ?? [
-    'todayCard','quickStats','pinnedShortcuts',
+    'todayCard','pinnedShortcuts','quickStats',
     'performanceCard','weeklySchedule','workloadBalance',
     'aiPriorities','upcomingTasks',
   ];
@@ -462,8 +462,8 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
           {/* Header row */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 11 }}>
             <div>
-              <div style={{ fontSize: compact ? 16 : 20, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.5px', lineHeight: 1 }}>{todayLabel}</div>
-              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 3 }}>{todayDayName} · {totalToday} activities</div>
+              <div style={{ fontSize: compact ? 15 : 17, fontWeight: 800, color: 'var(--dark)', letterSpacing: '-.3px', lineHeight: 1 }}>Today&apos;s Overview</div>
+              <div style={{ fontSize: 11, color: 'var(--mid)', fontWeight: 500, marginTop: 3 }}>{totalToday} {totalToday === 1 ? 'activity' : 'activities'} · {todayDayName}</div>
             </div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -785,11 +785,25 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
     return (
       <div key="quickStats" style={S.widget}>
         <div style={{ ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: compact ? '10px 14px' : '14px 16px' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: .9 }}>
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, position: 'relative' }}>
+            {/* Ambient glow behind streak — pulses when streak > 0 */}
+            {streakDays > 0 && (
+              <div style={{
+                position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
+                width: 48, height: 48, borderRadius: '50%',
+                background: 'var(--amber)', opacity: streakDays >= 7 ? .15 : .08,
+                filter: 'blur(10px)',
+                animation: 'streakPulse 2.4s ease-in-out infinite',
+                pointerEvents: 'none',
+              }} />
+            )}
+            {/* Flame / bolt icon — animated when active */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ position: 'relative', zIndex: 1, animation: streakDays > 0 ? 'streakBolt 2.4s ease-in-out infinite' : 'none' }}>
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                fill={streakDays >= 3 ? 'var(--amber-lt, rgba(255,184,48,.22))' : 'none'}/>
             </svg>
-            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)' }}>{streakDays}</div>
+            <div style={{ fontSize: compact ? 18 : 22, fontWeight: 900, lineHeight: 1, letterSpacing: '-.5px', color: 'var(--amber)', position: 'relative', zIndex: 1 }}>{streakDays}</div>
             <div style={{ fontSize: 10, color: 'var(--mid)', fontWeight: 600, letterSpacing: '.3px', textTransform: 'uppercase' }}>Streak</div>
             {(() => {
               const n = countEarnedAwards({ streakDays, tasksDone, avgScore: null, focusWins, visitStreak, maxVisitStreak });
@@ -1222,22 +1236,32 @@ export default function DashboardClient({ profile, todaySchedules, weekSchedules
       </svg>
 
       {/* Pulse dot keyframe */}
-      <style>{`@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}`}</style>
+      <style>{`
+  @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}
+  @keyframes streakPulse{0%,100%{opacity:.08;transform:translateX(-50%) scale(1)}50%{opacity:.18;transform:translateX(-50%) scale(1.2)}}
+  @keyframes streakBolt{0%,100%{transform:scale(1) translateY(0);filter:none}45%{transform:scale(1.12) translateY(-1px);filter:drop-shadow(0 0 4px var(--amber))}50%{transform:scale(1.08) translateY(-1px)}55%{transform:scale(1.12) translateY(-1px);filter:drop-shadow(0 0 4px var(--amber))}}
+`}</style>
 
-      {/* Header — seamless, no card/box */}
+      {/* Header — seamless, blends into page background */}
       <div ref={hdrRef} style={S.hdr}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* App brand */}
-          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--purple)', letterSpacing: '1.4px', textTransform: 'uppercase', marginBottom: 4, opacity: .8 }}>
+          {/* Brand */}
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--purple)', letterSpacing: '1.6px', textTransform: 'uppercase', marginBottom: 6, opacity: .75 }}>
             PlanIQ
           </div>
-          {/* User designation */}
-          <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.4px', lineHeight: 1.15, marginBottom: 3 }}>
-            {profile?.designation || firstName || 'Planner'}
+          {/* User name — primary identity */}
+          <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--dark)', letterSpacing: '-.6px', lineHeight: 1.1, marginBottom: 2 }}>
+            {profile?.full_name?.split(' ')[0] || firstName || 'Planner'}
           </div>
-          {/* Date */}
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--mid)', letterSpacing: '.1px' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          {/* Designation — secondary identity */}
+          {profile?.designation && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple)', opacity: .85, marginBottom: 6, letterSpacing: '.1px' }}>
+              {profile.designation}
+            </div>
+          )}
+          {/* Date — slightly larger than usual label */}
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--mid)', letterSpacing: '.1px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
         {/* Avatar */}
