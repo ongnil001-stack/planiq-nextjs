@@ -167,8 +167,6 @@ export default function FocusHubSheet({ open, onClose }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError,   setAiError]   = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<Schedule | null>(null);
-  const [collapsed, setCollapsed] = useState({} as {[k:string]:boolean});
-  const toggleSection = (key: string) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
   // Read AI mode from saved dashboard preferences
   const [aiMode, setAiMode] = useState<string>('onOpen');
 
@@ -621,13 +619,6 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 </p>
               ) : null}
 
-              {aiFocusItems.length > 0 && (
-                <button onClick={() => toggleSection('insights')} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'6px 0 8px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',WebkitTapHighlightColor:'transparent' }}>
-                  <span style={{ fontSize:'10px',fontWeight:700,letterSpacing:'.6px',textTransform:'uppercase',color:'var(--lite)',display:'flex',alignItems:'center',gap:5 }}>Insights</span>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ transform:collapsed['insights']?'rotate(-90deg)':'rotate(0)',transition:'transform .2s',color:'var(--lite)' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              )}
-              <div style={{ display:collapsed['insights']?'none':'block' }}>
               {/* AI Insight Cards */}
               {aiFocusItems.map((item, i) => (
                 <div key={i} style={AI_CARD(item.accent)}>
@@ -663,19 +654,17 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                   </div>
                 </div>
               ))}
-              </div>
 
               {/* ── OVERDUE ITEMS (always shown, all modes) ── */}
               {overdueItems.length > 0 && (
                 <>
-                  <button onClick={() => toggleSection('overdue')} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'8px 0 6px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',WebkitTapHighlightColor:'transparent' }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 9v5m0 2.5v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/></svg>
-                      <p style={{ ...T_SEC, marginBottom:0, color:'#FF6B8A' }}>Overdue · {overdueItems.length}</p>
-                    </div>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ transform:collapsed['overdue']?'rotate(-90deg)':'rotate(0)',transition:'transform .2s',color:'#FF6B8A' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <div style={{ display:collapsed['overdue']?'none':'block' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, marginBottom:10 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4L3 19h18L12 4z" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 9v5m0 2.5v.5" stroke="#FF6B8A" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <p style={{ ...T_SEC, marginBottom:0, color:'#FF6B8A' }}>Overdue · {overdueItems.length}</p>
+                  </div>
                   {overdueItems.map(s => {
                     const d = daysOverdue(s, now);
                     const dueDate = new Date(s.end_time || s.start_time)
@@ -725,15 +714,12 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 </>
               )}
 
-                  </div>
               {/* ── TODAY'S ITEMS / UPCOMING THIS WEEK ── */}
               {displayItems.length > 0 && (
                 <>
-                  <button onClick={() => toggleSection('schedule')} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'8px 0 4px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',WebkitTapHighlightColor:'transparent' }}>
-                    <p style={{ ...T_SEC, marginBottom:0 }}>{mode === 'today' ? "Today's Schedule" : mode === 'week' ? 'Upcoming This Week' : 'This Month'} · {displayItems.length}</p>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ transform:collapsed['schedule']?'rotate(-90deg)':'rotate(0)',transition:'transform .2s',color:'var(--lite)' }}><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <div style={{ display:collapsed['schedule']?'none':'block' }}>
+                  <p style={{ ...T_SEC, marginTop: overdueItems.length > 0 ? '16px' : '8px' }}>
+                    {mode === 'today' ? "Today's Schedule" : mode === 'week' ? 'Upcoming This Week' : 'This Month'}
+                  </p>
                   {displayItems.slice(0, 8).map(s => (
                     <SwipeDeleteRow key={s.id} onDelete={() => deleteSchedule(s)} undoLabel={`"${s.title}" deleted`} borderRadius={10}>
                       <div style={S_ITEM}>
@@ -765,7 +751,6 @@ export default function FocusHubSheet({ open, onClose }: Props) {
                 </>
               )}
 
-                  </div>
               {overdueItems.length === 0 && displayItems.length === 0 && (
                 <p style={{ textAlign:'center', color:'var(--lite)', fontSize:13, marginTop:24, opacity:.6 }}>
                   {mode === 'today' ? 'Nothing on your schedule today.'
