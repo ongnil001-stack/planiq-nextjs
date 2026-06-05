@@ -12,6 +12,8 @@ import s from './profile.module.css';
 import DashboardCustomizeSheet from '@/components/DashboardCustomizeSheet';
 import { useAppUpdate } from '@/lib/useAppUpdate';
 import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
+import SparkAssistant from '@/components/SparkAssistant';
+import { loadFullPrefs } from '@/lib/dashboardPrefs';
 import { getCheckinData } from '@/lib/checkin';
 import { track, resetAnalytics } from '@/lib/analytics';
 import FeedbackSheet from '@/components/FeedbackSheet';
@@ -78,6 +80,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [maxVisitStreak, setMaxVisitStreak] = useState(0);
   const [feedbackOpen,   setFeedbackOpen]   = useState(false);
   const [activeTooltip,  setActiveTooltip]  = useState<string | null>(null);
+  const [awardAnimOn,    setAwardAnimOn]    = useState(true);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // ── Lock body scroll when any modal/sheet is open ──
@@ -137,6 +140,14 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
     ro.observe(hdrRef.current);
     setHdrH(hdrRef.current.offsetHeight);
     return () => ro.disconnect();
+  }, []);
+
+  // ── Load award animation setting from dashboard prefs ──
+  useEffect(() => {
+    const readAnim = () => setAwardAnimOn(loadFullPrefs().awardAnimations !== false);
+    readAnim();
+    window.addEventListener('planiq_dash_prefs_changed', readAnim);
+    return () => window.removeEventListener('planiq_dash_prefs_changed', readAnim);
   }, []);
 
   // ── Load visit streak from localStorage ──
@@ -417,6 +428,38 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           const locked = awards.filter(a => !a.earned);
           return (
             <>
+              {/* SparkAssistant — reacts to user's achievement state */}
+              {awardAnimOn && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '12px 0 4px',
+                }}>
+                  <SparkAssistant
+                    size={68}
+                    mode={
+                      earned.length >= 3 && streakDays >= 7 ? 'celebrate'
+                      : streakDays >= 3 || visitStreak >= 3   ? 'streak'
+                      : earned.length > 0                      ? 'idle'
+                      : 'sleeping'
+                    }
+                    visible={awardAnimOn}
+                  />
+                  {/* Contextual micro-caption below the character */}
+                  <div style={{
+                    fontSize: 11, color: 'var(--mid)', fontWeight: 500,
+                    marginTop: 6, textAlign: 'center', letterSpacing: '.01em',
+                  }}>
+                    {streakDays >= 7
+                      ? `🔥 ${streakDays}-day streak — keep going!`
+                      : focusWins > 0
+                        ? `${focusWins} perfect ${focusWins === 1 ? 'day' : 'days'} this month`
+                        : earned.length > 0
+                          ? `${earned.length} award${earned.length === 1 ? '' : 's'} unlocked`
+                          : 'Complete tasks to unlock awards'}
+                  </div>
+                </div>
+              )}
+
               <div className={s.sh}>
                 <div className={s.shT} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">

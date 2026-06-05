@@ -154,6 +154,8 @@ export interface DashboardFullPrefs {
   pinnedShortcuts: ShortcutKey[];
   /** How often AI re-analyzes */
   aiRefreshInterval: AiRefreshInterval;
+  /** Show SparkAssistant character animations in the Awards section */
+  awardAnimations: boolean;
   /** Named layout presets { presetName → serialised prefs } */
   presets: Record<string, SavedPreset>;
 }
@@ -182,6 +184,7 @@ export function defaultFullPrefs(): DashboardFullPrefs {
     order: DASHBOARD_CARDS.map(c => c.key),
     pinnedShortcuts: ['addTask', 'viewCalendar', 'viewPriorities'],
     aiRefreshInterval: 'onOpen',
+    awardAnimations: true,
     presets: {},
   };
 }
@@ -223,6 +226,7 @@ export function loadFullPrefs(): DashboardFullPrefs {
     }
     // AI refresh
     if (saved.aiRefreshInterval) base.aiRefreshInterval = saved.aiRefreshInterval;
+    if (typeof saved.awardAnimations === 'boolean') base.awardAnimations = saved.awardAnimations;
     // Presets
     if (saved.presets) base.presets = saved.presets;
     return base;

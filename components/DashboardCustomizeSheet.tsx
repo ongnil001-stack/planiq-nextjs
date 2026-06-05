@@ -496,6 +496,26 @@ export default function DashboardCustomizeSheet({ open, onClose, onSaved }: Prop
                 </span>
               </div>
               <div style={{ height:8 }} />
+
+              {/* Award Animations toggle */}
+              <div style={{
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+                padding:'13px 0', borderTop:'1px solid var(--border)',
+                marginTop:4,
+              }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>Award Animations</div>
+                  <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>
+                    SparkAssistant reacts to streaks and unlocked awards
+                  </div>
+                </div>
+                <div
+                  onClick={() => mutate(p => ({ ...p, awardAnimations: !p.awardAnimations }))}
+                  style={toggleTrack(prefs.awardAnimations)}
+                >
+                  <div style={toggleThumb(prefs.awardAnimations)} />
+                </div>
+              </div>
             </>
           )}
 
