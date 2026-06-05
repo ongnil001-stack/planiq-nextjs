@@ -15,6 +15,8 @@ import { computeAwards, countEarnedAwards, TOTAL_AWARDS } from '@/lib/awards';
 import SparkAssistant from '@/components/SparkAssistant';
 import ThemePickerSheet from '@/components/ThemePickerSheet';
 import FontPickerSheet from '@/components/FontPickerSheet';
+import AwardsSheet from '@/components/AwardsSheet';
+import type { AwardStats } from '@/lib/awards';
 import { FONT_META, getSavedFont, saveFont, type FontId } from '@/lib/fontPref';
 import { loadFullPrefs } from '@/lib/dashboardPrefs';
 import { getCheckinData } from '@/lib/checkin';
@@ -86,6 +88,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [awardAnimOn,    setAwardAnimOn]    = useState(true);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showFontPicker,  setShowFontPicker]  = useState(false);
+  const [showAwardsSheet, setShowAwardsSheet] = useState(false);
   const [activeFont,      setActiveFont]      = useState<FontId>('default');
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
@@ -577,21 +580,17 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           onClose={() => setShowFontPicker(false)}
         />
 
-        {/* Awards & Momentum — computed from real user data */}
+        {/* Awards & Momentum — compact strip + View All button */}
         {(() => {
           const awards = computeAwards({ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak });
           const earned = awards.filter(a => a.earned);
-          const locked = awards.filter(a => !a.earned);
           return (
             <>
-              {/* SparkAssistant — reacts to user's achievement state */}
+              {/* SparkAssistant */}
               {awardAnimOn && (
-                <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  padding: '12px 0 4px',
-                }}>
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',padding:'12px 0 4px' }}>
                   <SparkAssistant
-                    size={68}
+                    size={64}
                     mode={
                       earned.length >= 3 && streakDays >= 7 ? 'celebrate'
                       : streakDays >= 3 || visitStreak >= 3   ? 'streak'
@@ -600,104 +599,55 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                     }
                     visible={awardAnimOn}
                   />
-                  {/* Contextual micro-caption below the character */}
-                  <div style={{
-                    fontSize: 11, color: 'var(--mid)', fontWeight: 500,
-                    marginTop: 6, textAlign: 'center', letterSpacing: '.01em',
-                  }}>
-                    {streakDays >= 7
-                      ? `🔥 ${streakDays}-day streak — keep going!`
-                      : focusWins > 0
-                        ? `${focusWins} perfect ${focusWins === 1 ? 'day' : 'days'} this month`
-                        : earned.length > 0
-                          ? `${earned.length} award${earned.length === 1 ? '' : 's'} unlocked`
-                          : 'Complete tasks to unlock awards'}
+                  <div style={{ fontSize:11,color:'var(--mid)',fontWeight:500,marginTop:6,textAlign:'center' }}>
+                    {streakDays >= 7 ? `🔥 ${streakDays}-day streak — keep going!`
+                    : focusWins > 0 ? `${focusWins} perfect ${focusWins===1?'day':'days'} this month`
+                    : earned.length > 0 ? `${earned.length} award${earned.length===1?'':'s'} unlocked`
+                    : 'Complete tasks to unlock awards'}
                   </div>
                 </div>
               )}
 
+              {/* Section header */}
               <div className={s.sh}>
-                <div className={s.shT} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className={s.shT} style={{ display:'flex',alignItems:'center',gap:8 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2l2.09 6.26L20 9.27l-5 4.87 1.18 6.88L12 17.77l-5.18 3.25L8 14.14 3 9.27l5.91-.01L12 2z"
                       stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
                   </svg>
                   Awards & Momentum
                   {earned.length > 0 && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, letterSpacing: '.4px',
-                      background: 'rgba(124,106,240,.15)', color: 'var(--purple)',
-                      border: '1px solid rgba(124,106,240,.25)',
-                      borderRadius: 8, padding: '1px 7px', lineHeight: 1.6,
-                    }}>{earned.length} earned</span>
+                    <span style={{ fontSize:9,fontWeight:800,letterSpacing:'.4px',background:'rgba(124,106,240,.15)',color:'var(--purple)',border:'1px solid rgba(124,106,240,.25)',borderRadius:8,padding:'1px 7px',lineHeight:1.6 }}>
+                      {earned.length} earned
+                    </span>
                   )}
                 </div>
               </div>
 
-              {/* Momentum stats strip — tap ⓘ for explanation */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(2,1fr)',
-                gap: 8, margin: '0 0 12px',
-              }}>
+              {/* Momentum stats strip */}
+              <div style={{ display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,margin:'0 0 10px' }}>
                 {([
-                  { label: 'Momentum Streak', value: streakDays === 0 ? '—' : `${streakDays}d`, sub: streakDays === 0 ? 'No streak yet' : streakDays === 1 ? 'Started today!' : 'days in a row', color: 'var(--amber)', icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z', tip: 'Consecutive days you completed at least one task. Resets if you miss a day.' },
-                  { label: 'Focus Wins', value: focusWins === 0 ? '—' : `${focusWins}`, sub: focusWins === 0 ? 'No perfect days yet' : focusWins === 1 ? 'perfect day' : 'perfect days', color: 'var(--mint)', icon: 'M9 11l3 3L22 4M21 12a9 9 0 11-9-9', tip: 'Days where you completed 100% of your planned tasks — a perfect day.' },
-                  { label: 'Tasks Done', value: tasksDone === 0 ? '0' : tasksDone >= 1000 ? `${(tasksDone/1000).toFixed(1)}k` : String(tasksDone), sub: tasksDone === 1 ? 'task completed' : 'tasks completed', color: 'var(--purple)', icon: 'M5 13l4 4L19 7', tip: 'Total number of tasks and activities you have completed since joining.' },
-                  { label: 'Visit Streak', value: visitStreak === 0 ? '—' : `${visitStreak}d`, sub: visitStreak === 0 ? 'Open app daily' : visitStreak === 1 ? 'day in a row' : 'days in a row', color: 'var(--sky, #0EA5E9)', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', tip: 'Consecutive days you opened PlanIQ. Keep showing up every day.' },
+                  { label:'Momentum Streak',value:streakDays===0?'—':`${streakDays}d`,sub:streakDays===0?'No streak yet':streakDays===1?'Started today!':'days in a row',color:'var(--amber)',icon:'M13 2L3 14h9l-1 8 10-12h-9l1-8z',tip:'Consecutive days you completed at least one task. Resets if you miss a day.' },
+                  { label:'Focus Wins',value:focusWins===0?'—':`${focusWins}`,sub:focusWins===0?'No perfect days yet':focusWins===1?'perfect day':'perfect days',color:'var(--mint)',icon:'M9 11l3 3L22 4M21 12a9 9 0 11-9-9',tip:'Days where you completed 100% of your planned tasks — a perfect day.' },
+                  { label:'Tasks Done',value:tasksDone===0?'0':tasksDone>=1000?`${(tasksDone/1000).toFixed(1)}k`:String(tasksDone),sub:tasksDone===1?'task completed':'tasks completed',color:'var(--purple)',icon:'M5 13l4 4L19 7',tip:'Total number of tasks and activities you have completed since joining.' },
+                  { label:'Visit Streak',value:visitStreak===0?'—':`${visitStreak}d`,sub:visitStreak===0?'Open app daily':visitStreak===1?'day in a row':'days in a row',color:'var(--sky, #0EA5E9)',icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',tip:'Consecutive days you opened PlanIQ. Keep showing up every day.' },
                 ] as Array<{label:string;value:string;sub:string;color:string;icon:string;tip:string}>).map(stat => {
                   const isOpen = activeTooltip === stat.label;
                   return (
                     <div key={stat.label} style={{
-                      background: 'var(--glass-bg2, rgba(255,255,255,.04))',
-                      border: `1.5px solid ${isOpen ? 'var(--border2)' : 'var(--glass-border, rgba(255,255,255,.08))'}`,
-                      borderRadius: 14, padding: '12px 10px',
-                      textAlign: 'center', position: 'relative',
-                      transition: 'border-color .15s',
+                      background:'var(--glass-bg2,rgba(255,255,255,.04))',
+                      border:`1.5px solid ${isOpen?'var(--border2)':'var(--glass-border,rgba(255,255,255,.08))'}`,
+                      borderRadius:14,padding:'12px 10px',textAlign:'center',position:'relative',
+                      transition:'border-color .15s',
                     }}>
-                      {/* ⓘ info button */}
-                      <button
-                        onClick={() => setActiveTooltip(isOpen ? null : stat.label)}
-                        style={{
-                          position: 'absolute', top: 6, right: 6,
-                          width: 18, height: 18, borderRadius: '50%',
-                          background: isOpen ? 'var(--pur-lt)' : 'transparent',
-                          border: 'none', cursor: 'pointer', padding: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          WebkitTapHighlightColor: 'transparent',
-                          transition: 'background .15s',
-                        }}
-                        aria-label={`About ${stat.label}`}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <circle cx="8" cy="8" r="6.5" stroke={isOpen ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.3"/>
-                          <path d="M8 7v4" stroke={isOpen ? 'var(--purple)' : 'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/>
-                          <circle cx="8" cy="5.5" r=".75" fill={isOpen ? 'var(--purple)' : 'var(--lite)'}/>
-                        </svg>
+                      <button onClick={() => setActiveTooltip(isOpen?null:stat.label)} style={{ position:'absolute',top:6,right:6,width:18,height:18,borderRadius:'50%',background:isOpen?'var(--pur-lt)':'transparent',border:'none',cursor:'pointer',padding:0,display:'flex',alignItems:'center',justifyContent:'center',WebkitTapHighlightColor:'transparent',transition:'background .15s' }} aria-label={`About ${stat.label}`}>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke={isOpen?'var(--purple)':'var(--lite)'} strokeWidth="1.3"/><path d="M8 7v4" stroke={isOpen?'var(--purple)':'var(--lite)'} strokeWidth="1.4" strokeLinecap="round"/><circle cx="8" cy="5.5" r=".75" fill={isOpen?'var(--purple)':'var(--lite)'}/></svg>
                       </button>
-
-                      {/* Icon */}
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 6px', display: 'block' }}>
-                        <path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      {/* Value */}
-                      <div style={{ fontSize: 20, fontWeight: 900, color: stat.color, lineHeight: 1, letterSpacing: '-.5px' }}>{stat.value}</div>
-                      {/* Label */}
-                      <div style={{ fontSize: 9, color: 'var(--mid)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '.4px', lineHeight: 1.3 }}>{stat.label}</div>
-
-                      {/* Inline tooltip — slides in when ⓘ is tapped */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ margin:'0 auto 6px',display:'block' }}><path d={stat.icon} stroke={stat.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <div style={{ fontSize:20,fontWeight:900,color:stat.color,lineHeight:1,letterSpacing:'-.5px' }}>{stat.value}</div>
+                      <div style={{ fontSize:9,color:'var(--mid)',fontWeight:600,marginTop:4,textTransform:'uppercase',letterSpacing:'.4px',lineHeight:1.3 }}>{stat.label}</div>
                       {isOpen && (
-                        <div style={{
-                          marginTop: 8,
-                          padding: '7px 8px',
-                          background: 'var(--pur-lt,rgba(124,106,240,.10))',
-                          border: '1px solid var(--border2)',
-                          borderRadius: 8,
-                          fontSize: 10,
-                          color: 'var(--dark)',
-                          lineHeight: 1.5,
-                          textAlign: 'left',
-                          fontWeight: 500,
-                        }}>
+                        <div style={{ marginTop:8,padding:'7px 8px',background:'var(--pur-lt,rgba(124,106,240,.10))',border:'1px solid var(--border2)',borderRadius:8,fontSize:10,color:'var(--dark)',lineHeight:1.5,textAlign:'left',fontWeight:500 }}>
                           {stat.tip}
                         </div>
                       )}
@@ -706,148 +656,43 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                 })}
               </div>
 
-              {/* Earned awards */}
-              {earned.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, paddingLeft: 2 }}>Unlocked</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {earned.map(a => (
-                      <div key={a.id} style={{
-                        background: `${a.color}12`,
-                        border: `1.5px solid ${a.color}28`,
-                        borderRadius: 14, padding: '12px 12px 10px',
-                        display: 'flex', alignItems: 'flex-start', gap: 10,
-                      }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                          background: `${a.color}20`, border: `1px solid ${a.color}35`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d={a.icon} stroke={a.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--dark)', lineHeight: 1.2 }}>{a.label}</span>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke={a.color} strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                          </div>
-                          <div style={{ fontSize: 10, color: 'var(--mid)', lineHeight: 1.4 }}>{a.desc}</div>
-                        </div>
-                      </div>
-                    ))}
+              {/* View All Awards button */}
+              <button
+                onClick={() => setShowAwardsSheet(true)}
+                style={{
+                  width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',
+                  padding:'13px 16px',marginBottom:10,
+                  background:'var(--glass-bg2,rgba(255,255,255,.04))',
+                  border:'1.5px solid var(--glass-border,rgba(255,255,255,.08))',
+                  borderRadius:14,cursor:'pointer',fontFamily:'inherit',
+                  WebkitTapHighlightColor:'transparent',
+                }}
+              >
+                <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+                  <div style={{ width:34,height:34,borderRadius:10,flexShrink:0,background:'rgba(124,106,240,.12)',border:'1px solid rgba(124,106,240,.22)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.09 6.26L20 9.27l-5 4.87 1.18 6.88L12 17.77l-5.18 3.25L8 14.14 3 9.27l5.91-.01L12 2z" stroke="var(--purple)" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:14,fontWeight:700,color:'var(--dark)',textAlign:'left' }}>View All Awards</div>
+                    <div style={{ fontSize:11,color:'var(--mid)',marginTop:1 }}>
+                      {earned.length} unlocked · {awards.length - earned.length} to go
+                    </div>
                   </div>
                 </div>
-              )}
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)',flexShrink:0 }}>
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-              {/* Empty state for new users */}
-              {earned.length === 0 && (
-                <div style={{
-                  textAlign: 'center', padding: '24px 16px',
-                  background: 'var(--glass-bg2, rgba(255,255,255,.03))',
-                  border: '1.5px dashed var(--border)',
-                  borderRadius: 16, marginBottom: 12,
-                }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>🌱</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--dark)', marginBottom: 4 }}>Your journey starts here</div>
-                  <div style={{ fontSize: 12, color: 'var(--mid)', lineHeight: 1.5, maxWidth: 220, margin: '0 auto' }}>
-                    Complete your first task to unlock your first award.
-                  </div>
-                </div>
-              )}
-
-              {/* Locked awards — next to unlock */}
-              {locked.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, paddingLeft: 2 }}>Up Next</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {locked.slice(0, 3).map(a => (
-                      <div key={a.id} style={{
-                        background: 'var(--glass-bg2, rgba(255,255,255,.03))',
-                        border: '1.5px solid var(--border)',
-                        borderRadius: 12, padding: '10px 12px',
-                        display: 'flex', alignItems: 'center', gap: 10, opacity: 0.7,
-                      }}>
-                        <div style={{
-                          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                          background: 'var(--surf2)', border: '1px solid var(--border)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <rect x="3" y="11" width="18" height="11" rx="2" stroke="var(--mid)" strokeWidth="1.8"/>
-                            <path d="M7 11V7a5 5 0 0110 0v4" stroke="var(--mid)" strokeWidth="1.8" strokeLinecap="round"/>
-                          </svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mid)', marginBottom: 2 }}>{a.label}</div>
-                          <div style={{ fontSize: 10, color: 'var(--lite)', lineHeight: 1.3 }}>{a.hint}</div>
-                        </div>
-                        {/* Progress bar */}
-                        <div style={{ width: 44, flexShrink: 0 }}>
-                          <div style={{ height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%', borderRadius: 2,
-                              background: a.color,
-                              width: `${Math.min(100, Math.round((a.progress.current / a.progress.target) * 100))}%`,
-                              transition: 'width .4s ease',
-                            }}/>
-                          </div>
-                          <div style={{ fontSize: 9, color: 'var(--lite)', textAlign: 'right', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                            {a.progress.current}/{a.progress.target}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {locked.length > 3 && (
-                      <div style={{ fontSize: 11, color: 'var(--mid)', textAlign: 'center', paddingTop: 2, fontWeight: 600 }}>
-                        +{locked.length - 3} more awards to discover
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <AwardsSheet
+                open={showAwardsSheet}
+                onClose={() => setShowAwardsSheet(false)}
+                stats={{ streakDays, tasksDone, avgScore, focusWins, visitStreak, maxVisitStreak }}
+                awardAnimOn={awardAnimOn}
+              />
             </>
           );
         })()}
-
-        {/* ── System Settings entry row ── */}
-        <button
-          type="button"
-          onClick={() => setSettingsView('list')}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-            padding: '13px 16px', marginBottom: 10,
-            background: 'var(--glass-bg2, rgba(255,255,255,.04))',
-            border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
-            borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-          }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(124,106,240,.12)', border: '1px solid rgba(124,106,240,.2)',
-          }}>
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="2.5" stroke="var(--purple)" strokeWidth="1.5"/>
-              <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"
-                stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', display: 'flex', alignItems: 'center', gap: 7 }}>
-              System Settings
-              {appUpdate.hasUpdate && (
-                <span style={{ fontSize: 9, fontWeight: 800, background: '#FF6B6B', color: '#fff', borderRadius: 8, padding: '1px 6px' }}>UPDATE</span>
-              )}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Account, notifications, updates & more</div>
-          </div>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
-            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
 
         <button className={s.signoutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>{/* inner */}
