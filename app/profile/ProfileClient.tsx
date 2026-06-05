@@ -16,6 +16,8 @@ import SparkAssistant from '@/components/SparkAssistant';
 import ThemePickerSheet from '@/components/ThemePickerSheet';
 import FontPickerSheet from '@/components/FontPickerSheet';
 import AwardsSheet from '@/components/AwardsSheet';
+import UpgradeSheet from '@/components/UpgradeSheet';
+import { getPlan, setPlan, PLAN_META, type PlanId } from '@/lib/planStore';
 import type { AwardStats } from '@/lib/awards';
 import { FONT_META, getSavedFont, saveFont, type FontId } from '@/lib/fontPref';
 import { loadFullPrefs } from '@/lib/dashboardPrefs';
@@ -73,7 +75,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [changelogOpen, setChangelogOpen] = useState(false);
   // Track expanded changelog versions as a plain string array — no TypeScript generics needed
   const [expandedVersions, setExpandedVersions] = useState([] as string[]);
-  const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'>('none');
+  const [settingsView, setSettingsView] = useState<'none'|'list'|'account'|'update'|'notifications'|'privacy'|'billing'>('none');
   const appUpdate = useAppUpdate();
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -89,6 +91,15 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showFontPicker,  setShowFontPicker]  = useState(false);
   const [showAwardsSheet, setShowAwardsSheet] = useState(false);
+  const [currentPlan,    setCurrentPlan]    = useState<PlanId>('free');
+  const [showUpgrade,    setShowUpgrade]    = useState(false);
+  useEffect(() => {
+    const read = () => setCurrentPlan(getPlan());
+    read();
+    window.addEventListener('planiq_plan_changed', read);
+    return () => window.removeEventListener('planiq_plan_changed', read);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [activeFont,      setActiveFont]      = useState<FontId>('default');
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
@@ -776,6 +787,28 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, marginLeft: 4 }}>App</div>
           <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
 
+            {/* Plan & Billing */}
+            <button type="button" onClick={() => setSettingsView('billing')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: currentPlan === 'plus' ? 'rgba(124,58,237,.14)' : 'var(--glass-bg2)', border: currentPlan === 'plus' ? '1px solid rgba(124,58,237,.3)' : '1px solid var(--border)' }}>
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 2l2.09 4.26L17 7.27l-3.5 3.41.83 4.82L10 13.3l-4.33 2.2.83-4.82L3 7.27l4.91-.01L10 2z" stroke={currentPlan==='plus'?'#7C3AED':'var(--mid)'} strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', display:'flex', alignItems:'center', gap:7 }}>
+                  Plan & Billing
+                  <span style={{ fontSize:9, fontWeight:800, padding:'1px 6px', borderRadius:6, background: currentPlan==='plus'?'rgba(124,58,237,.15)':'var(--glass-bg2)', color: currentPlan==='plus'?'#7C3AED':'var(--mid)', border: currentPlan==='plus'?'1px solid rgba(124,58,237,.25)':'1px solid var(--border)' }}>
+                    {PLAN_META[currentPlan].name.replace('PlanIQ ','').toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>
+                  {currentPlan === 'free' ? 'Upgrade for AI features and more' : 'Manage your subscription'}
+                </div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)',flexShrink:0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
             {/* Software Update */}
             <button type="button" onClick={() => setSettingsView('update')}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
@@ -863,9 +896,9 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
       <div style={{
         position: 'fixed', inset: 0, zIndex: 70,
         background: 'var(--bg, #080E1A)',
-        transform: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy') ? 'translateX(0)' : 'translateX(100%)',
+        transform: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy' || settingsView === 'billing') ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.3s cubic-bezier(0.32,1,0.52,1)',
-        pointerEvents: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy') ? 'auto' : 'none',
+        pointerEvents: (settingsView === 'account' || settingsView === 'update' || settingsView === 'notifications' || settingsView === 'privacy' || settingsView === 'billing') ? 'auto' : 'none',
         display: 'flex', flexDirection: 'column',
       }}>
         {/* Sub-page header */}
@@ -886,7 +919,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
               System Settings
             </button>
             <div style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 800, color: 'var(--dark)', marginRight: 110 }}>
-              {settingsView === 'account' ? 'Account' : settingsView === 'update' ? 'Software Update' : settingsView === 'privacy' ? 'Privacy & Terms' : 'Notifications'}
+              {settingsView === 'account' ? 'Account' : settingsView === 'update' ? 'Software Update' : settingsView === 'privacy' ? 'Privacy & Terms' : settingsView === 'billing' ? 'Plan & Billing' : 'Notifications'}
             </div>
           </div>
         </div>
@@ -930,6 +963,77 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
                   style={{ flexShrink:0, width:44, height:25, borderRadius:13, background: notifEnabled ? 'var(--purple)' : 'var(--border2)', border:'none', cursor:'pointer', position:'relative', transition:'background .2s', WebkitTapHighlightColor:'transparent' }}>
                   <span style={{ position:'absolute', top:2.5, left: notifEnabled ? 21 : 2.5, width:20, height:20, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 4px rgba(0,0,0,.25)', transition:'left .18s cubic-bezier(.4,0,.2,1)', display:'block' }} />
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Plan & Billing ── */}
+          {settingsView === 'billing' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+              {/* Current plan */}
+              <div style={{ background:'var(--glass-bg2)', border:'1.5px solid var(--border)', borderRadius:16, overflow:'hidden' }}>
+                <div style={{ padding:'14px 16px', borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:8 }}>Current Plan</div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div>
+                      <div style={{ fontSize:18, fontWeight:900, color:'var(--dark)', letterSpacing:'-.3px' }}>{PLAN_META[currentPlan].name}</div>
+                      <div style={{ fontSize:11, color:'var(--mid)', marginTop:2 }}>{PLAN_META[currentPlan].tagline}</div>
+                    </div>
+                    <span style={{ fontSize:9, fontWeight:800, padding:'3px 10px', borderRadius:8, background: currentPlan==='plus'?'rgba(124,58,237,.15)':currentPlan==='pro'?'rgba(0,102,255,.15)':'var(--surf2)', color: currentPlan==='plus'?'#7C3AED':currentPlan==='pro'?'#0066FF':'var(--mid)', border:`1px solid ${currentPlan==='plus'?'rgba(124,58,237,.3)':currentPlan==='pro'?'rgba(0,102,255,.3)':'var(--border)'}`, letterSpacing:'.5px' }}>
+                      {currentPlan.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                {currentPlan === 'free' && (
+                  <button onClick={() => setShowUpgrade(true)} style={{ width:'100%', padding:'13px 16px', background:'var(--pur-lt)', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between', WebkitTapHighlightColor:'transparent' }}>
+                    <span style={{ fontSize:13, fontWeight:700, color:'var(--purple)' }}>⚡ Upgrade to PlanIQ Plus</span>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="var(--purple)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Plan benefits */}
+              <div style={{ background:'var(--glass-bg2)', border:'1.5px solid var(--border)', borderRadius:16, overflow:'hidden' }}>
+                <div style={{ padding:'12px 16px 6px', borderBottom:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--mid)', textTransform:'uppercase', letterSpacing:'.5px' }}>What&apos;s Included</div>
+                </div>
+                <div style={{ padding:'10px 16px 12px', display:'flex', flexDirection:'column', gap:7 }}>
+                  {PLAN_META[currentPlan].features.map((f,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-6" stroke="var(--mint,#00C896)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <span style={{ fontSize:12, color:'var(--dark)', fontWeight:500 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Manage / Restore */}
+              <div style={{ background:'var(--glass-bg2)', border:'1.5px solid var(--border)', borderRadius:16, overflow:'hidden' }}>
+                {[
+                  { label:'Manage Subscription', sub:'Opens App Store subscription settings', icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                  { label:'Restore Purchases',   sub:'Purchase restore will be available once in-app purchases are connected', icon:'M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13' },
+                ].map((item, i, arr) => (
+                  <button key={item.label} style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'transparent', border:'none', borderBottom: i < arr.length-1?'1px solid var(--border)':'none', cursor:'default', fontFamily:'inherit', textAlign:'left', opacity:.55, WebkitTapHighlightColor:'transparent' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
+                      <path d={item.icon} stroke="var(--mid)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--dark)' }}>{item.label}</div>
+                      <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>{item.sub}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Pro coming soon */}
+              <div style={{ background:'rgba(0,102,255,.06)', border:'1px solid rgba(0,102,255,.18)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.09 6.26L20 9.27l-5 4.87 1.18 6.88L12 17.77l-5.18 3.25L8 14.14 3 9.27l5.91-.01L12 2z" stroke="#0066FF" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#0066FF' }}>PlanIQ Pro — Coming Soon</div>
+                  <div style={{ fontSize:10, color:'var(--mid)', marginTop:1 }}>Auto AI analysis, advanced analytics, priority support</div>
+                </div>
+                <span style={{ fontSize:8, fontWeight:800, color:'#0066FF', background:'rgba(0,102,255,.12)', border:'1px solid rgba(0,102,255,.25)', borderRadius:5, padding:'2px 6px', flexShrink:0, letterSpacing:'.4px' }}>SOON</span>
               </div>
             </div>
           )}
@@ -1322,6 +1426,7 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
         }
       `}</style>
 
+      <UpgradeSheet open={showUpgrade} onClose={() => setShowUpgrade(false)} />
       <DashboardCustomizeSheet
         open={showCustomize}
         onClose={() => setShowCustomize(false)}
