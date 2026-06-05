@@ -700,6 +700,43 @@ html[data-theme="probalance"] {
 }
 
 /* ══════════════════════════════════════════════════════════
+   CLEAN WORKSPACE — pure white + monday.com electric blue + vibrant green
+   Identity: monday.com energy, open office, bright productivity SaaS.
+   True white bg, crisp cards, maximum contrast, no dim corners.
+══════════════════════════════════════════════════════════ */
+html[data-theme="clean"] {
+  --bg:#F0F2F5; --bg2:#E8EBF0; --surf:#FFFFFF; --surf2:#F7F8FA; --surf3:#EEF0F5;
+  --g-start:#0066FF; --g-end:#00C875;
+  --gradient:linear-gradient(135deg,#0066FF 0%,#00C875 100%);
+  --gradient-soft:linear-gradient(135deg,rgba(0,102,255,.10) 0%,rgba(0,200,117,.07) 100%);
+  --purple:#0066FF; --pur-d:#0044CC; --pur-lt:rgba(0,102,255,.09); --pur-m:#0055EE;
+  --coral:#FF3D3D; --coral-lt:rgba(255,61,61,.09);
+  --mint:#00C875;  --mint-lt:rgba(0,200,117,.10);
+  --amber:#FFCB00; --amber-lt:rgba(255,203,0,.10);
+  --sky:#00B0D8;   --sky-lt:rgba(0,176,216,.10);
+  --green:#00C875; --green-lt:rgba(0,200,117,.10);
+  --dark:#1F2D3D; --mid:#5A6880; --lite:#9AA5B4;
+  --border:rgba(0,0,0,.10); --border2:rgba(0,102,255,.22);
+  --card-sh:0 2px 12px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04); --card-sh2:0 1px 6px rgba(0,0,0,.05);
+  --nav-bg:rgba(255,255,255,0.95);
+  --accent:var(--purple);
+  --glass-bg:rgba(255,255,255,0.96); --glass-bg2:rgba(247,248,250,0.90);
+  --glass-border:rgba(0,0,0,0.09); --glass-border2:rgba(0,102,255,0.20);
+  --glass-blur:blur(18px);
+  --glass-sh:0 2px 12px rgba(0,0,0,.06),0 1px 0 rgba(255,255,255,.95) inset;
+  --glass-sh2:0 1px 6px rgba(0,0,0,.04),0 1px 0 rgba(255,255,255,.80) inset;
+  --nav-glass:rgba(255,255,255,0.95);
+  --nav-shadow:0 -1px 12px rgba(0,0,0,0.08);
+  --nav-inactive:rgba(31,45,61,0.40);
+  --nav-active:var(--purple);
+  --chart-1:#0066FF; --chart-2:#00C875; --chart-3:#00B0D8; --chart-4:#FFCB00; --chart-5:#FF3D3D;
+  --chart-ok:#00C875; --chart-mid:#0066FF; --chart-warn:#FFCB00; --chart-full:#FF3D3D;
+  --chart-empty:rgba(0,102,255,0.07); --chart-grid:rgba(0,0,0,0.06);
+  --chart-axis:rgba(31,45,61,0.25); --chart-tooltip:rgba(255,255,255,0.98);
+  color-scheme: light;
+}
+
+/* ══════════════════════════════════════════════════════════
    BASE RESET
 ══════════════════════════════════════════════════════════ */
 *, *::before, *::after {
@@ -840,7 +877,8 @@ html[data-theme="mint"]       .btn-ghost,
 html[data-theme="coral"]      .btn-ghost,
 html[data-theme="pink"]       .btn-ghost,
 html[data-theme="calm"]       .btn-ghost,
-html[data-theme="bright"]     .btn-ghost {
+html[data-theme="bright"]     .btn-ghost,
+html[data-theme="clean"]      .btn-ghost {
   background: rgba(0,0,0,0.05);
 }
 html[data-theme="soft"]       .btn-ghost:active,

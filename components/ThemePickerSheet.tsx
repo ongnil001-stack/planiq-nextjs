@@ -13,7 +13,7 @@ import { THEME_IDS, THEME_META, type ThemeId } from '@/lib/theme';
 const THEME_GROUPS: { label: string; ids: ThemeId[] }[] = [
   {
     label: 'Recommended',
-    ids: ['focused', 'soft', 'dark', 'calm'],
+    ids: ['clean', 'focused', 'soft', 'dark', 'calm'],
   },
   {
     label: 'Dark Themes',
@@ -21,7 +21,7 @@ const THEME_GROUPS: { label: string; ids: ThemeId[] }[] = [
   },
   {
     label: 'Light Themes',
-    ids: ['soft', 'minimal', 'calm', 'bright', 'teal', 'mint', 'coral', 'pink', 'lady', 'colorful'],
+    ids: ['clean', 'soft', 'minimal', 'calm', 'bright', 'teal', 'mint', 'coral', 'pink', 'lady', 'colorful'],
   },
 ];
 

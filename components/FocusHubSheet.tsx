@@ -497,13 +497,15 @@ export default function FocusHubSheet({ open, onClose }: Props) {
     padding: '0 20px', paddingBottom: 'max(20px, env(safe-area-inset-bottom, 20px))', flexShrink: 0,
   };
 
-  const QA_BTN = (accent: string): React.CSSProperties => ({
+  // QA_BTN now takes CSS variables directly — coordinates with selected theme
+  const QA_BTN = (color: string, bg: string, border: string): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
     padding: '13px 0', borderRadius: '14px',
-    background: `rgba(${hexToRgb(accent)},0.12)`,
-    border: `1px solid rgba(${hexToRgb(accent)},0.24)`,
-    color: accent, fontSize: '13px', fontWeight: 700,
+    background: bg,
+    border: `1.5px solid ${border}`,
+    color, fontSize: '13px', fontWeight: 700,
     cursor: 'pointer', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+    transition: 'background .12s',
   });
 
   const isLoadingAny = loading || aiLoading;
@@ -770,27 +772,35 @@ export default function FocusHubSheet({ open, onClose }: Props) {
         {/* Quick actions */}
         <div style={DIVIDER} />
         <div style={QA_ROW}>
-          <button style={QA_BTN('#7C6AF0')} onClick={() => { onClose(); router.push('/schedule/new'); }}>
+          {/* Add Schedule — theme primary */}
+          <button style={QA_BTN('var(--purple)', 'var(--pur-lt,rgba(124,106,240,.12))', 'var(--border2,rgba(124,106,240,.28))')}
+            onClick={() => { onClose(); router.push('/schedule/new'); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
             </svg>
             Add Schedule
           </button>
-          <button style={QA_BTN('#00C6FF')} onClick={() => { onClose(); router.push('/calendar'); }}>
+          {/* View Schedule — theme sky/secondary */}
+          <button style={QA_BTN('var(--sky,#0EA5E9)', 'var(--sky-lt,rgba(14,165,233,.12))', 'rgba(14,165,233,.28)')}
+            onClick={() => { onClose(); router.push('/calendar'); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="5" width="18" height="17" rx="3" stroke="currentColor" strokeWidth="2"/>
               <path d="M3 11H21M8 3V7M16 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
             View Schedule
           </button>
-          <button style={QA_BTN('#FF6B8A')} onClick={() => { onClose(); router.push('/ai-analysis'); }}>
+          {/* AI Priorities — theme mint/accent */}
+          <button style={QA_BTN('var(--mint,#00E5C0)', 'var(--mint-lt,rgba(0,229,192,.12))', 'rgba(0,229,192,.28)')}
+            onClick={() => { onClose(); router.push('/ai-analysis'); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M12 3L14.5 9L21 9.75L16.4 14.1L17.8 20.5L12 17.3L6.2 20.5L7.6 14.1L3 9.75L9.5 9L12 3Z"
                 stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
             </svg>
             AI Priorities
           </button>
-          <button style={QA_BTN('#FDCB6E')} onClick={() => { onClose(); router.push('/dashboard'); }}>
+          {/* Dashboard — neutral/glass */}
+          <button style={QA_BTN('var(--dark)', 'var(--glass-bg2,rgba(255,255,255,.06))', 'var(--glass-border,rgba(255,255,255,.12))')}
+            onClick={() => { onClose(); router.push('/dashboard'); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M3 10.5L12 3L21 10.5V21C21 21.55 20.55 22 20 22H15V17H9V22H4C3.45 22 3 21.55 3 21V10.5Z"
                 stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>

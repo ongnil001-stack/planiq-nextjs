@@ -3,7 +3,7 @@
  * Each theme overrides CSS custom properties on <body data-theme="X">
  */
 
-export const THEME_IDS = ['focused', 'soft', 'dark', 'colorful', 'minimal', 'pixel', 'lady', 'blue', 'clarity', 'teal', 'mint', 'coral', 'pink', 'deepfocus', 'calm', 'bright', 'probalance'] as const;
+export const THEME_IDS = ['focused', 'soft', 'dark', 'colorful', 'minimal', 'pixel', 'lady', 'blue', 'clarity', 'teal', 'mint', 'coral', 'pink', 'deepfocus', 'calm', 'bright', 'probalance', 'clean'] as const;
 export type ThemeId = typeof THEME_IDS[number];
 
 export const THEME_META: Record<ThemeId, {
@@ -27,6 +27,7 @@ export const THEME_META: Record<ThemeId, {
   calm:      { name: 'Calm Planner',     desc: 'Sage & deep teal',    tag: 'SAGE',    bg: '#EBF4F2', pri: '#0D7377', acc: '#14B8A6' },
   bright:    { name: 'Bright Schedule',  desc: 'Sand & amber',        tag: 'AMBER',   bg: '#FFF8EC', pri: '#B45309', acc: '#F59E0B' },
   probalance:{ name: 'Pro Balance',      desc: 'Abyss & emerald',     tag: 'PRO',     bg: '#0A1410', pri: '#10B981', acc: '#34D399' },
+  clean:     { name: 'Clean Workspace',  desc: 'White & electric blue', tag: 'WHITE',  bg: '#FFFFFF', pri: '#0066FF', acc: '#00C875' },
 };
 
 export const LS_KEY = 'planiq_theme';
