@@ -351,16 +351,42 @@ function CalendarTrack({
       const todayD  = isToday(d, y, mo);
 
       // Build visual state styles inline — no CSS class size dependency
-      const cellBg  = active  ? 'var(--purple)'
-                    : todayD  ? 'rgba(124,106,240,.13)'
-                    : hol     ? 'rgba(255,107,107,.07)'
-                    : 'transparent';
-      const cellBox = todayD && !active ? '0 0 0 2px var(--purple)' : 'none';
-      const numCol  = active  ? '#fff'
-                    : todayD  ? 'var(--purple)'
-                    : hol     ? 'var(--coral,#FF6B8A)'
-                    : 'var(--dark)';
-      const numW    = active || todayD ? 800 : hol ? 700 : 500;
+      // ── Activity count (non-holiday events) ──────────────────────────────────
+      const actCount = evts.length;
+
+      // ── Visual states (priority order) ─────────────────────────────────────
+      // active > today > holiday+act > holiday > activity > normal
+      const cellBg =
+          active  ? 'var(--purple)'
+        : todayD  ? 'rgba(124,106,240,.14)'
+        : hol && actCount > 0 ? 'rgba(255,92,122,.12)'   // holiday + activity
+        : hol     ? 'rgba(255,92,122,.09)'                // holiday only
+        : actCount > 0 ? 'var(--pur-lt,rgba(124,106,240,.14))' // activity only
+        : 'transparent';
+
+      // Ring: today gets accent ring; activity-only days get a faint accent ring
+      const cellBox =
+          active  ? 'none'
+        : todayD  ? '0 0 0 2px var(--purple)'
+        : actCount > 0 && !hol ? '0 0 0 1px var(--purple,rgba(124,106,240,.4))'
+        : 'none';
+
+      const numCol =
+          active  ? '#fff'
+        : todayD  ? 'var(--purple)'
+        : hol     ? 'var(--coral,#FF6B8A)'
+        : actCount > 0 ? 'var(--purple)'
+        : 'var(--dark)';
+
+      const numW = active || todayD || actCount > 0 ? 700 : hol ? 700 : 500;
+
+      // ── Bottom indicator ────────────────────────────────────────────────────
+      // Show a small pill bar (1 event) or count badge (2+ events)
+      const showIndicator = !active && (hol || actCount > 0);
+      const indicatorIsCount = actCount > 1;
+      const indicatorColor = hol
+        ? (active ? 'rgba(255,255,255,.85)' : 'var(--coral,#FF6B8A)')
+        : (active ? 'rgba(255,255,255,.9)'  : 'var(--purple)');
 
       items.push(
         <button
@@ -371,7 +397,7 @@ function CalendarTrack({
             width: cellSize, height: cellSize,
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            gap: 2,
+            gap: 1,
             borderRadius: Math.round(cellSize * 0.28),
             background: cellBg,
             boxShadow: cellBox,
@@ -379,9 +405,11 @@ function CalendarTrack({
             fontFamily: 'inherit',
             padding: 0,
             flexShrink: 0,
-            transition: 'background .12s',
+            transition: 'background .12s, box-shadow .12s',
             WebkitTapHighlightColor: 'transparent',
           }}>
+
+          {/* Date number */}
           <span style={{
             fontSize: Math.max(11, Math.round(cellSize * 0.34)),
             fontWeight: numW,
@@ -389,30 +417,38 @@ function CalendarTrack({
             lineHeight: 1,
             letterSpacing: active ? '-.3px' : '0',
           }}>{d}</span>
-          {/* Dot indicators */}
-          {(hol || evts.length > 0) && (
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 5 }}>
-              {hol && (
-                <span style={{
-                  width: active ? 4 : 5, height: active ? 4 : 5,
-                  borderRadius: '50%',
-                  background: active ? 'rgba(255,255,255,.85)' : 'var(--coral,#FF6B8A)',
-                  flexShrink: 0,
-                }} />
-              )}
-              {!hol && evts[0] && (
-                <span style={{
-                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
-                  background: active ? 'rgba(255,255,255,.75)' : PRIORITY_COLORS[evts[0].priority],
-                }} />
-              )}
-              {!hol && evts[1] && (
-                <span style={{
-                  width: 4, height: 4, borderRadius: '50%', flexShrink: 0,
-                  background: active ? 'rgba(255,255,255,.55)' : PRIORITY_COLORS[evts[1].priority],
-                }} />
-              )}
-            </div>
+
+          {/* Activity indicator — pill bar or count badge */}
+          {showIndicator && (
+            indicatorIsCount ? (
+              // Count badge: "2" "3+" — clearly readable
+              <span style={{
+                fontSize: Math.max(7, Math.round(cellSize * 0.19)),
+                fontWeight: 800,
+                lineHeight: 1,
+                color: active ? '#fff' : (hol ? 'var(--coral,#FF6B8A)' : 'var(--purple)'),
+                background: active
+                  ? 'rgba(255,255,255,.2)'
+                  : (hol ? 'rgba(255,92,122,.18)' : 'var(--pur-lt,rgba(124,106,240,.2))'),
+                borderRadius: 4,
+                padding: '1px 3px',
+                minWidth: 12,
+                textAlign: 'center',
+              }}>
+                {actCount > 9 ? '9+' : actCount}
+              </span>
+            ) : (
+              // Single event — small horizontal pill bar
+              <span style={{
+                width: Math.round(cellSize * 0.38),
+                height: 3,
+                borderRadius: 2,
+                background: indicatorColor,
+                opacity: active ? 0.9 : 0.75,
+                display: 'block',
+                flexShrink: 0,
+              }} />
+            )
           )}
         </button>
       );
