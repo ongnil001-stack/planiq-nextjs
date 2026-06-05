@@ -476,109 +476,46 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
       >
       <div style={{ paddingBottom: '16px' }}>
 
-        {/* Appearance — compact row, opens ThemePickerSheet */}
-        <div className={s.sh}><div className={s.shT}>
-          <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-            <path d="M7.5 2C4.46 2 2 4.46 2 7.5C2 10.54 4.46 13 7.5 13H8.5C9.05 13 9.5 12.55 9.5 12C9.5 11.72 9.4 11.47 9.22 11.28C9.04 11.09 8.94 10.84 8.94 10.57C8.94 10.01 9.39 9.57 9.94 9.57H11C12.1 9.57 13 8.67 13 7.57C13 4.51 10.54 2 7.5 2Z" stroke="currentColor" strokeWidth="1.4"/>
-            <circle cx="5" cy="7.5" r="0.8" fill="currentColor"/>
-            <circle cx="6.5" cy="5" r="0.8" fill="currentColor"/>
-            <circle cx="9" cy="5" r="0.8" fill="currentColor"/>
-            <circle cx="10.5" cy="7.5" r="0.8" fill="currentColor"/>
-          </svg>
-          Appearance
-        </div></div>
-
-        {/* Theme row — shows current theme + opens picker */}
+        {/* ── System Settings entry row ── */}
         <button
-          onClick={() => setShowThemePicker(true)}
+          type="button"
+          onClick={() => setSettingsView('list')}
           style={{
-            width:'100%', display:'flex', alignItems:'center', gap:12,
-            padding:'13px 16px', marginBottom:8,
-            background:'var(--glass-bg2,rgba(255,255,255,.04))',
-            border:'1.5px solid var(--glass-border,rgba(255,255,255,.08))',
-            borderRadius:14, cursor:'pointer',
-            fontFamily:'inherit', textAlign:'left',
-            WebkitTapHighlightColor:'transparent',
-          }}
-        >
-          {/* Current theme swatch */}
-          {(() => {
-            const t = THEME_META[activeTheme];
-            return (
-              <div style={{
-                width:44, height:36, borderRadius:10, overflow:'hidden',
-                flexShrink:0, display:'flex',
-                border:'1px solid rgba(255,255,255,.12)',
-                boxShadow:'0 2px 8px rgba(0,0,0,.2)',
-              }}>
-                <div style={{ flex:2, background:t.bg  }} />
-                <div style={{ flex:1.5, background:t.pri }} />
-                <div style={{ flex:1, background:t.acc }} />
-              </div>
-            );
-          })()}
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)', marginBottom:2 }}>
-              {THEME_META[activeTheme].name}
-            </div>
-            <div style={{ fontSize:11, color:'var(--mid)' }}>
-              {THEME_META[activeTheme].desc} · {THEME_IDS.length} themes available
-            </div>
-          </div>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)', flexShrink:0 }}>
-            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-
-        <ThemePickerSheet
-          open={showThemePicker}
-          active={activeTheme}
-          onSelect={id => handleApplyTheme(id)}
-          onClose={() => setShowThemePicker(false)}
-        />
-
-        {/* Font Style row */}
-        <button
-          onClick={() => setShowFontPicker(true)}
-          style={{
-            width:'100%', display:'flex', alignItems:'center', gap:12,
-            padding:'13px 16px', marginBottom:8,
-            background:'var(--glass-bg2,rgba(255,255,255,.04))',
-            border:'1.5px solid var(--glass-border,rgba(255,255,255,.08))',
-            borderRadius:14, cursor:'pointer',
-            fontFamily:'inherit', textAlign:'left',
-            WebkitTapHighlightColor:'transparent',
-          }}
-        >
-          <div style={{
-            width:44, height:36, borderRadius:10, flexShrink:0,
-            background:'var(--glass-bg)', border:'1px solid var(--border)',
-            display:'flex', alignItems:'center', justifyContent:'center',
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '13px 16px', marginBottom: 10,
+            background: 'var(--glass-bg2, rgba(255,255,255,.04))',
+            border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))',
+            borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>
-            <span style={{
-              fontFamily: `'${FONT_META[activeFont].family}', system-ui, sans-serif`,
-              fontSize:17, fontWeight:800, color:'var(--purple)', lineHeight:1,
-            }}>Aa</span>
+          <div style={{
+            width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(124,106,240,.12)', border: '1px solid rgba(124,106,240,.2)',
+          }}>
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="2.5" stroke="var(--purple)" strokeWidth="1.5"/>
+              <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"
+                stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
           </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:14, fontWeight:700, color:'var(--dark)', marginBottom:2 }}>
-              {FONT_META[activeFont].name}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              System Settings
+              {appUpdate.hasUpdate && (
+                <span style={{ fontSize: 9, fontWeight: 800, background: '#FF6B6B', color: '#fff', borderRadius: 8, padding: '1px 6px' }}>UPDATE</span>
+              )}
             </div>
-            <div style={{ fontSize:11, color:'var(--mid)' }}>
-              {FONT_META[activeFont].desc}
-            </div>
+            <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>Account, appearance, notifications & more</div>
           </div>
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)', flexShrink:0 }}>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--mid)', flexShrink: 0 }}>
             <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
 
-        <FontPickerSheet
-          open={showFontPicker}
-          active={activeFont}
-          onSelect={id => handleApplyFont(id)}
-          onClose={() => setShowFontPicker(false)}
-        />
+
+        {/* Theme + Font settings are inside System Settings → Appearance */}
+
 
         {/* Awards & Momentum — compact strip + View All button */}
         {(() => {
@@ -746,6 +683,39 @@ export default function ProfileClient({ initialUser, initialProfile, streakDays,
 
         {/* Settings list */}
         <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 16px 0' }}>
+
+          {/* Group 0: Appearance */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, marginLeft: 4 }}>Appearance</div>
+          <div style={{ background: 'var(--glass-bg2, rgba(255,255,255,.04))', border: '1.5px solid var(--glass-border, rgba(255,255,255,.08))', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+            {/* Theme */}
+            <button type="button" onClick={() => setShowThemePicker(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              {(() => { const t = THEME_META[activeTheme]; return (
+                <div style={{ width:34,height:28,borderRadius:8,overflow:'hidden',flexShrink:0,display:'flex',border:'1px solid rgba(255,255,255,.12)' }}>
+                  <div style={{ flex:2,background:t.bg }}/><div style={{ flex:1.5,background:t.pri }}/><div style={{ flex:1,background:t.acc }}/>
+                </div>
+              ); })()}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Theme</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>{THEME_META[activeTheme].name}</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)',flexShrink:0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            {/* Font Style */}
+            <button type="button" onClick={() => setShowFontPicker(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', WebkitTapHighlightColor: 'transparent' }}>
+              <div style={{ width:34,height:28,borderRadius:8,flexShrink:0,background:'var(--glass-bg)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <span style={{ fontFamily:`'${FONT_META[activeFont].family}', system-ui, sans-serif`,fontSize:14,fontWeight:800,color:'var(--purple)',lineHeight:1 }}>Aa</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dark)' }}>Font Style</div>
+                <div style={{ fontSize: 11, color: 'var(--mid)', marginTop: 1 }}>{FONT_META[activeFont].name}</div>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ color:'var(--mid)',flexShrink:0 }}><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+          <ThemePickerSheet open={showThemePicker} active={activeTheme} onSelect={id => handleApplyTheme(id)} onClose={() => setShowThemePicker(false)} />
+          <FontPickerSheet open={showFontPicker} active={activeFont} onSelect={id => handleApplyFont(id)} onClose={() => setShowFontPicker(false)} />
 
           {/* Group 1: Account & Preferences */}
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--mid)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8, marginLeft: 4 }}>Account & Preferences</div>
