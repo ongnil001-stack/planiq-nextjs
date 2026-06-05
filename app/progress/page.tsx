@@ -428,27 +428,148 @@ export default function ProgressPage() {
 
         {/* ══ 4 WEEKS tab ══ */}
         {tab === 'month' && (<>
-          {/* Sparkline */}
-          <div style={{ ...card, padding:'16px 14px 12px' }}>
-            <div style={{ fontSize:13, fontWeight:800, color:'var(--dark)', marginBottom:4 }}>28-Day Trend</div>
-            <div style={{ fontSize:11, color:'var(--mid)', marginBottom:12 }}>{totalDone} of {totalPlanned} tasks completed</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:56 }}>
-              {days.map((d) => {
-                const barH  = d.planned > 0 ? Math.max(4, Math.round((d.planned/maxBar)*52)) : 2;
-                const pct   = d.planned > 0 ? Math.round((d.done/d.planned)*100) : 0;
-                const isToday = d.date === todayIso2;
-                return (
-                  <div key={d.date} style={{ flex:1 }}>
-                    <div style={{ width:'100%', position:'relative', height:barH, borderRadius:3, background:'rgba(124,106,240,.08)' }}>
-                      <div style={{ position:'absolute', bottom:0, left:0, right:0, height:`${pct}%`, background:isToday?'var(--cyan,#00C6FF)':pct>=100?'var(--mint,#2DD4BF)':'var(--purple,#7C6AF0)', borderRadius:3 }}/>
+          {/* 28-Day Trend — redesigned */}
+          <div style={{ ...card, padding:'16px 14px 14px' }}>
+            {/* Header */}
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:800, color:'var(--dark)', marginBottom:2 }}>28-Day Trend</div>
+                <div style={{ fontSize:11, color:'var(--mid)' }}>
+                  <span style={{ fontWeight:700, color: totalDone>=totalPlanned&&totalPlanned>0 ? 'var(--mint)' : 'var(--dark)' }}>{totalDone}</span>
+                  {' '}of{' '}
+                  <span style={{ fontWeight:600 }}>{totalPlanned}</span>
+                  {' '}tasks completed
+                </div>
+              </div>
+              {/* Completion % badge */}
+              {totalPlanned > 0 && (
+                <span style={{
+                  fontSize:11, fontWeight:800, padding:'3px 9px', borderRadius:8,
+                  background: overallRate>=80?'var(--mint-lt)':overallRate>=50?'var(--pur-lt)':'var(--glass-bg2)',
+                  color: overallRate>=80?'var(--mint)':overallRate>=50?'var(--purple)':'var(--mid)',
+                  border: `1px solid ${overallRate>=80?'rgba(45,212,191,.3)':overallRate>=50?'var(--border2)':'var(--border)'}`,
+                }}>
+                  {overallRate}%
+                </span>
+              )}
+            </div>
+
+            {/* Chart area */}
+            {(() => {
+              const CHART_H = 64;
+              const avgPct  = days.filter(d=>d.planned>0).reduce((a,d)=>a+Math.round((d.done/d.planned)*100),0) /
+                              Math.max(1, days.filter(d=>d.planned>0).length);
+              const avgLine = Math.round((avgPct/100) * CHART_H);
+              // Best period: find 7-day window with highest completion
+              let bestStart = 0, bestScore = -1;
+              for (let i=0;i<=days.length-7;i++) {
+                const s = days.slice(i,i+7);
+                const p = s.reduce((a,d)=>a+d.planned,0);
+                const dn = s.reduce((a,d)=>a+d.done,0);
+                const sc = p>0?dn/p:0;
+                if (sc>bestScore){bestScore=sc;bestStart=i;}
+              }
+              const bestWeekLabel = days[bestStart]?.date
+                ? (() => { const d=new Date(days[bestStart].date+'T12:00:00'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); })()
+                : null;
+              return (
+                <>
+                  <div style={{ position:'relative', height:CHART_H, marginBottom:6 }}>
+                    {/* Average dashed line */}
+                    {avgPct>0 && avgPct<100 && (
+                      <div style={{
+                        position:'absolute', left:0, right:0,
+                        bottom: avgLine,
+                        borderTop:'1px dashed var(--border2)', opacity:.6,
+                        pointerEvents:'none', zIndex:1,
+                      }} />
+                    )}
+                    {/* Bars */}
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:'100%', position:'relative', zIndex:2 }}>
+                      {days.map((d, idx) => {
+                        const hasData = d.planned > 0;
+                        const pct     = hasData ? Math.round((d.done/d.planned)*100) : 0;
+                        const barH    = hasData ? Math.max(6, Math.round((d.planned/maxBar)*CHART_H*0.9)) : 0;
+                        const fillH   = hasData ? Math.round((pct/100)*barH) : 0;
+                        const isToday = d.date === todayIso2;
+                        const isBest  = idx >= bestStart && idx < bestStart+7 && bestScore>0.8;
+                        const barColor = isToday ? 'var(--sky,#00C6FF)'
+                                       : pct>=100 ? 'var(--mint,#2DD4BF)'
+                                       : pct>=60  ? 'var(--purple)'
+                                       : pct>0    ? 'var(--purple)' : 'transparent';
+                        const fillOpacity = pct>=100?1:pct>=60?.75:pct>0?.55:0;
+                        return (
+                          <div key={d.date} style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'flex-end', height:'100%' }}>
+                            {hasData ? (
+                              <div style={{
+                                width:'100%', height:barH, borderRadius:3,
+                                background:'var(--glass-bg2,rgba(124,106,240,.06))',
+                                border: isBest?'1px solid var(--border2)':'none',
+                                position:'relative', overflow:'hidden',
+                              }}>
+                                {fillH > 0 && (
+                                  <div style={{
+                                    position:'absolute', bottom:0, left:0, right:0,
+                                    height:fillH, background:barColor, opacity:fillOpacity,
+                                    borderRadius:3, transition:'height .4s ease',
+                                  }}/>
+                                )}
+                                {/* Today ring */}
+                                {isToday && (
+                                  <div style={{position:'absolute',inset:0,border:'1.5px solid var(--sky,#00C6FF)',borderRadius:3,pointerEvents:'none'}}/>
+                                )}
+                              </div>
+                            ) : (
+                              /* Empty day — very subtle line at baseline */
+                              <div style={{ width:'100%', height:2, borderRadius:1, background:'var(--border)', opacity:.4 }}/>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:7 }}>
-              {weeks.map(w => <span key={w.label} style={{ fontSize:9, color:'var(--mid)', fontWeight:600 }}>{w.label.split('–')[0].trim()}</span>)}
-            </div>
+
+                  {/* Week labels */}
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+                    {weeks.map(w => (
+                      <span key={w.label} style={{ fontSize:9, color:'var(--mid)', fontWeight:600 }}>
+                        {w.label.split('–')[0].trim()}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Legend */}
+                  <div style={{ display:'flex', gap:12, marginBottom: bestWeekLabel?10:0 }}>
+                    {[
+                      {col:'var(--mint,#2DD4BF)',label:'100%'},
+                      {col:'var(--purple)',label:'Partial'},
+                      {col:'var(--glass-bg2)',label:'No tasks'},
+                    ].map(l=>(
+                      <div key={l.label} style={{ display:'flex',alignItems:'center',gap:4 }}>
+                        <div style={{ width:8,height:8,borderRadius:2,background:l.col,border:'1px solid var(--border)' }}/>
+                        <span style={{ fontSize:9,color:'var(--lite)',fontWeight:600 }}>{l.label}</span>
+                      </div>
+                    ))}
+                    {avgPct>0&&<div style={{ display:'flex',alignItems:'center',gap:4 }}>
+                      <div style={{ width:12,height:1,borderTop:'1px dashed var(--border2)' }}/>
+                      <span style={{ fontSize:9,color:'var(--lite)',fontWeight:600 }}>avg</span>
+                    </div>}
+                  </div>
+
+                  {/* Insight */}
+                  {bestWeekLabel && bestScore>0.7 && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 10px', background:'var(--mint-lt,rgba(45,212,191,.08))', border:'1px solid rgba(45,212,191,.2)', borderRadius:10 }}>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 2l1.5 4.5L14 7l-3 3 .8 4.5L8 12 3.2 14.5 4 10 1 7l4.5-.5L8 2z" stroke="var(--mint)" strokeWidth="1.5" strokeLinejoin="round"/>
+                      </svg>
+                      <span style={{ fontSize:11, color:'var(--mint)', fontWeight:700 }}>
+                        Strongest week starting {bestWeekLabel} — {Math.round(bestScore*100)}% complete
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Week cards */}
